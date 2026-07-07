@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/echopath-labs/openDomain/actions/workflows/ci.yml/badge.svg)](https://github.com/echopath-labs/openDomain/actions/workflows/ci.yml)
 
+> 简体中文说明: [README.zh-CN.md](README.zh-CN.md)
+
 OpenDomain is a Git-native, evidence-backed, AI-maintainable domain semantic
 layer for software systems.
 
@@ -46,6 +48,15 @@ The source of truth remains Markdown with YAML front matter stored in Git.
 ## Usage
 
 Start with [docs/usage.md](docs/usage.md).
+
+Install the CLI from npm:
+
+```bash
+npm install -g @echopath-labs/opendomain
+opendomain help
+```
+
+Or try it from a source checkout:
 
 Common commands:
 
@@ -110,7 +121,7 @@ The first MVP slice demonstrates Order Cancellation grounding:
 
 ```bash
 npm test
-npm run prepare
+npm run prepare:demo
 npm run opendomain -- validate examples/erp
 npm run demo
 ```

@@ -8,6 +8,7 @@ coverage/
 .cache/
 .codex/
 .opendomain/
+.npmrc
 .env
 .env.*
 !.env.example

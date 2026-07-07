@@ -42,7 +42,16 @@ EchoPath
 
 ## 2. 快速开始
 
-安装依赖当前不需要额外步骤。仓库使用 Node.js 脚本直接运行 CLI。
+OpenDomain 的 npm 包名是 `@echopath-labs/opendomain`，CLI 命令是 `opendomain`。
+
+全局安装 CLI：
+
+```bash
+npm install -g @echopath-labs/opendomain
+opendomain help
+```
+
+也可以在仓库源码中直接运行 CLI。
 
 查看可用命令：
 
