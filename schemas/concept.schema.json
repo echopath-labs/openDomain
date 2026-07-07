@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opendomain.dev/schemas/concept.schema.json",
+  "title": "OpenDomain Domain Concept",
+  "type": "object",
+  "required": ["type", "id", "name", "context", "status", "review"],
+  "properties": {
+    "type": { "const": "domain_concept" },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_-]*)+$"
+    },
+    "name": { "type": "string", "minLength": 1 },
+    "context": { "type": "string", "minLength": 1 },
+    "status": { "$ref": "#/$defs/reviewState" },
+    "version": { "type": "integer", "minimum": 1 },
+    "aliases": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "not_synonyms": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "related": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "target"],
+        "properties": {
+          "type": { "type": "string", "minLength": 1 },
+          "target": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": true
+      }
+    },
+    "rules": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "lifecycles": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "events": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "evidence": { "$ref": "#/$defs/evidenceList" },
+    "review": { "$ref": "#/$defs/review" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "status": { "const": "accepted" } },
+        "required": ["status"]
+      },
+      "then": {
+        "required": ["evidence"],
+        "properties": {
+          "review": { "required": ["state", "reviewed_by", "reviewed_at"] }
+        }
+      }
+    }
+  ],
+  "additionalProperties": true,
+  "$defs": {
+    "reviewState": {
+      "enum": ["proposed", "accepted", "rejected", "superseded", "deprecated"]
+    },
+    "confidence": {
+      "enum": ["low", "medium", "high"]
+    },
+    "evidenceList": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/evidence" }
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["type", "location", "summary", "confidence"],
+      "properties": {
+        "type": {
+          "enum": ["code", "api", "database", "spec", "adr", "test", "commit", "human_review"]
+        },
+        "location": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string", "minLength": 1 },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      },
+      "additionalProperties": true
+    },
+    "review": {
+      "type": "object",
+      "required": ["state"],
+      "properties": {
+        "state": { "$ref": "#/$defs/reviewState" },
+        "reviewed_by": { "type": "string", "minLength": 1 },
+        "reviewed_at": { "type": "string", "format": "date" },
+        "suggested_reviewer": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    }
+  }
+}

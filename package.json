@@ -1,0 +1,29 @@
+{
+  "name": "opendomain",
+  "version": "0.1.0",
+  "description": "Git-native, evidence-backed domain semantics for AI agents.",
+  "license": "MIT",
+  "author": {
+    "name": "Chase",
+    "email": "chasechou007@gmail.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github-chase.com:echopath-labs/openDomain.git"
+  },
+  "type": "module",
+  "bin": {
+    "opendomain": "./bin/opendomain.mjs"
+  },
+  "scripts": {
+    "test": "node --test",
+    "opendomain": "node ./bin/opendomain.mjs",
+    "validate": "node ./bin/opendomain.mjs validate",
+    "prepare": "node ./bin/opendomain.mjs prepare examples/erp/openspec/changes/order-cancellation/spec.md",
+    "demo": "node ./bin/opendomain.mjs demo order-cancellation",
+    "openspec:validate": "OPENSPEC_TELEMETRY=0 DO_NOT_TRACK=1 openspec validate --all --json"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

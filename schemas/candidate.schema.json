@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opendomain.dev/schemas/candidate.schema.json",
+  "title": "OpenDomain Domain Candidate",
+  "type": "object",
+  "required": [
+    "type",
+    "id",
+    "status",
+    "proposed_change_type",
+    "target",
+    "confidence",
+    "extracted_by",
+    "extracted_at",
+    "evidence",
+    "review"
+  ],
+  "properties": {
+    "type": { "const": "domain_candidate" },
+    "id": {
+      "type": "string",
+      "pattern": "^candidate-[0-9]{4}(-[a-z0-9]+)*$"
+    },
+    "status": { "enum": ["proposed", "rejected", "superseded", "deprecated"] },
+    "proposed_change_type": {
+      "enum": [
+        "add_context",
+        "add_concept",
+        "add_rule",
+        "add_lifecycle",
+        "add_event",
+        "update_concept",
+        "update_rule",
+        "update_lifecycle",
+        "deprecate_knowledge"
+      ]
+    },
+    "target": {
+      "type": "object",
+      "required": ["type", "id"],
+      "properties": {
+        "type": {
+          "enum": ["bounded_context", "domain_concept", "business_rule", "lifecycle", "domain_event"]
+        },
+        "id": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    },
+    "confidence": { "$ref": "#/$defs/confidence" },
+    "extracted_by": { "type": "string", "minLength": 1 },
+    "extracted_at": { "type": "string", "format": "date" },
+    "evidence": { "$ref": "#/$defs/evidenceList" },
+    "possible_conflicts": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "review": {
+      "type": "object",
+      "required": ["state", "suggested_reviewer"],
+      "properties": {
+        "state": { "enum": ["proposed", "rejected", "superseded", "deprecated"] },
+        "suggested_reviewer": { "type": "string", "minLength": 1 },
+        "reviewed_by": { "type": "string", "minLength": 1 },
+        "reviewed_at": { "type": "string", "format": "date" },
+        "decision_reason": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "confidence": {
+      "enum": ["low", "medium", "high"]
+    },
+    "evidenceList": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/evidence" }
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["type", "location", "summary", "confidence"],
+      "properties": {
+        "type": {
+          "enum": ["code", "api", "database", "spec", "adr", "test", "commit", "human_review"]
+        },
+        "location": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string", "minLength": 1 },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

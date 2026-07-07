@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opendomain.dev/schemas/rule.schema.json",
+  "title": "OpenDomain Business Rule",
+  "type": "object",
+  "required": ["type", "id", "name", "context", "status", "applies_to", "severity", "rule_type", "review"],
+  "properties": {
+    "type": { "const": "business_rule" },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_-]*)+$"
+    },
+    "name": { "type": "string", "minLength": 1 },
+    "context": { "type": "string", "minLength": 1 },
+    "status": { "$ref": "#/$defs/reviewState" },
+    "applies_to": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "severity": { "enum": ["must", "should", "may"] },
+    "rule_type": { "enum": ["invariant", "policy", "constraint", "exception", "definition"] },
+    "evidence": { "$ref": "#/$defs/evidenceList" },
+    "review": { "$ref": "#/$defs/review" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "status": { "const": "accepted" } },
+        "required": ["status"]
+      },
+      "then": {
+        "required": ["evidence"],
+        "properties": {
+          "review": { "required": ["state", "reviewed_by", "reviewed_at"] }
+        }
+      }
+    }
+  ],
+  "additionalProperties": true,
+  "$defs": {
+    "reviewState": {
+      "enum": ["proposed", "accepted", "rejected", "superseded", "deprecated"]
+    },
+    "confidence": {
+      "enum": ["low", "medium", "high"]
+    },
+    "evidenceList": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/evidence" }
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["type", "location", "summary", "confidence"],
+      "properties": {
+        "type": {
+          "enum": ["code", "api", "database", "spec", "adr", "test", "commit", "human_review"]
+        },
+        "location": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string", "minLength": 1 },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      },
+      "additionalProperties": true
+    },
+    "review": {
+      "type": "object",
+      "required": ["state"],
+      "properties": {
+        "state": { "$ref": "#/$defs/reviewState" },
+        "reviewed_by": { "type": "string", "minLength": 1 },
+        "reviewed_at": { "type": "string", "format": "date" },
+        "suggested_reviewer": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    }
+  }
+}

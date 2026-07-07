@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opendomain.dev/schemas/opendomain.schema.json",
+  "title": "OpenDomain Front Matter",
+  "oneOf": [
+    { "$ref": "./context.schema.json" },
+    { "$ref": "./concept.schema.json" },
+    { "$ref": "./rule.schema.json" },
+    { "$ref": "./lifecycle.schema.json" },
+    { "$ref": "./event.schema.json" },
+    { "$ref": "./candidate.schema.json" }
+  ]
+}
