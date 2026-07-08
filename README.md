@@ -37,7 +37,8 @@ This workspace now includes the first MVP slices:
 
 - Markdown + YAML front matter source files
 - Parser and validator
-- CLI commands for validation, ID listing, reference checks, grounding, and demo
+- CLI commands for project init, validation, ID listing, reference checks,
+  grounding, indexing, and demo
 - OpenSpec `affects_domain` grounding
 - Domain Candidate boundary checks
 - Semantic Retrieval Index as a derived read-first view
@@ -53,7 +54,8 @@ Install the CLI from npm:
 
 ```bash
 npm install -g @echopath-labs/opendomain
-opendomain help
+opendomain init
+opendomain validate domain
 ```
 
 Or try it from a source checkout:
@@ -62,6 +64,7 @@ Common commands:
 
 ```bash
 npm run opendomain -- help
+npm run opendomain -- init
 npm run opendomain -- validate
 npm run opendomain -- prepare examples/erp/openspec/changes/order-cancellation/spec.md
 npm run opendomain -- index build examples/erp --out /tmp/erp-index.json
@@ -76,6 +79,7 @@ but the format and CLI may still change.
 
 Useful entry points:
 
+- [Getting started](docs/getting-started.md)
 - [Usage guide](docs/usage.md)
 - [Roadmap](ROADMAP.md)
 - [Contributing](CONTRIBUTING.md)
@@ -92,6 +96,7 @@ License: MIT.
 ├── README.md
 ├── docs/
 │   ├── OPEN_DOMAIN_DEVELOPMENT_GUIDE.md
+│   ├── getting-started.md
 │   ├── vision.md
 │   ├── glossary.md
 │   ├── architecture.md

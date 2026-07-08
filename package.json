@@ -1,6 +1,6 @@
 {
   "name": "@echopath-labs/opendomain",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0-alpha.1",
   "description": "Git-native, evidence-backed domain semantics for AI agents.",
   "license": "MIT",
   "author": {
@@ -35,6 +35,7 @@
     "src/",
     "schemas/",
     "examples/erp/",
+    "docs/getting-started.md",
     "docs/usage.md",
     "docs/vision.md",
     "docs/glossary.md",

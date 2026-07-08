@@ -98,7 +98,7 @@ OpenDomain 适合：
 - Markdown + YAML front matter 领域语义文件；
 - Bounded Context、Domain Concept、Business Rule、Lifecycle、Domain Event、Domain Candidate；
 - parser 和 validator；
-- CLI 命令：validate、ids list、refs check、prepare、demo；
+- CLI 命令：init、validate、ids list、refs check、prepare、index、demo；
 - OpenSpec `affects_domain` grounding；
 - Candidate 边界检查；
 - Semantic Retrieval Index，作为派生的 read-first 检索视图；
@@ -128,7 +128,8 @@ OpenDomain 的 npm 包名是 `@echopath-labs/opendomain`，CLI 命令是 `opendo
 
 ```bash
 npm install -g @echopath-labs/opendomain
-opendomain help
+opendomain init
+opendomain validate domain
 ```
 
 也可以从源码运行。
@@ -144,6 +145,12 @@ cd openDomain
 
 ```bash
 npm run opendomain -- help
+```
+
+初始化 OpenDomain 目录：
+
+```bash
+npm run opendomain -- init
 ```
 
 运行测试：
@@ -269,6 +276,8 @@ Candidate 不是 accepted truth。它只是待人类审查的提案。
 | 目标 | 命令 |
 | --- | --- |
 | 查看帮助 | `npm run opendomain -- help` |
+| 初始化 OpenDomain 目录 | `npm run opendomain -- init` |
+| 复制 ERP 示例 | `npm run opendomain -- init --example erp` |
 | 验证全部 OpenDomain 文件 | `npm run opendomain -- validate` |
 | 验证指定目录 | `npm run opendomain -- validate examples/erp` |
 | 输出 JSON 验证结果 | `npm run opendomain -- validate examples/erp --json` |
@@ -284,6 +293,7 @@ Candidate 不是 accepted truth。它只是待人类审查的提案。
 
 ## 文档
 
+- [快速上手](docs/getting-started.md)
 - [使用说明](docs/usage.md)
 - [产品愿景](docs/vision.md)
 - [MVP PRD](docs/product-prd.md)
@@ -303,6 +313,7 @@ OpenDomain 目前是 early alpha。
 已经可以用于：
 
 - 学习和试用 Git-native domain semantics；
+- 初始化一个项目的 OpenDomain 目录；
 - 运行 ERP 示例；
 - 验证 OpenDomain 文件格式；
 - 为 OpenSpec Feature 生成 grounding pack；

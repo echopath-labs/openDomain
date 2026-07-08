@@ -1,5 +1,6 @@
 import { validatePath } from "./validator.mjs";
 import { formatGroundingPack, prepareGroundingPack } from "./prepare.mjs";
+import { initializeProject } from "./init.mjs";
 import {
   DEFAULT_INDEX_PATH,
   buildSemanticIndex,
@@ -26,6 +27,10 @@ export async function runCli(argv, options = {}) {
 
   if (command === "prepare") {
     return runPrepare([subcommand, ...rest].filter(Boolean), io);
+  }
+
+  if (command === "init") {
+    return runInit([subcommand, ...rest].filter(Boolean), io);
   }
 
   if (command === "index" && subcommand === "build") {
@@ -57,6 +62,7 @@ function printHelp(stream) {
   stream.write(`OpenDomain CLI
 
 Usage:
+  opendomain init [--example erp] [--json]
   opendomain validate [path] [--json]
   opendomain prepare <feature-spec-or-dir> [--json]
   opendomain index build [path] [--out <file>] [--json]
@@ -76,6 +82,36 @@ function splitArgs(args) {
   };
 }
 
+async function runInit(args, io) {
+  const parsed = parseInitArgs(args);
+
+  if (parsed.errors.length > 0) {
+    const result = {
+      target: process.cwd(),
+      example: parsed.example ?? null,
+      created: [],
+      skipped: [],
+      errors: parsed.errors,
+      next_steps: []
+    };
+    if (parsed.json) {
+      io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    } else {
+      printInitResult(result, io.stdout);
+    }
+    return 1;
+  }
+
+  const result = await initializeProject({ cwd: process.cwd(), example: parsed.example });
+  if (parsed.json) {
+    io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  } else {
+    printInitResult(result, io.stdout);
+  }
+
+  return result.errors.length > 0 ? 1 : 0;
+}
+
 async function runValidate(args, io) {
   const { json, paths } = splitArgs(args);
   const result = await validatePath(paths[0], { cwd: process.cwd() });
@@ -87,6 +123,46 @@ async function runValidate(args, io) {
   }
 
   return result.errors.length > 0 ? 1 : 0;
+}
+
+function parseInitArgs(args) {
+  const parsed = {
+    json: false,
+    example: undefined,
+    errors: []
+  };
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--json") {
+      parsed.json = true;
+      continue;
+    }
+    if (arg === "--example") {
+      parsed.example = args[index + 1];
+      index += 1;
+      if (!parsed.example) {
+        parsed.errors.push({
+          severity: "error",
+          file: "<input>",
+          field: "example",
+          problem: "Missing example name.",
+          fix: "Use --example erp."
+        });
+      }
+      continue;
+    }
+
+    parsed.errors.push({
+      severity: "error",
+      file: "<input>",
+      field: "$",
+      problem: `Unknown init argument '${arg}'.`,
+      fix: "Run opendomain init, opendomain init --example erp, or add --json."
+    });
+  }
+
+  return parsed;
 }
 
 async function runPrepare(args, io) {
@@ -298,6 +374,48 @@ function printIndexBuildResult(result, stream) {
     for (const warning of result.warnings) {
       stream.write(`- ${warning.file} ${warning.field}: ${warning.problem}\n`);
     }
+  }
+}
+
+function printInitResult(result, stream) {
+  if (result.errors.length > 0) {
+    stream.write(`OpenDomain init failed: ${result.errors.length} errors.\n`);
+    for (const issue of result.errors) {
+      stream.write(`\n[${issue.severity}] ${issue.file}\n`);
+      stream.write(`  field: ${issue.field}\n`);
+      stream.write(`  problem: ${issue.problem}\n`);
+      stream.write(`  fix: ${issue.fix}\n`);
+    }
+    return;
+  }
+
+  stream.write("OpenDomain init completed.\n\n");
+  stream.write(`Target: ${result.target}\n`);
+  if (result.example) {
+    stream.write(`Example: ${result.example}\n`);
+  }
+
+  stream.write("\nCreated:\n");
+  if (result.created.length === 0) {
+    stream.write("- None\n");
+  } else {
+    for (const item of result.created) {
+      stream.write(`- ${item.path}\n`);
+    }
+  }
+
+  stream.write("\nSkipped:\n");
+  if (result.skipped.length === 0) {
+    stream.write("- None\n");
+  } else {
+    for (const item of result.skipped) {
+      stream.write(`- ${item.path} (${item.reason})\n`);
+    }
+  }
+
+  stream.write("\nNext steps:\n");
+  for (const step of result.next_steps) {
+    stream.write(`- ${step}\n`);
   }
 }
 

@@ -962,6 +962,7 @@ Codex 应遵守：
 - 所有 validator 行为必须有测试
 - 所有 CLI 行为必须有可复现实例
 - 所有文档中的示例都应尽量可验证
+- 每完成一个模块或用户可见工作流，必须同步补齐相关使用说明、命令帮助、README 入口或专项 guide
 
 ### 10.3 修改领域知识时
 
@@ -979,6 +980,7 @@ Codex 应检查：
 
 - 是否更新了相关测试
 - 是否更新了相关文档
+- 是否补齐了新模块或新工作流的使用说明
 - 是否保持示例可通过校验
 - 是否破坏了已有 schema
 - 是否引入未说明的格式变更
@@ -1462,4 +1464,3 @@ OpenDomain is not AI memory without review.
 OpenDomain is a Git-native domain semantic contract
 between business reality, software assets, human reviewers, and AI agents.
 ```
-

@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import test from "node:test";
 import { runCli } from "../src/cli.mjs";
 
@@ -34,6 +37,72 @@ test("order cancellation demo explains the avoided semantic error", async () => 
   assert.equal(exitCode, 0);
   assert.match(output, /Do not add direct deletion behavior for confirmed orders/);
   assert.match(output, /Candidate until human review/);
+});
+
+test("init command creates a minimal valid OpenDomain structure", async () => {
+  await withTempCwd(async () => {
+    const stdout = memoryStream();
+    const stderr = memoryStream();
+
+    const exitCode = await runCli(["init"], { stdout, stderr });
+    const output = stdout.toString();
+
+    assert.equal(exitCode, 0);
+    assert.match(output, /OpenDomain init completed/);
+    assert.match(output, /domain\/contexts\/example\.md/);
+    assert.match(output, /domain\/concepts\/example\.concept\.md/);
+    assert.match(output, /domain\/candidates\/candidate-0001-first-domain-model\.md/);
+
+    const validateStdout = memoryStream();
+    const validateExitCode = await runCli(["validate", "domain", "--json"], { stdout: validateStdout, stderr: memoryStream() });
+    const payload = JSON.parse(validateStdout.toString());
+
+    assert.equal(validateExitCode, 0);
+    assert.equal(payload.errors.length, 0);
+    assert.ok(payload.documents.some((document) => document.id === "example"));
+    assert.ok(payload.documents.some((document) => document.id === "example.concept"));
+    assert.ok(payload.documents.some((document) => document.id === "candidate-0001-first-domain-model"));
+  });
+});
+
+test("init command does not overwrite existing files", async () => {
+  await withTempCwd(async () => {
+    await mkdir("domain/contexts", { recursive: true });
+    await writeFile("domain/contexts/example.md", "existing content\n", "utf8");
+
+    const stdout = memoryStream();
+    const stderr = memoryStream();
+
+    const exitCode = await runCli(["init"], { stdout, stderr });
+    const output = stdout.toString();
+    const existing = await readFile("domain/contexts/example.md", "utf8");
+
+    assert.equal(exitCode, 0);
+    assert.equal(existing, "existing content\n");
+    assert.match(output, /domain\/contexts\/example\.md \(already exists\)/);
+  });
+});
+
+test("init command can copy the ERP example", async () => {
+  await withTempCwd(async () => {
+    const stdout = memoryStream();
+    const stderr = memoryStream();
+
+    const exitCode = await runCli(["init", "--example", "erp"], { stdout, stderr });
+    const output = stdout.toString();
+
+    assert.equal(exitCode, 0);
+    assert.match(output, /Example: erp/);
+    assert.match(output, /examples\/erp\/domain\/concepts\/sales\.order\.md/);
+
+    const validateStdout = memoryStream();
+    const validateExitCode = await runCli(["validate", "examples/erp", "--json"], { stdout: validateStdout, stderr: memoryStream() });
+    const payload = JSON.parse(validateStdout.toString());
+
+    assert.equal(validateExitCode, 0);
+    assert.equal(payload.errors.length, 0);
+    assert.ok(payload.documents.some((document) => document.id === "sales.order"));
+  });
 });
 
 test("prepare command returns grounding pack for a feature spec", async () => {
@@ -118,4 +187,16 @@ function memoryStream() {
       return value;
     }
   };
+}
+
+async function withTempCwd(callback) {
+  const previous = process.cwd();
+  const directory = await mkdtemp(path.join(os.tmpdir(), "opendomain-init-"));
+  process.chdir(directory);
+  try {
+    await callback(directory);
+  } finally {
+    process.chdir(previous);
+    await rm(directory, { recursive: true, force: true });
+  }
 }

@@ -48,7 +48,8 @@ OpenDomain 的 npm 包名是 `@echopath-labs/opendomain`，CLI 命令是 `opendo
 
 ```bash
 npm install -g @echopath-labs/opendomain
-opendomain help
+opendomain init
+opendomain validate domain
 ```
 
 也可以在仓库源码中直接运行 CLI。
@@ -57,6 +58,18 @@ opendomain help
 
 ```bash
 npm run opendomain -- help
+```
+
+初始化一个项目：
+
+```bash
+npm run opendomain -- init
+```
+
+复制 ERP 示例：
+
+```bash
+npm run opendomain -- init --example erp
 ```
 
 验证所有 OpenDomain 文件：
@@ -111,6 +124,8 @@ schemas/
 - `examples/erp/` 是 ERP Order Cancellation 示例。
 - `openspec/changes/` 保存变更计划、任务和验收要求。
 - `docs/` 保存产品说明、架构说明和使用说明。
+
+首次在自己的仓库中使用时，建议先读 [快速上手](getting-started.md)。
 
 ## 4. 如何写领域模型
 
@@ -401,6 +416,8 @@ Index 不是 source of truth。它只回答“应该读哪些 source files”。
 | 目标 | 命令 |
 |---|---|
 | 查看帮助 | `npm run opendomain -- help` |
+| 初始化 OpenDomain 目录 | `npm run opendomain -- init` |
+| 复制 ERP 示例 | `npm run opendomain -- init --example erp` |
 | 验证全部 OpenDomain 文件 | `npm run opendomain -- validate` |
 | 验证指定目录 | `npm run opendomain -- validate examples/erp` |
 | 输出 JSON 验证结果 | `npm run opendomain -- validate examples/erp --json` |
