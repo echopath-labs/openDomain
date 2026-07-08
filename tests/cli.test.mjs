@@ -235,6 +235,130 @@ test("prepare command fails on broken affects_domain references", async () => {
   assert.match(stdout.toString(), /Broken affects_domain reference 'sales\.missing-rule'/);
 });
 
+test("candidate list returns candidate summaries", async () => {
+  const stdout = memoryStream();
+  const stderr = memoryStream();
+
+  const exitCode = await runCli(["candidate", "list", "examples/erp", "--json"], { stdout, stderr });
+  const payload = JSON.parse(stdout.toString());
+
+  assert.equal(exitCode, 0);
+  assert.equal(payload.errors.length, 0);
+  assert.ok(payload.candidates.some((candidate) => (
+    candidate.id === "candidate-0001-order-lifecycle"
+    && candidate.status === "proposed"
+    && candidate.target.id === "sales.order-lifecycle"
+  )));
+});
+
+test("candidate show states that candidate is not accepted knowledge", async () => {
+  const stdout = memoryStream();
+  const stderr = memoryStream();
+
+  const exitCode = await runCli(["candidate", "show", "candidate-0001-order-lifecycle", "examples/erp"], { stdout, stderr });
+  const output = stdout.toString();
+
+  assert.equal(exitCode, 0);
+  assert.match(output, /Domain Candidate: candidate-0001-order-lifecycle/);
+  assert.match(output, /Candidate is not accepted OpenDomain knowledge/);
+  assert.match(output, /Existing accepted lifecycle does not include Closed/);
+});
+
+test("candidate review records rejected decision metadata", async () => {
+  await withTempCwd(async () => {
+    await writeCandidate("candidate-1000-review");
+
+    const stdout = memoryStream();
+    const stderr = memoryStream();
+    const exitCode = await runCli([
+      "candidate",
+      "review",
+      "candidate-1000-review",
+      "--decision",
+      "rejected",
+      "--reviewed-by",
+      "Chase",
+      "--reviewed-at",
+      "2026-07-08",
+      "--reason",
+      "Evidence does not support the proposed concept.",
+      "domain",
+      "--json"
+    ], { stdout, stderr });
+    const payload = JSON.parse(stdout.toString());
+    const file = await readFile("domain/candidates/candidate-1000-review.md", "utf8");
+
+    assert.equal(exitCode, 0);
+    assert.equal(payload.effective_state, "rejected");
+    assert.match(file, /status: rejected/);
+    assert.match(file, /state: rejected/);
+    assert.match(file, /reviewed_by: Chase/);
+    assert.match(file, /decision_reason: Evidence does not support the proposed concept\./);
+
+    const validateStdout = memoryStream();
+    const validateExitCode = await runCli(["validate", "domain", "--json"], { stdout: validateStdout, stderr: memoryStream() });
+    const validatePayload = JSON.parse(validateStdout.toString());
+
+    assert.equal(validateExitCode, 0);
+    assert.equal(validatePayload.errors.length, 0);
+  });
+});
+
+test("candidate accepted review maps to superseded without modifying accepted knowledge", async () => {
+  await withTempCwd(async () => {
+    await writeCandidate("candidate-1001-accepted");
+
+    const stdout = memoryStream();
+    const stderr = memoryStream();
+    const exitCode = await runCli([
+      "candidate",
+      "review",
+      "candidate-1001-accepted",
+      "--decision",
+      "accepted",
+      "--reviewed-by",
+      "Chase",
+      "--reviewed-at",
+      "2026-07-08",
+      "--reason",
+      "Human accepted the candidate; accepted source files will be updated manually.",
+      "domain"
+    ], { stdout, stderr });
+    const output = stdout.toString();
+    const file = await readFile("domain/candidates/candidate-1001-accepted.md", "utf8");
+
+    assert.equal(exitCode, 0);
+    assert.match(output, /Decision: accepted/);
+    assert.match(output, /Recorded state: superseded/);
+    assert.match(output, /accepted OpenDomain source files/);
+    assert.match(file, /status: superseded/);
+    assert.match(file, /state: superseded/);
+  });
+});
+
+test("candidate list handles deprecated and stale candidates", async () => {
+  await withTempCwd(async () => {
+    await writeCandidate("candidate-1002-deprecated", {
+      status: "deprecated",
+      reviewedBy: "Chase",
+      reviewedAt: "2026-07-08",
+      reason: "The proposal is obsolete."
+    });
+    await writeCandidate("candidate-1003-stale", {
+      extractedAt: "2026-01-01"
+    });
+
+    const stdout = memoryStream();
+    const stderr = memoryStream();
+    const exitCode = await runCli(["candidate", "list", "domain", "--json"], { stdout, stderr });
+    const payload = JSON.parse(stdout.toString());
+
+    assert.equal(exitCode, 0);
+    assert.ok(payload.candidates.some((candidate) => candidate.id === "candidate-1002-deprecated" && candidate.status === "deprecated"));
+    assert.ok(payload.warnings.some((warning) => warning.file.includes("candidate-1003-stale")));
+  });
+});
+
 function memoryStream() {
   let value = "";
   return {
@@ -257,4 +381,45 @@ async function withTempCwd(callback) {
     process.chdir(previous);
     await rm(directory, { recursive: true, force: true });
   }
+}
+
+async function writeCandidate(id, options = {}) {
+  await mkdir("domain/candidates", { recursive: true });
+  const status = options.status ?? "proposed";
+  const reviewState = status;
+  const extractedAt = options.extractedAt ?? "2026-07-08";
+  const reviewLines = [
+    "review:",
+    `  state: ${reviewState}`,
+    "  suggested_reviewer: fixture-reviewer"
+  ];
+  if (status !== "proposed") {
+    reviewLines.push(`  reviewed_by: ${options.reviewedBy ?? "fixture-reviewer"}`);
+    reviewLines.push(`  reviewed_at: ${options.reviewedAt ?? "2026-07-08"}`);
+    reviewLines.push(`  decision_reason: ${options.reason ?? "Fixture final review decision."}`);
+  }
+
+  await writeFile(`domain/candidates/${id}.md`, `---
+type: domain_candidate
+id: ${id}
+status: ${status}
+proposed_change_type: add_concept
+target:
+  type: domain_concept
+  id: example.new-concept
+confidence: medium
+extracted_by: codex
+extracted_at: ${extractedAt}
+evidence:
+  - type: spec
+    location: tests/cli.test.mjs
+    summary: Fixture candidate for CLI review workflow.
+    confidence: medium
+${reviewLines.join("\n")}
+---
+
+# Candidate Fixture
+
+Fixture candidate for CLI tests.
+`, "utf8");
 }

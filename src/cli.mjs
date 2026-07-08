@@ -1,6 +1,7 @@
 import { validatePath } from "./validator.mjs";
 import { formatGroundingPack, prepareGroundingPack } from "./prepare.mjs";
 import { initializeProject } from "./init.mjs";
+import { listCandidates, reviewCandidate, showCandidate } from "./candidates.mjs";
 import {
   DEFAULT_INDEX_PATH,
   buildSemanticIndex,
@@ -49,6 +50,18 @@ export async function runCli(argv, options = {}) {
     return runValidate(rest, io);
   }
 
+  if (command === "candidate" && subcommand === "list") {
+    return runCandidateList(rest, io);
+  }
+
+  if (command === "candidate" && subcommand === "show") {
+    return runCandidateShow(rest, io);
+  }
+
+  if (command === "candidate" && subcommand === "review") {
+    return runCandidateReview(rest, io);
+  }
+
   if (command === "demo" && subcommand === "order-cancellation") {
     return runOrderCancellationDemo(io);
   }
@@ -70,6 +83,9 @@ Usage:
   opendomain index query --context <context-id> [--index <file>] [--json]
   opendomain ids list [path] [--json]
   opendomain refs check [path] [--json]
+  opendomain candidate list [path] [--json]
+  opendomain candidate show <candidate-id> [path] [--json]
+  opendomain candidate review <candidate-id> --decision <decision> --reviewed-by <name> --reason <text> [path] [--json]
   opendomain demo order-cancellation
 
 `);
@@ -125,6 +141,61 @@ async function runValidate(args, io) {
   return result.errors.length > 0 ? 1 : 0;
 }
 
+async function runCandidateList(args, io) {
+  const parsed = parseCandidatePathArgs(args);
+  const result = await listCandidates(parsed.path, { cwd: process.cwd() });
+
+  if (parsed.json) {
+    io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  } else {
+    printCandidateListResult(result, io.stdout);
+  }
+
+  return result.errors.length > 0 ? 1 : 0;
+}
+
+async function runCandidateShow(args, io) {
+  const parsed = parseCandidateShowArgs(args);
+  const result = parsed.errors.length > 0
+    ? { source: parsed.path ?? "<default>", candidate: null, warnings: [], errors: parsed.errors }
+    : await showCandidate(parsed.id, parsed.path, { cwd: process.cwd() });
+
+  if (parsed.json) {
+    io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  } else {
+    printCandidateShowResult(result, io.stdout);
+  }
+
+  return result.errors.length > 0 ? 1 : 0;
+}
+
+async function runCandidateReview(args, io) {
+  const parsed = parseCandidateReviewArgs(args);
+  const result = parsed.errors.length > 0
+    ? {
+        candidate: null,
+        decision: parsed.decision ?? null,
+        effective_state: null,
+        file: null,
+        warnings: [],
+        errors: parsed.errors
+      }
+    : await reviewCandidate(parsed.id, parsed.path, {
+        decision: parsed.decision,
+        reviewedBy: parsed.reviewedBy,
+        reviewedAt: parsed.reviewedAt,
+        reason: parsed.reason
+      }, { cwd: process.cwd() });
+
+  if (parsed.json) {
+    io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  } else {
+    printCandidateReviewResult(result, io.stdout);
+  }
+
+  return result.errors.length > 0 ? 1 : 0;
+}
+
 function parseInitArgs(args) {
   const parsed = {
     json: false,
@@ -159,6 +230,122 @@ function parseInitArgs(args) {
       field: "$",
       problem: `Unknown init argument '${arg}'.`,
       fix: "Run opendomain init, opendomain init --example erp, or add --json."
+    });
+  }
+
+  return parsed;
+}
+
+function parseCandidatePathArgs(args) {
+  const parsed = {
+    json: false,
+    path: undefined
+  };
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--json") {
+      parsed.json = true;
+      continue;
+    }
+    if (!parsed.path) {
+      parsed.path = arg;
+    }
+  }
+
+  return parsed;
+}
+
+function parseCandidateShowArgs(args) {
+  const parsed = {
+    json: false,
+    id: undefined,
+    path: undefined,
+    errors: []
+  };
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--json") {
+      parsed.json = true;
+      continue;
+    }
+    if (!parsed.id) {
+      parsed.id = arg;
+      continue;
+    }
+    if (!parsed.path) {
+      parsed.path = arg;
+    }
+  }
+
+  if (!parsed.id) {
+    parsed.errors.push({
+      severity: "error",
+      file: "<input>",
+      field: "candidate_id",
+      problem: "Missing Candidate id.",
+      fix: "Run opendomain candidate show <candidate-id>."
+    });
+  }
+
+  return parsed;
+}
+
+function parseCandidateReviewArgs(args) {
+  const parsed = {
+    json: false,
+    id: undefined,
+    decision: undefined,
+    reviewedBy: undefined,
+    reviewedAt: undefined,
+    reason: undefined,
+    path: undefined,
+    errors: []
+  };
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--json") {
+      parsed.json = true;
+      continue;
+    }
+    if (arg === "--decision") {
+      parsed.decision = args[index + 1];
+      index += 1;
+      continue;
+    }
+    if (arg === "--reviewed-by") {
+      parsed.reviewedBy = args[index + 1];
+      index += 1;
+      continue;
+    }
+    if (arg === "--reviewed-at") {
+      parsed.reviewedAt = args[index + 1];
+      index += 1;
+      continue;
+    }
+    if (arg === "--reason") {
+      parsed.reason = args[index + 1];
+      index += 1;
+      continue;
+    }
+    if (!parsed.id) {
+      parsed.id = arg;
+      continue;
+    }
+    if (!parsed.path) {
+      parsed.path = arg;
+    }
+  }
+
+  if (!parsed.id) {
+    parsed.errors.push({
+      severity: "error",
+      file: "<input>",
+      field: "candidate_id",
+      problem: "Missing Candidate id.",
+      fix: "Run opendomain candidate review <candidate-id> --decision <decision> --reviewed-by <name> --reason <text>."
     });
   }
 
@@ -406,6 +593,113 @@ function printIndexBuildResult(result, stream) {
   }
 }
 
+function printCandidateListResult(result, stream) {
+  if (result.errors.length > 0) {
+    stream.write(`Candidate list failed: ${result.errors.length} errors.\n`);
+    printIssues(result.errors, stream);
+    return;
+  }
+
+  stream.write("Domain Candidates\n\n");
+  stream.write(`Source: ${result.source}\n`);
+  stream.write("Boundary: Candidates are not accepted OpenDomain knowledge.\n\n");
+
+  if (result.candidates.length === 0) {
+    stream.write("- None\n");
+  } else {
+    for (const candidate of result.candidates) {
+      stream.write(`- ${candidate.id} [${candidate.status}] -> ${candidate.target?.id ?? "<unknown>"}\n`);
+      stream.write(`  file: ${candidate.file}\n`);
+      stream.write(`  change: ${candidate.proposed_change_type}\n`);
+      stream.write(`  confidence: ${candidate.confidence}\n`);
+      stream.write(`  reviewer: ${candidate.suggested_reviewer ?? "<none>"}\n`);
+      if (candidate.reviewed_by) {
+        stream.write(`  reviewed_by: ${candidate.reviewed_by}\n`);
+      }
+    }
+  }
+
+  if (result.warnings.length > 0) {
+    stream.write("\nWarnings:\n");
+    for (const warning of result.warnings) {
+      stream.write(`- ${warning.file} ${warning.field}: ${warning.problem}\n`);
+    }
+  }
+}
+
+function printCandidateShowResult(result, stream) {
+  if (result.errors.length > 0) {
+    stream.write(`Candidate show failed: ${result.errors.length} errors.\n`);
+    printIssues(result.errors, stream);
+    return;
+  }
+
+  const candidate = result.candidate;
+  stream.write(`Domain Candidate: ${candidate.id}\n\n`);
+  stream.write(`Status: ${candidate.status}\n`);
+  stream.write(`Review state: ${candidate.review_state}\n`);
+  stream.write(`File: ${candidate.file}\n`);
+  stream.write(`Target: ${candidate.target?.type ?? "<unknown>"} ${candidate.target?.id ?? "<unknown>"}\n`);
+  stream.write(`Change: ${candidate.proposed_change_type}\n`);
+  stream.write(`Confidence: ${candidate.confidence}\n`);
+  stream.write(`Suggested reviewer: ${candidate.suggested_reviewer ?? "<none>"}\n`);
+  stream.write(`Boundary: ${result.boundary}\n\n`);
+
+  stream.write("Evidence:\n");
+  if (candidate.evidence.length === 0) {
+    stream.write("- None\n");
+  } else {
+    for (const evidence of candidate.evidence) {
+      stream.write(`- ${evidence.type} (${evidence.confidence}) ${evidence.location}: ${evidence.summary}\n`);
+    }
+  }
+
+  stream.write("\nPossible conflicts:\n");
+  if (candidate.possible_conflicts.length === 0) {
+    stream.write("- None\n");
+  } else {
+    for (const conflict of candidate.possible_conflicts) {
+      stream.write(`- ${conflict}\n`);
+    }
+  }
+
+  if (candidate.body) {
+    stream.write(`\nProposed content:\n${candidate.body}\n`);
+  }
+
+  if (result.warnings.length > 0) {
+    stream.write("\nWarnings:\n");
+    for (const warning of result.warnings) {
+      stream.write(`- ${warning.file} ${warning.field}: ${warning.problem}\n`);
+    }
+  }
+}
+
+function printCandidateReviewResult(result, stream) {
+  if (result.errors.length > 0) {
+    stream.write(`Candidate review failed: ${result.errors.length} errors.\n`);
+    printIssues(result.errors, stream);
+    return;
+  }
+
+  stream.write("Candidate review recorded.\n\n");
+  stream.write(`Candidate: ${result.candidate?.id ?? "<unknown>"}\n`);
+  stream.write(`Decision: ${result.decision}\n`);
+  stream.write(`Recorded state: ${result.effective_state}\n`);
+  stream.write(`File: ${result.file}\n`);
+  stream.write(`Boundary: ${result.boundary}\n`);
+  if (result.promotion_required) {
+    stream.write("Next step: manually update accepted OpenDomain source files with evidence and human review metadata.\n");
+  }
+
+  if (result.warnings.length > 0) {
+    stream.write("\nWarnings:\n");
+    for (const warning of result.warnings) {
+      stream.write(`- ${warning.file} ${warning.field}: ${warning.problem}\n`);
+    }
+  }
+}
+
 function printInitResult(result, stream) {
   if (result.errors.length > 0) {
     stream.write(`OpenDomain init failed: ${result.errors.length} errors.\n`);
@@ -535,9 +829,19 @@ function printValidationResult(result, stream) {
   }
 
   for (const issue of [...result.errors, ...result.warnings]) {
-    stream.write(`\n[${issue.severity}] ${issue.file}\n`);
-    stream.write(`  field: ${issue.field}\n`);
-    stream.write(`  problem: ${issue.problem}\n`);
-    stream.write(`  fix: ${issue.fix}\n`);
+    printIssue(issue, stream);
   }
+}
+
+function printIssues(issues, stream) {
+  for (const issue of issues) {
+    printIssue(issue, stream);
+  }
+}
+
+function printIssue(issue, stream) {
+  stream.write(`\n[${issue.severity}] ${issue.file}\n`);
+  stream.write(`  field: ${issue.field}\n`);
+  stream.write(`  problem: ${issue.problem}\n`);
+  stream.write(`  fix: ${issue.fix}\n`);
 }

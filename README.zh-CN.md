@@ -283,6 +283,9 @@ Candidate 不是 accepted truth。它只是待人类审查的提案。
 | 输出 JSON 验证结果 | `npm run opendomain -- validate examples/erp --json` |
 | 为 Feature 准备 grounding | `npm run opendomain -- prepare <feature-spec-or-dir>` |
 | 显式使用 OpenSpec integration | `npm run opendomain -- prepare --integration openspec <feature-spec-or-dir>` |
+| 列出 Candidate | `npm run opendomain -- candidate list examples/erp` |
+| 查看 Candidate | `npm run opendomain -- candidate show <candidate-id> examples/erp` |
+| 记录 Candidate review | `npm run opendomain -- candidate review <candidate-id> --decision rejected --reviewed-by <name> --reason <text> examples/erp` |
 | 列出 ID | `npm run opendomain -- ids list examples/erp` |
 | 检查引用 | `npm run opendomain -- refs check examples/erp` |
 | 构建 index | `npm run opendomain -- index build examples/erp --out /tmp/erp-index.json` |

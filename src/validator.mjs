@@ -14,6 +14,7 @@ const DOMAIN_TYPES = new Set([
 const KNOWN_TYPES = new Set([...DOMAIN_TYPES, "feature_spec"]);
 
 const REVIEW_STATES = new Set(["proposed", "accepted", "rejected", "superseded", "deprecated"]);
+const FINAL_CANDIDATE_STATES = new Set(["rejected", "superseded", "deprecated"]);
 
 const REQUIRED_FIELDS = {
   bounded_context: ["type", "id", "name", "status", "review"],
@@ -277,6 +278,26 @@ function validateStatusAndReview(document, result) {
         problem: "Candidate must suggest a human reviewer.",
         fix: "Set review.suggested_reviewer to the expected domain owner or maintainer."
       });
+    }
+
+    if (frontmatter.status && frontmatter.review?.state && frontmatter.status !== frontmatter.review.state) {
+      addIssue(result.errors, {
+        file: document.file,
+        field: "review.state",
+        problem: `Candidate status '${frontmatter.status}' does not match review state '${frontmatter.review.state}'.`,
+        fix: "Keep Candidate status and review.state aligned."
+      });
+    }
+
+    if (FINAL_CANDIDATE_STATES.has(frontmatter.status)) {
+      if (!frontmatter.review?.reviewed_by || !frontmatter.review?.reviewed_at || !frontmatter.review?.decision_reason) {
+        addIssue(result.errors, {
+          file: document.file,
+          field: "review",
+          problem: "Final Candidate review decisions must include reviewer, date, and reason.",
+          fix: "Set review.reviewed_by, review.reviewed_at, and review.decision_reason."
+        });
+      }
     }
   }
 }

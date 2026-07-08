@@ -1,6 +1,10 @@
 # OpenDomain
 
 [![CI](https://github.com/echopath-labs/openDomain/actions/workflows/ci.yml/badge.svg)](https://github.com/echopath-labs/openDomain/actions/workflows/ci.yml)
+![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)
+![Status](https://img.shields.io/badge/status-alpha-f59e0b.svg)
+![Node](https://img.shields.io/badge/node-%3E%3D20-0f766e.svg)
+![Source](https://img.shields.io/badge/source-Markdown%20%2B%20YAML-2563eb.svg)
 
 > 简体中文说明: [README.zh-CN.md](README.zh-CN.md)
 
@@ -68,6 +72,8 @@ npm run opendomain -- init
 npm run opendomain -- validate
 npm run opendomain -- prepare examples/erp/openspec/changes/order-cancellation/spec.md
 npm run opendomain -- prepare --integration openspec examples/erp/openspec/changes/order-cancellation/spec.md
+npm run opendomain -- candidate list examples/erp
+npm run opendomain -- candidate show candidate-0001-order-lifecycle examples/erp
 npm run opendomain -- index build examples/erp --out /tmp/erp-index.json
 npm run opendomain -- index query sales.order --index /tmp/erp-index.json
 npm test

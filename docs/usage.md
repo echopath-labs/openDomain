@@ -327,6 +327,18 @@ Candidate 不是 accepted truth。人类审查后，可以选择：
 - 标记 superseded / deprecated
 - 手动把被接受的语义写入正式 OpenDomain 文件，并保留 evidence 和 review metadata
 
+常用 Candidate 审查命令：
+
+```bash
+npm run opendomain -- candidate list examples/erp
+npm run opendomain -- candidate show candidate-0001-order-lifecycle examples/erp
+npm run opendomain -- candidate review candidate-0001-order-lifecycle --decision rejected --reviewed-by sales-domain-owner --reason "Closed is not part of the accepted lifecycle." examples/erp
+```
+
+`candidate review` 只更新 Candidate 文件的 review metadata，不会自动修改
+accepted OpenDomain 文件。选择 `--decision accepted` 时，Candidate 会记录为
+`superseded`，然后由人类把被接受的语义手动写入目标 domain source file。
+
 ## 6. OpenSpec 如何引用 OpenDomain
 
 OpenSpec 描述一次变更为什么存在、要交付什么、如何验收。
@@ -436,6 +448,9 @@ Index 不是 source of truth。它只回答“应该读哪些 source files”。
 | 输出 JSON 验证结果 | `npm run opendomain -- validate examples/erp --json` |
 | 为 Feature 准备 grounding | `npm run opendomain -- prepare <feature-spec-or-dir>` |
 | 显式使用 OpenSpec integration | `npm run opendomain -- prepare --integration openspec <feature-spec-or-dir>` |
+| 列出 Candidate | `npm run opendomain -- candidate list examples/erp` |
+| 查看 Candidate | `npm run opendomain -- candidate show <candidate-id> examples/erp` |
+| 记录 Candidate review | `npm run opendomain -- candidate review <candidate-id> --decision rejected --reviewed-by <name> --reason <text> examples/erp` |
 | 列出 ID | `npm run opendomain -- ids list examples/erp` |
 | 检查引用 | `npm run opendomain -- refs check examples/erp` |
 | 构建 index | `npm run opendomain -- index build examples/erp --out /tmp/erp-index.json` |

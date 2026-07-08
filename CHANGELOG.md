@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0-alpha.3 - 2026-07-08
+
+- Add `opendomain candidate list`, `candidate show`, and `candidate review`.
+- Add Candidate final-review validation for reviewer, date, reason, and state alignment.
+- Document Candidate review commands and the human-gated promotion boundary.
+- Align English and Simplified Chinese README badges.
+
 ## 0.1.0-alpha.2 - 2026-07-08
 
 - Add internal Grounding Request extraction for OpenSpec feature specs.

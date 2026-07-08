@@ -48,6 +48,12 @@ test("candidate without evidence fails", async () => {
   assert.ok(result.errors.some((issue) => issue.field === "evidence"));
 });
 
+test("final candidate review without reason fails", async () => {
+  const result = await validatePath("tests/fixtures/invalid/candidate-final-without-review-reason", { cwd: process.cwd() });
+
+  assert.ok(result.errors.some((issue) => issue.field === "review" && issue.problem.includes("Final Candidate review decisions")));
+});
+
 test("broken affects_domain references fail", async () => {
   const result = await validatePath("tests/fixtures/invalid/broken-affects-domain", { cwd: process.cwd() });
 

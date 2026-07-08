@@ -99,6 +99,17 @@ ERP 示例展示了：
 
 如果你不确定，就先写入 `domain/candidates/`。
 
+可以用 CLI 浏览和记录 Candidate 审查结果：
+
+```bash
+opendomain candidate list
+opendomain candidate show <candidate-id>
+opendomain candidate review <candidate-id> --decision rejected --reviewed-by <name> --reason <text>
+```
+
+`candidate review` 不会自动修改 accepted OpenDomain 文件。被人类接受的
+Candidate 仍需要手动 promotion，并保留 evidence 和 review metadata。
+
 ## 6. 让 Codex 先读业务模型
 
 Feature spec 可以用 `affects_domain` 引用 OpenDomain ID：
