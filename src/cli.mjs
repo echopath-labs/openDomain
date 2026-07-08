@@ -64,7 +64,7 @@ function printHelp(stream) {
 Usage:
   opendomain init [--example erp] [--json]
   opendomain validate [path] [--json]
-  opendomain prepare <feature-spec-or-dir> [--json]
+  opendomain prepare [--integration openspec] <feature-spec-or-dir> [--json]
   opendomain index build [path] [--out <file>] [--json]
   opendomain index query <domain-id> [--index <file>] [--json]
   opendomain index query --context <context-id> [--index <file>] [--json]
@@ -166,16 +166,45 @@ function parseInitArgs(args) {
 }
 
 async function runPrepare(args, io) {
-  const { json, paths } = splitArgs(args);
-  const pack = await prepareGroundingPack(paths[0], { cwd: process.cwd() });
+  const parsed = parsePrepareArgs(args);
+  const pack = await prepareGroundingPack(parsed.path, {
+    cwd: process.cwd(),
+    integration: parsed.integration
+  });
 
-  if (json) {
+  if (parsed.json) {
     io.stdout.write(`${JSON.stringify(pack, null, 2)}\n`);
   } else {
     io.stdout.write(formatGroundingPack(pack));
   }
 
   return pack.errors.length > 0 ? 1 : 0;
+}
+
+function parsePrepareArgs(args) {
+  const parsed = {
+    json: false,
+    integration: "auto",
+    path: undefined
+  };
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--json") {
+      parsed.json = true;
+      continue;
+    }
+    if (arg === "--integration") {
+      parsed.integration = args[index + 1] ?? "";
+      index += 1;
+      continue;
+    }
+    if (!parsed.path) {
+      parsed.path = arg;
+    }
+  }
+
+  return parsed;
 }
 
 async function runIndexBuild(args, io) {

@@ -1,25 +1,24 @@
-import { access, readdir, stat } from "node:fs/promises";
-import path from "node:path";
-import { parseMarkdownFile } from "./frontmatter.mjs";
+import { buildGroundingRequest, collectAffectedIds } from "./grounding-request.mjs";
 import { validatePath } from "./validator.mjs";
-
-const AFFECTS_DOMAIN_FIELDS = ["concepts", "rules", "lifecycles", "events"];
 
 export async function prepareGroundingPack(inputPath, options = {}) {
   const cwd = options.cwd ?? process.cwd();
-  const featureResult = await resolveFeatureSpec(inputPath, cwd);
+  const requestResult = await buildGroundingRequest(inputPath, {
+    cwd,
+    integration: options.integration ?? "auto"
+  });
 
-  if (featureResult.errors.length > 0) {
+  if (requestResult.errors.length > 0) {
     return emptyPack({
       input: inputPath,
-      errors: featureResult.errors
+      errors: requestResult.errors
     });
   }
 
   const corpus = await validatePath(undefined, { cwd, now: options.now ?? new Date() });
   const documentsById = new Map(corpus.documents.filter((document) => document.id).map((document) => [document.id, document]));
-  const feature = featureResult.feature;
-  const affectedIds = collectAffectedIds(feature.frontmatter.affects_domain);
+  const groundingRequest = requestResult.request;
+  const affectedIds = collectAffectedIds(groundingRequest.affects_domain);
   const readFirst = [];
   const errors = [...corpus.errors];
   const warnings = [...corpus.warnings];
@@ -28,7 +27,7 @@ export async function prepareGroundingPack(inputPath, options = {}) {
     const document = documentsById.get(affected.id);
     if (!document) {
       errors.push(issue({
-        file: feature.file,
+        file: groundingRequest.source.path,
         field: affected.field,
         problem: `Broken affects_domain reference '${affected.id}'.`,
         fix: "Create the referenced OpenDomain object or correct the id."
@@ -38,7 +37,7 @@ export async function prepareGroundingPack(inputPath, options = {}) {
 
     if (document.frontmatter.status !== "accepted") {
       errors.push(issue({
-        file: feature.file,
+        file: groundingRequest.source.path,
         field: affected.field,
         problem: `Feature spec references non-accepted OpenDomain knowledge '${affected.id}'.`,
         fix: "Reference accepted OpenDomain knowledge, or keep uncertain knowledge in Candidate form."
@@ -66,10 +65,11 @@ export async function prepareGroundingPack(inputPath, options = {}) {
 
   return {
     feature: {
-      id: feature.id,
-      name: feature.frontmatter.name,
-      file: feature.file
+      id: groundingRequest.intent.id,
+      name: groundingRequest.intent.name,
+      file: groundingRequest.source.path
     },
+    grounding_request: groundingRequest,
     read_first: uniqueById(readFirst).sort(compareById),
     candidate_boundaries: candidateBoundaries,
     avoided_semantic_errors: avoidedSemanticErrors,
@@ -141,118 +141,6 @@ function formatPackIssues(pack) {
   return `${lines.join("\n")}\n`;
 }
 
-async function resolveFeatureSpec(inputPath, cwd) {
-  if (!inputPath) {
-    return {
-      errors: [
-        issue({
-          file: "<input>",
-          field: "$",
-          problem: "Missing feature spec path.",
-          fix: "Run opendomain prepare <feature-spec-or-dir>."
-        })
-      ]
-    };
-  }
-
-  const absoluteInput = path.resolve(cwd, inputPath);
-  if (!await exists(absoluteInput)) {
-    return {
-      errors: [
-        issue({
-          file: inputPath,
-          field: "$",
-          problem: "Feature spec path does not exist.",
-          fix: "Pass an existing feature spec file or directory."
-        })
-      ]
-    };
-  }
-
-  const files = (await stat(absoluteInput)).isDirectory()
-    ? await walkMarkdown(absoluteInput)
-    : [absoluteInput];
-
-  const featureSpecs = [];
-  const parseErrors = [];
-  for (const file of files) {
-    try {
-      const parsed = await parseMarkdownFile(file);
-      if (parsed.frontmatter.type === "feature_spec") {
-        featureSpecs.push({
-          file: path.relative(cwd, file) || path.basename(file),
-          id: parsed.frontmatter.id,
-          frontmatter: parsed.frontmatter,
-          body: parsed.body
-        });
-      }
-    } catch (error) {
-      parseErrors.push(issue({
-        file: path.relative(cwd, file) || file,
-        field: error.field ?? "$",
-        problem: error.problem ?? error.message,
-        fix: "Use valid feature spec front matter."
-      }));
-    }
-  }
-
-  if (featureSpecs.length === 0) {
-    return {
-      errors: parseErrors.length > 0 ? parseErrors : [
-        issue({
-          file: inputPath,
-          field: "type",
-          problem: "No feature_spec found.",
-          fix: "Pass a Markdown feature spec with type: feature_spec."
-        })
-      ]
-    };
-  }
-
-  if (featureSpecs.length > 1) {
-    return {
-      errors: [
-        issue({
-          file: inputPath,
-          field: "type",
-          problem: "Multiple feature_spec files found.",
-          fix: "Pass a single feature spec file for deterministic grounding."
-        })
-      ]
-    };
-  }
-
-  const feature = featureSpecs[0];
-  if (!feature.frontmatter.affects_domain || typeof feature.frontmatter.affects_domain !== "object") {
-    return {
-      errors: [
-        issue({
-          file: feature.file,
-          field: "affects_domain",
-          problem: "Feature spec is missing affects_domain.",
-          fix: "Declare affected OpenDomain concepts, rules, lifecycles, or events."
-        })
-      ]
-    };
-  }
-
-  return { feature, errors: [] };
-}
-
-function collectAffectedIds(affectsDomain) {
-  const ids = [];
-  for (const field of AFFECTS_DOMAIN_FIELDS) {
-    const values = Array.isArray(affectsDomain[field]) ? affectsDomain[field] : [];
-    values.forEach((id, index) => {
-      ids.push({
-        id,
-        field: `affects_domain.${field}[${index}]`
-      });
-    });
-  }
-  return ids;
-}
-
 function toReadItem(document) {
   return {
     id: document.id,
@@ -305,6 +193,7 @@ function emptyPack({ input, errors }) {
       name: null,
       file: input ?? null
     },
+    grounding_request: null,
     read_first: [],
     candidate_boundaries: [],
     avoided_semantic_errors: [],
@@ -321,29 +210,4 @@ function issue(issueFields) {
     problem: issueFields.problem,
     fix: issueFields.fix
   };
-}
-
-async function exists(file) {
-  try {
-    await access(file);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function walkMarkdown(root) {
-  const entries = await readdir(root, { withFileTypes: true });
-  const files = [];
-  for (const entry of entries) {
-    const fullPath = path.join(root, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...await walkMarkdown(fullPath));
-      continue;
-    }
-    if (entry.isFile() && entry.name.endsWith(".md")) {
-      files.push(fullPath);
-    }
-  }
-  return files.sort();
 }

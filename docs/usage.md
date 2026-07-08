@@ -361,11 +361,24 @@ Codex 的默认入口是 `opendomain prepare`。
 npm run opendomain -- prepare examples/erp/openspec/changes/order-cancellation/spec.md
 ```
 
+OpenDomain 会自动识别 OpenSpec-style feature spec。你也可以显式指定
+built-in OpenSpec integration：
+
+```bash
+npm run opendomain -- prepare --integration openspec examples/erp/openspec/changes/order-cancellation/spec.md
+```
+
+当前 MVP 只支持 `openspec` built-in integration。Spec Kit 或其他工具的
+Integration Profile 仍处于设计阶段，不会执行动态插件代码。
+
 输出会包含：
 
 - `Read first`：必须先读的 accepted OpenDomain source files
 - `Candidate boundaries`：相关 proposed Candidate，不能当作 accepted truth
 - `Avoided semantic errors`：实现时应避免的业务语义错误
+
+JSON 输出还会包含 `grounding_request`，用于表示外部 spec 被适配成的中立
+grounding input。它不是 source of truth，只是 grounding pack 的输入。
 
 Codex 在最终回复中应报告：
 
@@ -422,6 +435,7 @@ Index 不是 source of truth。它只回答“应该读哪些 source files”。
 | 验证指定目录 | `npm run opendomain -- validate examples/erp` |
 | 输出 JSON 验证结果 | `npm run opendomain -- validate examples/erp --json` |
 | 为 Feature 准备 grounding | `npm run opendomain -- prepare <feature-spec-or-dir>` |
+| 显式使用 OpenSpec integration | `npm run opendomain -- prepare --integration openspec <feature-spec-or-dir>` |
 | 列出 ID | `npm run opendomain -- ids list examples/erp` |
 | 检查引用 | `npm run opendomain -- refs check examples/erp` |
 | 构建 index | `npm run opendomain -- index build examples/erp --out /tmp/erp-index.json` |

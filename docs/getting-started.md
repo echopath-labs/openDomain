@@ -123,6 +123,12 @@ affects_domain:
 opendomain prepare <feature-spec-or-dir>
 ```
 
+OpenDomain 会自动识别 OpenSpec-style feature spec。需要显式指定时可以运行：
+
+```bash
+opendomain prepare --integration openspec <feature-spec-or-dir>
+```
+
 Codex 应先读取输出中 `Read first` 列出的 accepted source files，并把 `Candidate boundaries` 视为 proposed knowledge。
 
 ## 7. 基本原则

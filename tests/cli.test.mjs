@@ -129,9 +129,67 @@ test("prepare command returns JSON grounding pack", async () => {
 
   assert.equal(exitCode, 0);
   assert.equal(payload.feature.id, "spec.order-cancellation");
+  assert.equal(payload.grounding_request.integration.id, "openspec");
+  assert.equal(payload.grounding_request.integration.kind, "builtin");
+  assert.equal(payload.grounding_request.source.type, "openspec");
+  assert.equal(payload.grounding_request.intent.id, "spec.order-cancellation");
   assert.ok(payload.read_first.some((item) => item.id === "sales.order"));
   assert.ok(payload.candidate_boundaries.some((item) => item.id === "candidate-0001-order-lifecycle"));
   assert.equal(payload.errors.length, 0);
+});
+
+test("prepare command supports explicit OpenSpec integration", async () => {
+  const stdout = memoryStream();
+  const stderr = memoryStream();
+
+  const exitCode = await runCli([
+    "prepare",
+    "--integration",
+    "openspec",
+    "examples/erp/openspec/changes/order-cancellation/spec.md",
+    "--json"
+  ], { stdout, stderr });
+  const payload = JSON.parse(stdout.toString());
+
+  assert.equal(exitCode, 0);
+  assert.equal(payload.grounding_request.integration.id, "openspec");
+  assert.equal(payload.grounding_request.integration.selected, "openspec");
+  assert.equal(payload.feature.id, "spec.order-cancellation");
+});
+
+test("prepare command supports trailing explicit OpenSpec integration", async () => {
+  const stdout = memoryStream();
+  const stderr = memoryStream();
+
+  const exitCode = await runCli([
+    "prepare",
+    "examples/erp/openspec/changes/order-cancellation/spec.md",
+    "--integration",
+    "openspec",
+    "--json"
+  ], { stdout, stderr });
+  const payload = JSON.parse(stdout.toString());
+
+  assert.equal(exitCode, 0);
+  assert.equal(payload.grounding_request.integration.selected, "openspec");
+  assert.equal(payload.feature.id, "spec.order-cancellation");
+});
+
+test("prepare command rejects unsupported integrations", async () => {
+  const stdout = memoryStream();
+  const stderr = memoryStream();
+
+  const exitCode = await runCli([
+    "prepare",
+    "--integration",
+    "spec-kit",
+    "examples/erp/openspec/changes/order-cancellation/spec.md"
+  ], { stdout, stderr });
+  const output = stdout.toString();
+
+  assert.equal(exitCode, 1);
+  assert.match(output, /Unsupported integration 'spec-kit'/);
+  assert.match(output, /Use --integration openspec/);
 });
 
 test("prepare command accepts a directory containing one feature spec", async () => {

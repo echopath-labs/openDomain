@@ -67,6 +67,7 @@ npm run opendomain -- help
 npm run opendomain -- init
 npm run opendomain -- validate
 npm run opendomain -- prepare examples/erp/openspec/changes/order-cancellation/spec.md
+npm run opendomain -- prepare --integration openspec examples/erp/openspec/changes/order-cancellation/spec.md
 npm run opendomain -- index build examples/erp --out /tmp/erp-index.json
 npm run opendomain -- index query sales.order --index /tmp/erp-index.json
 npm test
