@@ -387,10 +387,24 @@ Integration Profile 仍处于设计阶段，不会执行动态插件代码。
 
 - `Read first`：必须先读的 accepted OpenDomain source files
 - `Candidate boundaries`：相关 proposed Candidate，不能当作 accepted truth
+- `Context budget`：required 与 optional Candidate source 的 advisory estimate
 - `Avoided semantic errors`：实现时应避免的业务语义错误
 
-JSON 输出还会包含 `grounding_request`，用于表示外部 spec 被适配成的中立
-grounding input。它不是 source of truth，只是 grounding pack 的输入。
+JSON 输出遵循 [Grounding Protocol v1](grounding-protocol.md)，包含
+`protocol_version`、`grounding_request`、`read_first`、
+`candidate_boundaries`、`context_budget`、`errors` 和 `warnings`。
+`grounding_request` 表示外部 spec 被适配成的中立 grounding input。它不是 source
+of truth，只是 Grounding Pack 的输入。
+
+查看完整协议 JSON：
+
+```bash
+npm run opendomain -- prepare examples/erp/openspec/changes/order-cancellation/spec.md --json
+```
+
+`read_first` 不是简单复制 `affects_domain`。Semantic Closure v1 会沿明确的
+结构化引用字段补齐 context、rules、lifecycles、events 和相关对象。
+`prepare` 与 index query 使用同一 closure policy。
 
 Codex 在最终回复中应报告：
 
@@ -447,6 +461,7 @@ Index 不是 source of truth。它只回答“应该读哪些 source files”。
 | 验证指定目录 | `npm run opendomain -- validate examples/erp` |
 | 输出 JSON 验证结果 | `npm run opendomain -- validate examples/erp --json` |
 | 为 Feature 准备 grounding | `npm run opendomain -- prepare <feature-spec-or-dir>` |
+| 输出 Grounding Protocol JSON | `npm run opendomain -- prepare <feature-spec-or-dir> --json` |
 | 显式使用 OpenSpec integration | `npm run opendomain -- prepare --integration openspec <feature-spec-or-dir>` |
 | 列出 Candidate | `npm run opendomain -- candidate list examples/erp` |
 | 查看 Candidate | `npm run opendomain -- candidate show <candidate-id> examples/erp` |

@@ -88,6 +88,7 @@ Useful entry points:
 
 - [Getting started](docs/getting-started.md)
 - [Usage guide](docs/usage.md)
+- [Grounding Protocol v1](docs/grounding-protocol.md)
 - [Roadmap](ROADMAP.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
@@ -99,7 +100,6 @@ License: MIT.
 
 ```text
 .
-├── AGENTS.md
 ├── README.md
 ├── docs/
 │   ├── OPEN_DOMAIN_DEVELOPMENT_GUIDE.md
@@ -107,6 +107,7 @@ License: MIT.
 │   ├── vision.md
 │   ├── glossary.md
 │   ├── architecture.md
+│   ├── grounding-protocol.md
 │   ├── candidate-workflow.md
 │   └── decisions/
 ├── domain/

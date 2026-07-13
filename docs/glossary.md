@@ -37,3 +37,24 @@ accepted, rejected, superseded, or deprecated.
 
 The governance state for domain knowledge: proposed, accepted, rejected,
 superseded, or deprecated.
+
+## Grounding Request
+
+A versioned, tool-neutral request that identifies external work intent and the
+accepted OpenDomain IDs it declares as affected.
+
+## Grounding Pack
+
+A versioned read-first result containing accepted source pointers, separate
+Candidate boundaries, advisory context cost, and diagnostics. It is not source
+of truth.
+
+## Semantic Closure
+
+The deterministic, cycle-safe expansion from declared accepted roots through a
+versioned allowlist of structured OpenDomain references.
+
+## Context Budget
+
+An advisory estimate of complete accepted and optional Candidate source cost.
+It never changes which semantics are required.

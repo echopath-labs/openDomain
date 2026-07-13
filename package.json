@@ -40,6 +40,7 @@
     "docs/vision.md",
     "docs/glossary.md",
     "docs/architecture.md",
+    "docs/grounding-protocol.md",
     "docs/candidate-workflow.md",
     "docs/semantic-retrieval-index.md",
     "docs/mvp-grounding-demo.md",

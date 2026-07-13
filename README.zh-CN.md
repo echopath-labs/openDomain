@@ -302,6 +302,7 @@ Candidate 不是 accepted truth。它只是待人类审查的提案。
 - [产品愿景](docs/vision.md)
 - [MVP PRD](docs/product-prd.md)
 - [架构说明](docs/architecture.md)
+- [Grounding Protocol v1](docs/grounding-protocol.md)
 - [Candidate 工作流](docs/candidate-workflow.md)
 - [Semantic Retrieval Index](docs/semantic-retrieval-index.md)
 - [MVP Grounding Demo](docs/mvp-grounding-demo.md)

@@ -1,20 +1,11 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { collectSemanticClosure } from "./semantic-closure.mjs";
 import { validatePath } from "./validator.mjs";
 
 export const DEFAULT_INDEX_PATH = ".opendomain/index.json";
 export const INDEX_SCHEMA = "opendomain.semantic-index.v1";
-
-const REFERENCE_FIELDS = [
-  "context",
-  "rules",
-  "lifecycles",
-  "events",
-  "applies_to",
-  "related_rules",
-  "related_lifecycle"
-];
 
 export async function buildSemanticIndex(targetPath, options = {}) {
   const cwd = options.cwd ?? process.cwd();
@@ -118,7 +109,8 @@ export async function querySemanticIndex(query, options = {}) {
     }
   }
 
-  const readFirst = collectReadFirst(selectedEntries, entriesById);
+  const closure = collectSemanticClosure(selectedEntries.map((entry) => entry.id), index.entries ?? []);
+  const readFirst = closure.entries;
   const readFirstIds = new Set(readFirst.map((entry) => entry.id));
   const candidateBoundaries = collectCandidateBoundaries(index.entries ?? [], readFirstIds, query);
   const staleWarnings = await checkFreshness([...readFirst, ...candidateBoundaries], cwd);
@@ -132,6 +124,11 @@ export async function querySemanticIndex(query, options = {}) {
     schema: index.schema,
     source_files_authoritative: true,
     authoritative_source: index.authoritative_source ?? "OpenDomain source files, not this index",
+    semantic_closure: {
+      policy: closure.policy,
+      root_ids: closure.root_ids,
+      selection_paths: closure.selection_paths
+    },
     read_first: readFirst.map(toReadFirstItem),
     accepted_ids: readFirst.map((entry) => entry.id).sort(),
     candidate_boundaries: candidateBoundaries.map(toCandidateBoundary),
@@ -201,54 +198,6 @@ function collectAffectsDomainIds(affectsDomain) {
     ...arrayOrEmpty(affectsDomain.lifecycles),
     ...arrayOrEmpty(affectsDomain.events)
   ];
-}
-
-function collectReadFirst(selectedEntries, entriesById) {
-  const ids = new Set();
-  const queue = [];
-
-  const enqueue = (id) => {
-    if (!id || ids.has(id)) {
-      return;
-    }
-    const entry = entriesById.get(id);
-    if (!entry || entry.status !== "accepted") {
-      return;
-    }
-    ids.add(id);
-    queue.push(entry);
-  };
-
-  for (const entry of selectedEntries) {
-    enqueue(entry.id);
-  }
-
-  for (let index = 0; index < queue.length; index += 1) {
-    const entry = queue[index];
-    for (const referencedId of collectAcceptedReferenceIds(entry)) {
-      enqueue(referencedId);
-    }
-  }
-
-  return queue.sort(compareById);
-}
-
-function collectAcceptedReferenceIds(entry) {
-  const ids = [];
-  for (const field of REFERENCE_FIELDS) {
-    const value = entry[field];
-    if (Array.isArray(value)) {
-      ids.push(...value);
-    } else if (value) {
-      ids.push(value);
-    }
-  }
-  for (const relationship of arrayOrEmpty(entry.relationships)) {
-    if (relationship?.target) {
-      ids.push(relationship.target);
-    }
-  }
-  return ids;
 }
 
 function collectCandidateBoundaries(entries, readFirstIds, query) {

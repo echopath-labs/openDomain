@@ -76,9 +76,15 @@ Queries return a read-first plan:
 
 - `read_first`: accepted source files Codex should open
 - `accepted_ids`: accepted OpenDomain IDs included in the plan
+- `semantic_closure`: the shared closure policy, roots, and deterministic selection paths
 - `candidate_boundaries`: related proposed Candidates that are not accepted truth
 - `verify_with`: evidence and review metadata to inspect when claims matter
 - `warnings`: stale source-file warnings or other non-fatal issues
+
+Index queries and `opendomain prepare` both use
+`opendomain.semantic-closure` version `1`. For the same accepted root, they
+return the same accepted ID set. See `docs/grounding-protocol.md` for the exact
+reference-field allowlist.
 
 ## Source-Of-Truth Boundary
 

@@ -1,6 +1,7 @@
 import { access, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { parseMarkdownFile } from "./frontmatter.mjs";
+import { GROUNDING_PROTOCOL_VERSION } from "./protocol.mjs";
 
 const SUPPORTED_INTEGRATIONS = new Set(["auto", "openspec"]);
 const AFFECTS_DOMAIN_FIELDS = ["concepts", "rules", "lifecycles", "events"];
@@ -126,7 +127,11 @@ async function buildOpenSpecGroundingRequest(inputPath, cwd, selectedIntegration
   }
 
   const feature = featureSpecs[0];
-  if (!feature.frontmatter.affects_domain || typeof feature.frontmatter.affects_domain !== "object") {
+  if (
+    !feature.frontmatter.affects_domain
+    || typeof feature.frontmatter.affects_domain !== "object"
+    || Array.isArray(feature.frontmatter.affects_domain)
+  ) {
     return {
       request: null,
       errors: [
@@ -140,8 +145,17 @@ async function buildOpenSpecGroundingRequest(inputPath, cwd, selectedIntegration
     };
   }
 
+  const requestErrors = validateRequestFields(feature);
+  if (requestErrors.length > 0) {
+    return {
+      request: null,
+      errors: requestErrors
+    };
+  }
+
   return {
     request: {
+      protocol_version: GROUNDING_PROTOCOL_VERSION,
       source: {
         type: "openspec",
         path: feature.sourceFile
@@ -165,9 +179,50 @@ async function buildOpenSpecGroundingRequest(inputPath, cwd, selectedIntegration
 function normalizeAffectsDomain(affectsDomain) {
   const normalized = {};
   for (const field of AFFECTS_DOMAIN_FIELDS) {
-    normalized[field] = Array.isArray(affectsDomain[field]) ? [...affectsDomain[field]] : [];
+    normalized[field] = Array.isArray(affectsDomain[field])
+      ? [...new Set(affectsDomain[field])]
+      : [];
   }
   return normalized;
+}
+
+function validateRequestFields(feature) {
+  const errors = [];
+  for (const field of ["id", "name", "status"]) {
+    if (typeof feature.frontmatter[field] !== "string" || !feature.frontmatter[field].trim()) {
+      errors.push(issue({
+        file: feature.sourceFile,
+        field,
+        problem: `Feature spec '${field}' must be a non-empty string.`,
+        fix: `Add a non-empty ${field} value to feature spec front matter.`
+      }));
+    }
+  }
+
+  for (const field of AFFECTS_DOMAIN_FIELDS) {
+    const values = feature.frontmatter.affects_domain[field];
+    if (values !== undefined && !Array.isArray(values)) {
+      errors.push(issue({
+        file: feature.sourceFile,
+        field: `affects_domain.${field}`,
+        problem: `Feature spec affects_domain.${field} must be an array.`,
+        fix: `Use a YAML list of OpenDomain IDs for affects_domain.${field}.`
+      }));
+      continue;
+    }
+    for (const [index, id] of (values ?? []).entries()) {
+      if (typeof id !== "string" || !id.trim()) {
+        errors.push(issue({
+          file: feature.sourceFile,
+          field: `affects_domain.${field}[${index}]`,
+          problem: "Affected OpenDomain ID must be a non-empty string.",
+          fix: "Use a stable OpenDomain ID or remove the invalid list item."
+        }));
+      }
+    }
+  }
+
+  return errors;
 }
 
 function issue(issueFields) {

@@ -39,7 +39,11 @@ OpenDomain optimizes for a stable Codex reading path:
 ```text
 OpenSpec affects_domain or code path hint
   ↓
-Grounding Pack or derived retrieval index
+Versioned Grounding Request
+  ↓
+Shared Semantic Closure
+  ↓
+Grounding Pack or derived retrieval index read-first plan
   ↓
 Small set of accepted OpenDomain source files
   ↓
@@ -50,6 +54,11 @@ Readable for Codex means the entrypoint is deterministic, relationships are
 explicit, and source files remain concise enough to read before implementation.
 It does not mean moving accepted facts into an index. Indexes and other derived
 views help Codex find files; OpenDomain Markdown files still decide truth.
+
+Grounding Protocol v1 defines the stable request-to-pack contract. Profile
+Runtime remains an optional format-normalization layer, and external consumers
+must not add tool-specific fields to the stable protocol. See
+`docs/grounding-protocol.md`.
 
 ## Planning Layers
 

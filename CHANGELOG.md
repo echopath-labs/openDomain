@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Add Grounding Protocol v1 request and pack fields with public JSON Schemas.
+- Share deterministic Semantic Closure v1 between `prepare` and index queries.
+- Add advisory required-versus-Candidate Context Budget estimates.
+- Preserve existing OpenSpec alpha compatibility metadata.
+
 ## 0.1.0-alpha.3 - 2026-07-08
 
 - Add `opendomain candidate list`, `candidate show`, and `candidate review`.

@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opendomain.dev/schemas/grounding-request.schema.json",
+  "title": "OpenDomain Grounding Request v1",
+  "type": "object",
+  "required": ["protocol_version", "source", "intent", "affects_domain"],
+  "properties": {
+    "protocol_version": {
+      "const": "1.0"
+    },
+    "source": {
+      "type": "object",
+      "required": ["type", "path"],
+      "properties": {
+        "type": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    },
+    "intent": {
+      "type": "object",
+      "required": ["id", "name", "status"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "status": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    },
+    "affects_domain": {
+      "type": "object",
+      "required": ["concepts", "rules", "lifecycles", "events"],
+      "properties": {
+        "concepts": { "$ref": "#/$defs/idArray" },
+        "rules": { "$ref": "#/$defs/idArray" },
+        "lifecycles": { "$ref": "#/$defs/idArray" },
+        "events": { "$ref": "#/$defs/idArray" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "idArray": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": true
+}

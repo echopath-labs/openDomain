@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opendomain.dev/schemas/grounding-pack.schema.json",
+  "title": "OpenDomain Grounding Pack v1",
+  "type": "object",
+  "required": [
+    "protocol_version",
+    "grounding_request",
+    "read_first",
+    "candidate_boundaries",
+    "context_budget",
+    "errors",
+    "warnings"
+  ],
+  "properties": {
+    "protocol_version": {
+      "const": "1.0"
+    },
+    "grounding_request": {
+      "oneOf": [
+        { "$ref": "grounding-request.schema.json" },
+        { "type": "null" }
+      ]
+    },
+    "read_first": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/readFirst" }
+    },
+    "candidate_boundaries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/candidateBoundary" }
+    },
+    "context_budget": {
+      "$ref": "#/$defs/contextBudget"
+    },
+    "errors": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/diagnostic" }
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/diagnostic" }
+    }
+  },
+  "$defs": {
+    "readFirst": {
+      "type": "object",
+      "required": ["id", "type", "status", "file"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "minLength": 1 },
+        "name": { "type": "string" },
+        "status": { "const": "accepted" },
+        "file": { "type": "string", "minLength": 1 },
+        "context": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "candidateBoundary": {
+      "type": "object",
+      "required": ["id", "status", "target_id", "file"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "status": { "type": "string", "minLength": 1 },
+        "target_id": { "type": "string", "minLength": 1 },
+        "confidence": { "type": "string" },
+        "file": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    },
+    "sourceEstimate": {
+      "type": "object",
+      "required": ["source_count", "estimated_tokens"],
+      "properties": {
+        "source_count": { "type": "integer", "minimum": 0 },
+        "estimated_tokens": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "contextBudget": {
+      "type": "object",
+      "required": [
+        "estimator",
+        "advisory",
+        "required",
+        "optional_candidates",
+        "total_possible_estimated_tokens"
+      ],
+      "properties": {
+        "estimator": {
+          "type": "object",
+          "required": ["id", "version"],
+          "properties": {
+            "id": { "const": "chars-div-4" },
+            "version": { "const": "1" }
+          },
+          "additionalProperties": false
+        },
+        "advisory": { "const": true },
+        "required": { "$ref": "#/$defs/sourceEstimate" },
+        "optional_candidates": { "$ref": "#/$defs/sourceEstimate" },
+        "total_possible_estimated_tokens": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "diagnostic": {
+      "type": "object",
+      "required": ["severity", "file", "field", "problem", "fix"],
+      "properties": {
+        "severity": { "enum": ["error", "warning"] },
+        "file": { "type": "string" },
+        "field": { "type": "string" },
+        "problem": { "type": "string", "minLength": 1 },
+        "fix": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
