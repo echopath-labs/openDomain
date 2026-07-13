@@ -84,10 +84,11 @@ Run the grounding demo:
 npm run demo
 ```
 
-Run OpenSpec validation:
+If the consuming project uses OpenSpec, validate that project's workspace
+separately:
 
 ```bash
-npm run openspec:validate
+openspec validate --all --json
 ```
 
 ## MVP Boundary

@@ -21,14 +21,8 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install OpenSpec
-        run: npm install -g @fission-ai/openspec@1.2.0
-
       - name: Run tests
         run: npm test
 
       - name: Validate OpenDomain
         run: npm run opendomain -- validate
-
-      - name: Validate OpenSpec
-        run: npm run openspec:validate

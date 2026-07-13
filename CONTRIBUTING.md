@@ -8,14 +8,12 @@ Git-native, evidence-backed, and easy for AI agents to consume.
 Requirements:
 
 - Node.js 20 or newer
-- OpenSpec CLI when changing OpenSpec artifacts
 
 Useful commands:
 
 ```bash
 npm test
 npm run opendomain -- validate
-npm run openspec:validate
 ```
 
 ## Product Boundaries
@@ -24,7 +22,6 @@ Before changing OpenDomain, read:
 
 - `docs/OPEN_DOMAIN_DEVELOPMENT_GUIDE.md`
 - `docs/usage.md`
-- `openspec/config.yaml`
 
 Keep the layers separate:
 
@@ -43,12 +40,13 @@ Keep the layers separate:
 
 - Run `npm test`.
 - Run `npm run opendomain -- validate`.
-- Run `npm run openspec:validate` after OpenSpec changes.
 - Add or update tests for parser, validator, CLI, or index behavior changes.
 - Update docs when commands, formats, or workflow expectations change.
 - Do not commit generated `.opendomain/` indexes.
 
-## OpenSpec Changes
+## Planning Artifacts
 
-Use OpenSpec changes for non-trivial product or workflow work. Keep tasks small
-and check them off only after implementation and verification.
+OpenSpec is supported as an integration source, but this public repository does
+not require or publish the maintainer's private planning workspace. Public
+builds, tests, and contributions must remain independent of private planning
+artifacts.

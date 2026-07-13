@@ -60,8 +60,7 @@
     "validate": "node ./bin/opendomain.mjs validate",
     "prepare:demo": "node ./bin/opendomain.mjs prepare examples/erp/openspec/changes/order-cancellation/spec.md",
     "demo": "node ./bin/opendomain.mjs demo order-cancellation",
-    "openspec:validate": "OPENSPEC_TELEMETRY=0 DO_NOT_TRACK=1 openspec validate --all --json",
-    "prepublishOnly": "npm test && npm run opendomain -- validate && npm run openspec:validate"
+    "prepublishOnly": "npm test && npm run opendomain -- validate"
   },
   "engines": {
     "node": ">=20"

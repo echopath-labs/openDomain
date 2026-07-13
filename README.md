@@ -113,11 +113,6 @@ License: MIT.
 │   └── README.md
 ├── examples/
 │   └── erp/
-├── openspec/
-│   ├── config.yaml
-│   ├── project.md
-│   ├── specs/
-│   └── changes/
 ├── schemas/
 └── tests/
 ```
@@ -164,5 +159,5 @@ Use this rule when preserving planning:
 
 - `domain/`: long-lived OpenDomain semantics
 - `domain/candidates/`: proposed or inferred semantics
-- `openspec/changes/`: future delivery work
+- a project's optional `openspec/changes/`: future delivery work
 - `docs/`: narrative explanation and product guidance

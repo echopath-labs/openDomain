@@ -26,6 +26,10 @@ evidence:
     location: conversation:2026-07-06-codex-readability
     summary: Human maintainer accepted Codex readability as a core design criterion for retrieval and browsing design.
     confidence: high
+  - type: human_review
+    location: conversation:2026-07-11-semantic-integrity-over-token-efficiency
+    summary: Human maintainer confirmed that token savings are a low-priority derived benefit and must not shape the core semantic design.
+    confidence: high
 possible_conflicts:
   - The exact index shape and commands are not accepted yet.
   - Persistent index files must not become source of truth.
@@ -49,15 +53,17 @@ the full repository.
 
 The index should help with:
 
-- lowering token and context cost during current feature work
 - finding relevant business models after long time gaps
 - connecting concepts, rules, lifecycles, evidence, Candidates, and feature specs
 - giving Codex a deterministic read-first path instead of requiring broad scans
+- preserving semantic integrity, source traceability, and Candidate boundaries
+- lowering token and context cost as a secondary derived benefit
 
 ## Boundary
 
 The index must not become source of truth. It should be rebuildable from
-OpenDomain files in Git.
+OpenDomain semantic source files regardless of the user's version-control
+policy.
 
 The index should answer what Codex should read first. It should not answer final
 domain truth without pointing back to accepted source files.
@@ -109,6 +115,7 @@ opendomain index query --context <context-id>
 - The index must not store accepted facts that are absent from source files.
 - The index must not replace `opendomain prepare`.
 - The index must not require a graph database in the MVP.
+- The index must not omit semantically required sources to optimize token cost.
 
 ## Requested Human Review
 

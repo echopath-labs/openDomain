@@ -122,7 +122,7 @@ schemas/
 
 - `domain/` 是 OpenDomain 自己的真实业务模型。
 - `examples/erp/` 是 ERP Order Cancellation 示例。
-- `openspec/changes/` 保存变更计划、任务和验收要求。
+- 项目选择使用 OpenSpec 时，可由自己的 `openspec/changes/` 保存变更计划、任务和验收要求。
 - `docs/` 保存产品说明、架构说明和使用说明。
 
 首次在自己的仓库中使用时，建议先读 [快速上手](getting-started.md)。
@@ -458,7 +458,7 @@ Index 不是 source of truth。它只回答“应该读哪些 source files”。
 | 查询 context | `npm run opendomain -- index query --context sales --index /tmp/erp-index.json` |
 | 运行 demo | `npm run demo` |
 | 运行测试 | `npm test` |
-| 验证 OpenSpec | `npm run openspec:validate` |
+| 验证项目自己的 OpenSpec workspace | `openspec validate --all --json` |
 
 ## 10. 审查规则
 

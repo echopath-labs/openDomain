@@ -293,7 +293,7 @@ Candidate 不是 accepted truth。它只是待人类审查的提案。
 | 查询 context | `npm run opendomain -- index query --context sales --index /tmp/erp-index.json` |
 | 运行 demo | `npm run demo` |
 | 运行测试 | `npm test` |
-| 验证 OpenSpec | `npm run openspec:validate` |
+| 验证项目自己的 OpenSpec workspace | `openspec validate --all --json` |
 
 ## 文档
 

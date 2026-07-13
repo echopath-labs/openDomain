@@ -13,7 +13,7 @@ Use the repository layers this way:
 
 - `domain/`: long-lived OpenDomain product semantics
 - `domain/candidates/`: proposed OpenDomain semantics awaiting human review
-- `openspec/changes/`: change intent, design, tasks, and acceptance
+- a maintainer's private `openspec/changes/`: change intent, design, tasks, and acceptance
 - `docs/`: PRD, architecture, and development guidance
 - `examples/`: external example domains
 
@@ -56,7 +56,7 @@ Use this split when preserving planning output:
 
 - Put stable OpenDomain semantics in `domain/`.
 - Put uncertain inferred semantics in `domain/candidates/`.
-- Put delivery plans in `openspec/changes/`.
+- Put delivery plans in a private planning workspace such as `openspec/changes/`.
 - Put explanatory narrative in `docs/`.
 
 Do not turn future implementation plans into accepted OpenDomain knowledge. For
