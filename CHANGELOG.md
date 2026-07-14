@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0-alpha.4 - 2026-07-13
+## 0.1.0-alpha.4 - 2026-07-14
 
 - Add Grounding Protocol v1 request and pack fields with public JSON Schemas.
 - Share deterministic Semantic Closure v1 between `prepare` and index queries.
