@@ -97,7 +97,8 @@ OpenDomain 适合：
 
 - Markdown + YAML front matter 领域语义文件；
 - Bounded Context、Domain Concept、Business Rule、Lifecycle、Domain Event、Domain Candidate；
-- parser 和 validator；
+- 安全 parser 和 Draft 2020-12 Runtime Schema 校验；
+- 在 Semantic Closure、index 和 grounding 前执行安全语料门禁；
 - CLI 命令：init、validate、ids list、refs check、prepare、index、demo；
 - OpenSpec `affects_domain` grounding；
 - Candidate 边界检查；

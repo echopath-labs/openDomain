@@ -40,7 +40,8 @@ OpenDomain should be referenced by OpenSpec, not copied into OpenSpec.
 This workspace now includes the first MVP slices:
 
 - Markdown + YAML front matter source files
-- Parser and validator
+- Safe parser and Draft 2020-12 runtime schema validation
+- Safe-corpus gating before semantic closure, indexes, and grounding
 - CLI commands for project init, validation, ID listing, reference checks,
   grounding, indexing, and demo
 - OpenSpec `affects_domain` grounding

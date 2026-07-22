@@ -39,7 +39,10 @@ test("broken references fail", async () => {
 test("accepted knowledge without review metadata fails", async () => {
   const result = await validatePath("tests/fixtures/invalid/accepted-without-review", { cwd: process.cwd() });
 
-  assert.ok(result.errors.some((issue) => issue.field === "review"));
+  assert.deepEqual(
+    result.errors.map((issue) => issue.field),
+    ["review.reviewed_at", "review.reviewed_by"]
+  );
 });
 
 test("candidate without evidence fails", async () => {
@@ -81,4 +84,62 @@ test("inherited front matter fields cannot satisfy validation", async () => {
     && issue.field === "$"
     && issue.problem.includes("__proto__")
   )));
+});
+
+test("schema-invalid accepted Rule is excluded from the validated corpus", async () => {
+  const result = await validatePath("tests/fixtures/invalid/schema-invalid-rule/domain", {
+    cwd: process.cwd()
+  });
+
+  assert.deepEqual(
+    result.errors.map((issue) => issue.field),
+    ["applies_to", "id", "name", "review.reviewed_at", "rule_type", "severity"]
+  );
+  assert.ok(result.errors.every((issue) => (
+    issue.file.endsWith("invalid-rule.md")
+    && issue.problem.includes("rule.schema.json")
+    && issue.fix.includes("schemas/rule.schema.json")
+  )));
+  assert.equal(result.documents.some((document) => document.id === "BAD"), false);
+  assert.equal(result.documents.some((document) => document.id === "sales"), true);
+});
+
+test("schema-invalid nested metadata is excluded from the validated corpus", async () => {
+  const result = await validatePath("tests/fixtures/invalid/schema-invalid-nested", {
+    cwd: process.cwd()
+  });
+
+  assert.equal(result.documents.length, 0);
+  assert.deepEqual(result.errors.map((issue) => issue.field), ["review"]);
+  assert.match(result.errors[0].problem, /must be object/);
+});
+
+test("missing and unsupported types cannot enter the validated corpus", async () => {
+  const result = await validatePath("tests/fixtures/invalid/unsupported-types", {
+    cwd: process.cwd()
+  });
+
+  assert.equal(result.documents.length, 0);
+  assert.equal(result.errors.length, 3);
+  assert.ok(result.errors.every((issue) => issue.field === "type"));
+  assert.ok(result.errors.some((issue) => issue.problem.includes("Missing required field")));
+  assert.ok(result.errors.some((issue) => issue.problem.includes("Unsupported type")));
+  assert.ok(result.errors.some((issue) => issue.problem.includes("received object")));
+});
+
+test("current corpus includes valid controls for every domain source schema", async () => {
+  const result = await validatePath(undefined, { cwd: process.cwd() });
+  const types = new Set(result.documents.map((document) => document.type));
+
+  assert.equal(result.errors.length, 0);
+  for (const type of [
+    "bounded_context",
+    "domain_concept",
+    "business_rule",
+    "lifecycle",
+    "domain_event",
+    "domain_candidate"
+  ]) {
+    assert.equal(types.has(type), true, `Missing valid runtime schema control for ${type}`);
+  }
 });

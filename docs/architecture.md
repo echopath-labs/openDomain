@@ -7,7 +7,9 @@ Markdown + YAML front matter in Git
   ↓
 Safe front matter parsing and JSON-compatible normalization
   ↓
-Shape, review, and cross-reference validation
+Type-specific Draft 2020-12 schema validation
+  ↓
+Review, lifecycle, and cross-reference validation
   ↓
 CLI
   ↓
@@ -44,11 +46,24 @@ must consume this normalized representation rather than parsing YAML
 independently. Tool-authored front matter updates use the serializer from the
 same module so parse and write behavior cannot drift.
 
-Files under `schemas/` are currently the machine-readable format contracts.
-The CLI validator enforces its existing shape, review, evidence, reference, and
-lifecycle rules after parsing, but it does not yet execute those JSON Schemas at
-runtime. Runtime schema conformance is a separate hardening step; the architecture
-must not imply that schema validation protects the parser itself.
+Files under `schemas/` are the machine-readable format contracts for bounded
+contexts, concepts, rules, lifecycles, events, and Candidates. After safe parsing,
+`src/schema-validator.mjs` loads those packaged schemas relative to its own module,
+compiles them locally with a Draft 2020-12 validator, and applies the schema selected
+by the normalized `type` field. No network schema resolution or data coercion is
+used.
+
+Only known domain types that pass their type-specific schema enter the validated
+`documents` corpus. Schema-invalid objects therefore cannot satisfy references or
+flow into semantic closure, indexes, or Grounding Pack `read_first`. A missing,
+malformed, unresolved, or uncompilable packaged schema fails the registry closed
+and leaves the corpus empty.
+
+Schema validation does not protect the parser and does not establish business
+truth. The parser owns YAML safety and normalization; schemas own per-document
+structure and formats; the semantic validator owns evidence, review boundaries,
+cross-document references, Candidate rules, and lifecycle consistency. Human
+review remains the authority for accepted domain knowledge.
 
 ## Codex Readability
 

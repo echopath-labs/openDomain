@@ -48,6 +48,25 @@ test("validate command returns structured front matter security diagnostics", as
   )));
 });
 
+test("validate command reports deterministic runtime schema diagnostics", async () => {
+  const stdout = memoryStream();
+  const stderr = memoryStream();
+
+  const exitCode = await runCli([
+    "validate",
+    "tests/fixtures/invalid/schema-invalid-rule/domain",
+    "--json"
+  ], { stdout, stderr });
+  const payload = JSON.parse(stdout.toString());
+
+  assert.equal(exitCode, 1);
+  assert.deepEqual(
+    payload.errors.map((issue) => issue.field),
+    ["applies_to", "id", "name", "review.reviewed_at", "rule_type", "severity"]
+  );
+  assert.equal(payload.documents.some((document) => document.id === "BAD"), false);
+});
+
 test("order cancellation demo explains the avoided semantic error", async () => {
   const stdout = memoryStream();
   const stderr = memoryStream();

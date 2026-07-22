@@ -1,15 +1,14 @@
 import { access, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { parseMarkdownFile, FrontMatterError } from "./frontmatter.mjs";
+import {
+  createDomainSchemaRegistry,
+  DOMAIN_SOURCE_TYPES,
+  getDefaultDomainSchemaRegistry,
+  validateDomainFrontmatter
+} from "./schema-validator.mjs";
 
-const DOMAIN_TYPES = new Set([
-  "bounded_context",
-  "domain_concept",
-  "business_rule",
-  "lifecycle",
-  "domain_event",
-  "domain_candidate"
-]);
+const DOMAIN_TYPES = new Set(DOMAIN_SOURCE_TYPES);
 
 const KNOWN_TYPES = new Set([...DOMAIN_TYPES, "feature_spec"]);
 
@@ -53,15 +52,70 @@ export async function validatePath(targetPath, options = {}) {
     warnings: []
   };
 
+  let schemaRegistry;
+  try {
+    schemaRegistry = resolveSchemaRegistry(options);
+  } catch (error) {
+    addSchemaRegistryIssue(result, error);
+    return result;
+  }
+
   const files = await collectMarkdownFiles(targetPath, cwd, result);
   for (const file of files) {
     try {
       const parsed = await parseMarkdownFile(file);
       const relativeFile = path.relative(cwd, file) || path.basename(file);
+      const type = parsed.frontmatter.type;
+
+      if (type === undefined || type === null || type === "") {
+        addIssue(result.errors, {
+          file: relativeFile,
+          field: "type",
+          problem: "Missing required field 'type'.",
+          fix: "Set type to a supported OpenDomain object type."
+        });
+        continue;
+      }
+
+      if (!KNOWN_TYPES.has(type)) {
+        addIssue(result.errors, {
+          file: relativeFile,
+          field: "type",
+          problem: typeof type === "string"
+            ? `Unsupported type '${type}'.`
+            : `Field 'type' must be a supported string, received ${valueKind(type)}.`,
+          fix: `Use one of: ${[...KNOWN_TYPES].sort().join(", ")}.`
+        });
+        continue;
+      }
+
+      if (DOMAIN_TYPES.has(type)) {
+        let schemaIssues;
+        try {
+          schemaIssues = validateDomainFrontmatter(
+            parsed.frontmatter,
+            type,
+            schemaRegistry
+          );
+        } catch (error) {
+          result.documents = [];
+          result.errors = [];
+          result.warnings = [];
+          addSchemaRegistryIssue(result, error);
+          return result;
+        }
+        if (schemaIssues.length > 0) {
+          for (const issue of schemaIssues) {
+            addIssue(result.errors, { file: relativeFile, ...issue });
+          }
+          continue;
+        }
+      }
+
       result.documents.push({
         file: relativeFile,
         absoluteFile: file,
-        type: parsed.frontmatter.type,
+        type,
         id: parsed.frontmatter.id,
         frontmatter: parsed.frontmatter,
         body: parsed.body
@@ -79,6 +133,25 @@ export async function validatePath(targetPath, options = {}) {
   validateDocuments(result, now);
   deleteInternalPaths(result);
   return result;
+}
+
+function resolveSchemaRegistry(options) {
+  if (options.schemaRegistry) {
+    return options.schemaRegistry;
+  }
+  if (options.schemaDirectory) {
+    return createDomainSchemaRegistry({ schemaDirectory: options.schemaDirectory });
+  }
+  return getDefaultDomainSchemaRegistry();
+}
+
+function addSchemaRegistryIssue(result, error) {
+  addIssue(result.errors, {
+    file: "schemas",
+    field: "$",
+    problem: `Runtime schema registry is unavailable: ${error.message}`,
+    fix: "Restore or reinstall the packaged OpenDomain schemas before validating domain knowledge."
+  });
 }
 
 async function collectMarkdownFiles(targetPath, cwd, result) {
@@ -549,6 +622,13 @@ function forEachArray(value, field, callback) {
 
 function isMissing(value) {
   return value === undefined || value === null || value === "" || (Array.isArray(value) && value.length === 0);
+}
+
+function valueKind(value) {
+  if (Array.isArray(value)) {
+    return "array";
+  }
+  return typeof value;
 }
 
 function addIssue(target, issue) {

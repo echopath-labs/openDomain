@@ -47,6 +47,19 @@ test("failed Grounding Pack retains stable v1 fields", async () => {
   assert.ok(Array.isArray(pack.warnings));
 });
 
+test("schema-invalid accepted knowledge cannot enter Grounding Pack read_first", async () => {
+  const cwd = path.resolve("tests/fixtures/invalid/schema-invalid-rule");
+  const pack = await prepareGroundingPack("feature.md", { cwd });
+
+  assert.ok(pack.errors.some((issue) => (
+    issue.file.endsWith("invalid-rule.md")
+    && issue.field === "id"
+    && issue.problem.includes("rule.schema.json")
+  )));
+  assert.equal(pack.read_first.some((item) => item.id === "BAD"), false);
+  assert.deepEqual(pack.read_first, []);
+});
+
 test("OpenSpec adapter rejects an invalid request before grounding", async () => {
   const cwd = await mkdtemp(path.join(os.tmpdir(), "opendomain-invalid-request-"));
   await writeFile(path.join(cwd, "spec.md"), `---
