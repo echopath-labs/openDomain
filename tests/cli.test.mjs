@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { runCli } from "../src/cli.mjs";
+import { parseMarkdown } from "../src/frontmatter.mjs";
 
 test("validate command returns JSON and zero exit code for valid ERP example", async () => {
   const stdout = memoryStream();
@@ -25,6 +26,26 @@ test("validate command returns non-zero for invalid fixture", async () => {
 
   assert.equal(exitCode, 1);
   assert.match(stdout.toString(), /Broken reference 'sales\.missing-rule'/);
+});
+
+test("validate command returns structured front matter security diagnostics", async () => {
+  const stdout = memoryStream();
+  const stderr = memoryStream();
+
+  const exitCode = await runCli([
+    "validate",
+    "tests/fixtures/invalid/inherited-frontmatter",
+    "--json"
+  ], { stdout, stderr });
+  const payload = JSON.parse(stdout.toString());
+
+  assert.equal(exitCode, 1);
+  assert.equal(payload.documents.length, 0);
+  assert.ok(payload.errors.some((issue) => (
+    issue.file.endsWith("injected.md")
+    && issue.field === "$"
+    && issue.problem.includes("__proto__")
+  )));
 });
 
 test("order cancellation demo explains the avoided semantic error", async () => {
@@ -336,6 +357,61 @@ test("candidate accepted review maps to superseded without modifying accepted kn
   });
 });
 
+test("candidate review safely round trips YAML-like decision metadata and body", async () => {
+  await withTempCwd(async () => {
+    const id = "candidate-1004-roundtrip";
+    const reason = "Evidence says \"true, null\": keep [draft], #1.";
+    await writeCandidate(id, {
+      possibleConflicts: ["true", "Value, with comma"],
+      body: "# Candidate Fixture\n\nBody: keep [brackets], commas, and \"quotes\" unchanged.\n"
+    });
+    const before = parseMarkdown(
+      await readFile(`domain/candidates/${id}.md`, "utf8"),
+      `domain/candidates/${id}.md`
+    );
+
+    const stdout = memoryStream();
+    const stderr = memoryStream();
+    const exitCode = await runCli([
+      "candidate",
+      "review",
+      id,
+      "--decision",
+      "rejected",
+      "--reviewed-by",
+      "Chase: Domain Owner",
+      "--reviewed-at",
+      "2026-07-22",
+      "--reason",
+      reason,
+      "domain",
+      "--json"
+    ], { stdout, stderr });
+    const payload = JSON.parse(stdout.toString());
+    const content = await readFile(`domain/candidates/${id}.md`, "utf8");
+    const after = parseMarkdown(content, `domain/candidates/${id}.md`);
+
+    assert.equal(exitCode, 0);
+    assert.equal(payload.errors.length, 0);
+    assert.equal(after.frontmatter.review.reviewed_by, "Chase: Domain Owner");
+    assert.equal(after.frontmatter.review.decision_reason, reason);
+    assert.deepEqual(after.frontmatter.possible_conflicts, ["true", "Value, with comma"]);
+    assert.equal(after.frontmatter.target.id, before.frontmatter.target.id);
+    assert.equal(after.frontmatter.evidence[0].summary, before.frontmatter.evidence[0].summary);
+    assert.equal(after.body, before.body);
+
+    const validateStdout = memoryStream();
+    const validateExitCode = await runCli(["validate", "domain", "--json"], {
+      stdout: validateStdout,
+      stderr: memoryStream()
+    });
+    const validatePayload = JSON.parse(validateStdout.toString());
+
+    assert.equal(validateExitCode, 0);
+    assert.equal(validatePayload.errors.length, 0);
+  });
+});
+
 test("candidate list handles deprecated and stale candidates", async () => {
   await withTempCwd(async () => {
     await writeCandidate("candidate-1002-deprecated", {
@@ -398,6 +474,10 @@ async function writeCandidate(id, options = {}) {
     reviewLines.push(`  reviewed_at: ${options.reviewedAt ?? "2026-07-08"}`);
     reviewLines.push(`  decision_reason: ${options.reason ?? "Fixture final review decision."}`);
   }
+  const possibleConflicts = options.possibleConflicts?.length > 0
+    ? `possible_conflicts:\n${options.possibleConflicts.map((value) => `  - ${JSON.stringify(value)}`).join("\n")}\n`
+    : "";
+  const body = options.body ?? "# Candidate Fixture\n\nFixture candidate for CLI tests.\n";
 
   await writeFile(`domain/candidates/${id}.md`, `---
 type: domain_candidate
@@ -415,11 +495,8 @@ evidence:
     location: tests/cli.test.mjs
     summary: Fixture candidate for CLI review workflow.
     confidence: medium
-${reviewLines.join("\n")}
+${possibleConflicts}${reviewLines.join("\n")}
 ---
 
-# Candidate Fixture
-
-Fixture candidate for CLI tests.
-`, "utf8");
+${body}`, "utf8");
 }

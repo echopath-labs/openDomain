@@ -5,9 +5,9 @@ OpenDomain starts as a file-based semantic layer.
 ```text
 Markdown + YAML front matter in Git
   ↓
-Schema validation
+Safe front matter parsing and JSON-compatible normalization
   ↓
-Parser and cross-reference validator
+Shape, review, and cross-reference validation
   ↓
 CLI
   ↓
@@ -31,6 +31,24 @@ index, generated docs site, or MCP resource must be rebuildable from Git files.
 
 The first derived retrieval view is documented in
 `docs/semantic-retrieval-index.md`.
+
+## Source Trust Boundary
+
+Front matter is untrusted input until `src/frontmatter.mjs` has parsed and
+normalized it. The parser accepts one YAML 1.2 mapping, rejects ambiguous or
+prototype-sensitive structures, and exposes only arrays, JSON scalars, and
+null-prototype mappings to downstream code.
+
+Validation, semantic closure, indexes, Candidate review, and Grounding Packs
+must consume this normalized representation rather than parsing YAML
+independently. Tool-authored front matter updates use the serializer from the
+same module so parse and write behavior cannot drift.
+
+Files under `schemas/` are currently the machine-readable format contracts.
+The CLI validator enforces its existing shape, review, evidence, reference, and
+lifecycle rules after parsing, but it does not yet execute those JSON Schemas at
+runtime. Runtime schema conformance is a separate hardening step; the architecture
+must not imply that schema validation protects the parser itself.
 
 ## Codex Readability
 

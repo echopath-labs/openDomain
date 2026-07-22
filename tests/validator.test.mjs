@@ -69,3 +69,16 @@ test("stale candidates warn without failing validation", async () => {
   assert.equal(result.errors.length, 0);
   assert.ok(result.warnings.some((issue) => issue.problem.includes("Candidate has been proposed")));
 });
+
+test("inherited front matter fields cannot satisfy validation", async () => {
+  const result = await validatePath("tests/fixtures/invalid/inherited-frontmatter", {
+    cwd: process.cwd()
+  });
+
+  assert.equal(result.documents.length, 0);
+  assert.ok(result.errors.some((issue) => (
+    issue.file.endsWith("injected.md")
+    && issue.field === "$"
+    && issue.problem.includes("__proto__")
+  )));
+});

@@ -127,6 +127,28 @@ schemas/
 
 首次在自己的仓库中使用时，建议先读 [快速上手](getting-started.md)。
 
+### 3.1 YAML front matter 支持边界
+
+每个 OpenDomain Markdown 文件的 front matter 必须是一个 YAML 1.2 mapping。
+当前支持的值包括：
+
+- string、boolean、有限 number 和 `null`；
+- 由上述值组成的 sequence；
+- key 仅包含字母、数字、下划线或连字符的嵌套 mapping。
+
+标准 YAML 引号与转义、flow sequence、block scalar、CRLF 换行和文件开头的
+UTF-8 BOM 均可正常解析。为保证 validator、index 和 Grounding Pack 只接收
+确定且属于当前文档的元数据，以下输入会直接失败：
+
+- 任意层级的重复 key；
+- `__proto__`、`constructor`、`prototype` 和 merge key `<<`；
+- anchor、alias 或显式 tag；
+- 非字符串 mapping key、非有限 number 或其他非 JSON 值。
+
+失败信息会保留 `file`、`field` 和 `problem`。Candidate review 写回 front
+matter 时复用同一安全序列化入口，因此会保证语义 round trip，但不承诺
+保留原始 YAML 的逐字节排版。
+
 ## 4. 如何写领域模型
 
 ### 4.1 Bounded Context

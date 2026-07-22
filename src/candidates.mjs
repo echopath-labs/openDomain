@@ -1,6 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { parseMarkdown } from "./frontmatter.mjs";
+import { parseMarkdown, serializeFrontmatter } from "./frontmatter.mjs";
 import { validatePath } from "./validator.mjs";
 
 const REVIEW_DECISIONS = new Set(["accepted", "rejected", "superseded", "deprecated"]);
@@ -91,7 +91,7 @@ export async function reviewCandidate(candidateId, targetPath, reviewInput, opti
     }
   };
 
-  const nextContent = `---\n${serializeYaml(updatedFrontmatter)}---\n${parsed.body}`;
+  const nextContent = `---\n${serializeFrontmatter(updatedFrontmatter, document.file)}---\n${parsed.body}`;
   await writeFile(absoluteFile, nextContent, "utf8");
 
   const validation = await validatePath(targetPath, { cwd, now: options.now ?? new Date() });
@@ -228,87 +228,6 @@ function toCandidateDetail(document) {
 
 function compareCandidates(left, right) {
   return left.id.localeCompare(right.id);
-}
-
-function serializeYaml(value, indent = 0) {
-  const space = " ".repeat(indent);
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return `${space}${formatScalar(value)}\n`;
-  }
-
-  let output = "";
-  for (const [key, child] of Object.entries(value)) {
-    if (Array.isArray(child)) {
-      if (child.length === 0) {
-        output += `${space}${key}: []\n`;
-      } else {
-        output += `${space}${key}:\n${serializeArray(child, indent + 2)}`;
-      }
-      continue;
-    }
-
-    if (child && typeof child === "object") {
-      output += `${space}${key}:\n${serializeYaml(child, indent + 2)}`;
-      continue;
-    }
-
-    output += `${space}${key}: ${formatScalar(child)}\n`;
-  }
-  return output;
-}
-
-function serializeArray(values, indent) {
-  const space = " ".repeat(indent);
-  let output = "";
-  for (const value of values) {
-    if (value && typeof value === "object" && !Array.isArray(value)) {
-      const entries = Object.entries(value);
-      if (entries.length === 0) {
-        output += `${space}- {}\n`;
-        continue;
-      }
-      const [firstKey, firstValue] = entries[0];
-      if (firstValue && typeof firstValue === "object") {
-        output += `${space}- ${firstKey}:\n${serializeYaml(firstValue, indent + 4)}`;
-      } else {
-        output += `${space}- ${firstKey}: ${formatScalar(firstValue)}\n`;
-      }
-      for (const [key, child] of entries.slice(1)) {
-        if (Array.isArray(child)) {
-          if (child.length === 0) {
-            output += `${space}  ${key}: []\n`;
-          } else {
-            output += `${space}  ${key}:\n${serializeArray(child, indent + 4)}`;
-          }
-        } else if (child && typeof child === "object") {
-          output += `${space}  ${key}:\n${serializeYaml(child, indent + 4)}`;
-        } else {
-          output += `${space}  ${key}: ${formatScalar(child)}\n`;
-        }
-      }
-      continue;
-    }
-
-    output += `${space}- ${formatScalar(value)}\n`;
-  }
-  return output;
-}
-
-function formatScalar(value) {
-  if (value === undefined || value === null) {
-    return "null";
-  }
-  if (typeof value === "boolean" || typeof value === "number") {
-    return String(value);
-  }
-  const normalized = normalizeLine(String(value));
-  if (normalized === "") {
-    return "\"\"";
-  }
-  if (/^(true|false|null|~|\[\]|-?\d+|-?\d+\.\d+)$/.test(normalized)) {
-    return `"${normalized}"`;
-  }
-  return normalized;
 }
 
 function normalizeLine(value) {

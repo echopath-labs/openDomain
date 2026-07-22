@@ -1,4 +1,23 @@
 import { readFile } from "node:fs/promises";
+import {
+  isMap,
+  isScalar,
+  parseDocument,
+  stringify,
+  visit
+} from "yaml";
+
+const KEY_PATTERN = /^[A-Za-z0-9_-]+$/;
+const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype", "<<"]);
+const YAML_OPTIONS = {
+  version: "1.2",
+  schema: "core",
+  strict: true,
+  uniqueKeys: true,
+  merge: false,
+  resolveKnownTags: false,
+  customTags: []
+};
 
 export async function parseMarkdownFile(file) {
   const content = await readFile(file, "utf8");
@@ -6,17 +25,35 @@ export async function parseMarkdownFile(file) {
 }
 
 export function parseMarkdown(content, file = "<memory>") {
-  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)([\s\S]*)$/);
+  const source = content.startsWith("\uFEFF") ? content.slice(1) : content;
+  const match = source.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)([\s\S]*)$/);
   if (!match) {
     throw new FrontMatterError(file, "$", "Markdown file is missing YAML front matter.");
   }
 
-  const frontmatter = parseYamlSubset(match[1], file);
   return {
     file,
-    frontmatter,
+    frontmatter: parseFrontmatter(match[1], file),
     body: match[2] ?? ""
   };
+}
+
+export function serializeFrontmatter(value, file = "<memory>") {
+  const normalized = normalizeJsonValue(value, file);
+  if (!isMappingValue(normalized)) {
+    throw new FrontMatterError(file, "$", "Front matter must be a YAML mapping.");
+  }
+
+  try {
+    return stringify(normalized, {
+      ...YAML_OPTIONS,
+      aliasDuplicateObjects: false,
+      indent: 2,
+      lineWidth: 0
+    });
+  } catch (error) {
+    throw asFrontMatterError(error, file, "Unable to serialize front matter");
+  }
 }
 
 export class FrontMatterError extends Error {
@@ -29,179 +66,168 @@ export class FrontMatterError extends Error {
   }
 }
 
-function parseYamlSubset(source, file) {
-  const tokens = tokenize(source);
-  if (tokens.length === 0) {
-    return {};
+function parseFrontmatter(source, file) {
+  if (source.trim() === "") {
+    return Object.create(null);
   }
 
-  const parsed = parseBlock(tokens, 0, tokens[0].indent, file);
-  if (parsed.index < tokens.length) {
-    const token = tokens[parsed.index];
-    throw new FrontMatterError(file, "$", `Unexpected YAML content at line ${token.line}.`);
+  let document;
+  try {
+    document = parseDocument(source, YAML_OPTIONS);
+  } catch (error) {
+    throw asFrontMatterError(error, file, "Invalid YAML front matter");
   }
-  return parsed.value;
+
+  const diagnostic = document.errors[0] ?? document.warnings[0];
+  if (diagnostic) {
+    throw yamlDiagnosticError(diagnostic, file);
+  }
+  if (!isMap(document.contents)) {
+    throw new FrontMatterError(file, "$", "Front matter must be a YAML mapping.");
+  }
+
+  assertSupportedYaml(document, file);
+
+  let value;
+  try {
+    value = document.toJS({ mapAsMap: false, maxAliasCount: 0 });
+  } catch (error) {
+    throw asFrontMatterError(error, file, "Unable to convert YAML front matter");
+  }
+  return normalizeJsonValue(value, file);
 }
 
-function tokenize(source) {
-  return source
-    .split(/\r?\n/)
-    .map((raw, index) => ({ raw, line: index + 1 }))
-    .filter(({ raw }) => raw.trim() !== "" && !raw.trimStart().startsWith("#"))
-    .map(({ raw, line }) => {
-      const indent = raw.match(/^ */)?.[0].length ?? 0;
-      if (raw.slice(0, indent).includes("\t")) {
-        throw new Error("Tabs are not supported in OpenDomain front matter.");
+function assertSupportedYaml(document, file) {
+  visit(document, {
+    Alias() {
+      throw new FrontMatterError(
+        file,
+        "$",
+        "YAML anchors and aliases are not supported in OpenDomain front matter."
+      );
+    },
+    Node(_key, node) {
+      if (node.anchor) {
+        throw new FrontMatterError(
+          file,
+          "$",
+          "YAML anchors and aliases are not supported in OpenDomain front matter."
+        );
       }
-      return {
-        indent,
-        text: raw.trim(),
-        line
-      };
-    });
-}
-
-function parseBlock(tokens, index, indent, file) {
-  const token = tokens[index];
-  if (!token || token.indent < indent) {
-    return { value: null, index };
-  }
-  if (token.text.startsWith("- ")) {
-    return parseArray(tokens, index, token.indent, file);
-  }
-  return parseObject(tokens, index, token.indent, file);
-}
-
-function parseObject(tokens, index, indent, file) {
-  const value = {};
-
-  while (index < tokens.length) {
-    const token = tokens[index];
-    if (token.indent < indent || token.text.startsWith("- ")) {
-      break;
-    }
-    if (token.indent > indent) {
-      throw new FrontMatterError(file, "$", `Unexpected indentation at line ${token.line}.`);
-    }
-
-    const pair = parseKeyValue(token.text, file, token.line);
-    index += 1;
-    const parsed = parseValueOrChild(pair.rawValue, tokens, index, token.indent, file);
-    value[pair.key] = parsed.value;
-    index = parsed.index;
-  }
-
-  return { value, index };
-}
-
-function parseArray(tokens, index, indent, file) {
-  const value = [];
-
-  while (index < tokens.length) {
-    const token = tokens[index];
-    if (token.indent < indent || !token.text.startsWith("- ")) {
-      break;
-    }
-    if (token.indent > indent) {
-      throw new FrontMatterError(file, "$", `Unexpected indentation at line ${token.line}.`);
-    }
-
-    const rawItem = token.text.slice(2).trim();
-    index += 1;
-
-    if (rawItem === "") {
-      const child = parseChild(tokens, index, indent, file);
-      value.push(child.value);
-      index = child.index;
-      continue;
-    }
-
-    if (isKeyValue(rawItem)) {
-      const item = {};
-      const firstPair = parseKeyValue(rawItem, file, token.line);
-      const firstParsed = parseValueOrChild(firstPair.rawValue, tokens, index, indent, file);
-      item[firstPair.key] = firstParsed.value;
-      index = firstParsed.index;
-
-      while (index < tokens.length && tokens[index].indent > indent) {
-        const property = tokens[index];
-        if (property.indent !== indent + 2 || property.text.startsWith("- ")) {
-          throw new FrontMatterError(file, "$", `Unexpected array item indentation at line ${property.line}.`);
-        }
-        const pair = parseKeyValue(property.text, file, property.line);
-        index += 1;
-        const parsed = parseValueOrChild(pair.rawValue, tokens, index, property.indent, file);
-        item[pair.key] = parsed.value;
-        index = parsed.index;
+      if (node.tag) {
+        throw new FrontMatterError(
+          file,
+          "$",
+          `YAML tags are not supported in OpenDomain front matter ('${node.tag}').`
+        );
       }
+    },
+    Pair(_key, pair) {
+      if (!isScalar(pair.key) || typeof pair.key.value !== "string") {
+        throw new FrontMatterError(
+          file,
+          "$",
+          "Front matter mapping keys must be strings."
+        );
+      }
+      assertSupportedKey(pair.key.value, file);
+    }
+  });
+}
 
-      value.push(item);
-      continue;
+function normalizeJsonValue(value, file, ancestors = new WeakSet()) {
+  if (value === null || typeof value === "string" || typeof value === "boolean") {
+    return value;
+  }
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) {
+      throw new FrontMatterError(file, "$", "Front matter numbers must be finite JSON values.");
+    }
+    return value;
+  }
+  if (typeof value !== "object") {
+    throw new FrontMatterError(
+      file,
+      "$",
+      `Front matter contains unsupported non-JSON value type '${typeof value}'.`
+    );
+  }
+  if (ancestors.has(value)) {
+    throw new FrontMatterError(file, "$", "Front matter must not contain cyclic values.");
+  }
+
+  ancestors.add(value);
+  try {
+    if (Array.isArray(value)) {
+      return value.map((item) => normalizeJsonValue(item, file, ancestors));
     }
 
-    value.push(parseScalar(rawItem));
-  }
-
-  return { value, index };
-}
-
-function parseChild(tokens, index, parentIndent, file) {
-  if (index >= tokens.length || tokens[index].indent <= parentIndent) {
-    return { value: null, index };
-  }
-  return parseBlock(tokens, index, tokens[index].indent, file);
-}
-
-function parseValueOrChild(rawValue, tokens, index, indent, file) {
-  if (rawValue !== "") {
-    return { value: parseScalar(rawValue), index };
-  }
-  return parseChild(tokens, index, indent, file);
-}
-
-function parseKeyValue(text, file, line) {
-  const match = text.match(/^([A-Za-z0-9_-]+):(.*)$/);
-  if (!match) {
-    throw new FrontMatterError(file, "$", `Expected key/value pair at line ${line}.`);
-  }
-  return {
-    key: match[1],
-    rawValue: match[2].trim()
-  };
-}
-
-function isKeyValue(text) {
-  return /^[A-Za-z0-9_-]+:/.test(text);
-}
-
-function parseScalar(raw) {
-  if (raw === "[]") {
-    return [];
-  }
-  if (raw.startsWith("[") && raw.endsWith("]")) {
-    const inner = raw.slice(1, -1).trim();
-    if (inner === "") {
-      return [];
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) {
+      throw new FrontMatterError(
+        file,
+        "$",
+        `Front matter contains unsupported non-JSON object '${value.constructor?.name ?? "Object"}'.`
+      );
     }
-    return inner.split(",").map((item) => parseScalar(item.trim()));
+
+    const normalized = Object.create(null);
+    for (const key of Reflect.ownKeys(value)) {
+      if (typeof key !== "string") {
+        throw new FrontMatterError(file, "$", "Front matter mapping keys must be strings.");
+      }
+      assertSupportedKey(key, file);
+
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (!descriptor?.enumerable || !("value" in descriptor)) {
+        throw new FrontMatterError(
+          file,
+          "$",
+          `Front matter property '${key}' must be an enumerable data property.`
+        );
+      }
+      Object.defineProperty(normalized, key, {
+        value: normalizeJsonValue(descriptor.value, file, ancestors),
+        enumerable: true,
+        configurable: true,
+        writable: true
+      });
+    }
+    return normalized;
+  } finally {
+    ancestors.delete(value);
   }
-  if (raw === "true") {
-    return true;
+}
+
+function assertSupportedKey(key, file) {
+  if (UNSAFE_KEYS.has(key)) {
+    throw new FrontMatterError(
+      file,
+      "$",
+      `Unsupported front matter key '${key}'; prototype-sensitive and merge keys are not allowed.`
+    );
   }
-  if (raw === "false") {
-    return false;
+  if (!KEY_PATTERN.test(key)) {
+    throw new FrontMatterError(
+      file,
+      "$",
+      `Unsupported front matter key '${key}'; use letters, digits, underscores, or hyphens.`
+    );
   }
-  if (raw === "null" || raw === "~") {
-    return null;
+}
+
+function isMappingValue(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function yamlDiagnosticError(diagnostic, file) {
+  const code = diagnostic.code ? ` (${diagnostic.code})` : "";
+  return new FrontMatterError(file, "$", `Invalid YAML front matter${code}: ${diagnostic.message}`);
+}
+
+function asFrontMatterError(error, file, prefix) {
+  if (error instanceof FrontMatterError) {
+    return error;
   }
-  if (/^-?\d+$/.test(raw)) {
-    return Number.parseInt(raw, 10);
-  }
-  if (/^-?\d+\.\d+$/.test(raw)) {
-    return Number.parseFloat(raw);
-  }
-  if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {
-    return raw.slice(1, -1);
-  }
-  return raw;
+  return new FrontMatterError(file, "$", `${prefix}: ${error.message ?? String(error)}`);
 }
