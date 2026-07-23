@@ -46,7 +46,7 @@ related_rules:
   - sales.confirmed-order-cannot-be-deleted
 evidence:
   - type: human_review
-    location: examples/erp/domain/concepts/sales.order.md
+    location: examples/erp/opendomain/concepts/sales.order.md
     summary: Example fixture defines the accepted order lifecycle.
     confidence: high
 review:

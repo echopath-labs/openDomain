@@ -1,17 +1,18 @@
 import { access, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { inspectWorkspaceRoots } from "./workspace-resolver.mjs";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-const DOMAIN_DIRECTORIES = [
-  "domain",
-  "domain/contexts",
-  "domain/concepts",
-  "domain/rules",
-  "domain/lifecycles",
-  "domain/events",
-  "domain/candidates"
+const WORKSPACE_DIRECTORIES = [
+  "opendomain",
+  "opendomain/contexts",
+  "opendomain/concepts",
+  "opendomain/rules",
+  "opendomain/lifecycles",
+  "opendomain/events",
+  "opendomain/candidates"
 ];
 
 export async function initializeProject(options = {}) {
@@ -22,6 +23,7 @@ export async function initializeProject(options = {}) {
     example: options.example ?? null,
     created: [],
     skipped: [],
+    warnings: [],
     errors: [],
     next_steps: []
   };
@@ -37,15 +39,32 @@ export async function initializeProject(options = {}) {
     return result;
   }
 
-  for (const directory of DOMAIN_DIRECTORIES) {
+  const workspace = await inspectWorkspaceRoots({ cwd });
+  result.warnings.push(...workspace.warnings);
+  result.errors.push(...workspace.errors);
+  if (result.errors.length > 0) {
+    return result;
+  }
+  if (workspace.mode === "legacy") {
+    result.errors.push({
+      severity: "error",
+      file: "domain",
+      field: "$",
+      problem: "Cannot initialize canonical 'opendomain/' while a legacy-only 'domain/' workspace exists.",
+      fix: "Continue using the legacy workspace during 0.x, or move it non-destructively before running init again."
+    });
+    return result;
+  }
+
+  for (const directory of WORKSPACE_DIRECTORIES) {
     await ensureDirectory(path.join(cwd, directory), cwd, result);
   }
 
-  await writeFileIfMissing(path.join(cwd, "domain/README.md"), domainReadmeTemplate(), cwd, result);
-  await writeFileIfMissing(path.join(cwd, "domain/contexts/example.md"), contextTemplate(), cwd, result);
-  await writeFileIfMissing(path.join(cwd, "domain/concepts/example.concept.md"), conceptTemplate(), cwd, result);
+  await writeFileIfMissing(path.join(cwd, "opendomain/README.md"), domainReadmeTemplate(), cwd, result);
+  await writeFileIfMissing(path.join(cwd, "opendomain/contexts/example.md"), contextTemplate(), cwd, result);
+  await writeFileIfMissing(path.join(cwd, "opendomain/concepts/example.concept.md"), conceptTemplate(), cwd, result);
   await writeFileIfMissing(
-    path.join(cwd, "domain/candidates/candidate-0001-first-domain-model.md"),
+    path.join(cwd, "opendomain/candidates/candidate-0001-first-domain-model.md"),
     candidateTemplate(today),
     cwd,
     result
@@ -56,9 +75,9 @@ export async function initializeProject(options = {}) {
     await copyExample(options.example, cwd, result);
   }
 
-  result.next_steps.push("Edit domain/contexts/example.md and domain/concepts/example.concept.md for your first real bounded context.");
-  result.next_steps.push("Run opendomain validate domain.");
-  result.next_steps.push("Keep inferred or uncertain business knowledge in domain/candidates/ until human review.");
+  result.next_steps.push("Edit opendomain/contexts/example.md and opendomain/concepts/example.concept.md for your first real bounded context.");
+  result.next_steps.push("Run opendomain validate.");
+  result.next_steps.push("Keep inferred or uncertain business knowledge in opendomain/candidates/ until human review.");
   if (options.example) {
     result.next_steps.push("Run opendomain validate examples/erp to inspect the copied ERP example.");
   }
@@ -219,7 +238,7 @@ Describe what this concept means in the business world.
 
 ## Agent Guidance
 
-Keep uncertain or AI-inferred knowledge in \`domain/candidates/\` until human
+Keep uncertain or AI-inferred knowledge in \`opendomain/candidates/\` until human
 review.
 `;
 }

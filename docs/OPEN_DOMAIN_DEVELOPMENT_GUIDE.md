@@ -592,7 +592,7 @@ Codex 在 Greenfield 开发时，可采用以下结构作为初始建议。
 │   ├── architecture.md
 │   └── decisions/
 │       └── ADR-0001-git-native-markdown-first.md
-├── domain/
+├── opendomain/
 │   ├── contexts/
 │   │   └── sales.md
 │   ├── concepts/
@@ -1104,7 +1104,7 @@ OpenDomain CLI 应该简单、确定、适合 CI。
 
 ```bash
 opendomain validate
-opendomain validate domain/concepts/sales.order.md
+opendomain validate opendomain/concepts/sales.order.md
 opendomain graph export --format json
 opendomain candidate validate
 opendomain ids list
@@ -1439,10 +1439,10 @@ Create:
 - schemas/rule.schema.json
 - schemas/lifecycle.schema.json
 - schemas/candidate.schema.json
-- examples/erp/domain/concepts/sales.order.md
-- examples/erp/domain/rules/sales.confirmed-order-cannot-be-deleted.md
-- examples/erp/domain/lifecycles/sales.order-lifecycle.md
-- examples/erp/domain/candidates/candidate-0001-order-lifecycle.md
+- examples/erp/opendomain/concepts/sales.order.md
+- examples/erp/opendomain/rules/sales.confirmed-order-cannot-be-deleted.md
+- examples/erp/opendomain/lifecycles/sales.order-lifecycle.md
+- examples/erp/opendomain/candidates/candidate-0001-order-lifecycle.md
 
 Keep schemas minimal but valid.
 Make examples human-readable and machine-parseable.

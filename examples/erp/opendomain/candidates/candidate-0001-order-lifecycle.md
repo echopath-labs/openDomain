@@ -11,7 +11,7 @@ extracted_by: codex
 extracted_at: 2026-06-29
 evidence:
   - type: spec
-    location: examples/erp/domain/lifecycles/sales.order-lifecycle.md
+    location: examples/erp/opendomain/lifecycles/sales.order-lifecycle.md
     summary: Accepted lifecycle has Fulfilled as terminal but no Closed state.
     confidence: medium
 possible_conflicts:

@@ -11,7 +11,7 @@ human maintainers.
 - OpenSpec `affects_domain` grounding
 - Domain Candidate boundary checks
 - Semantic Retrieval Index as a derived read-first view
-- OpenDomain self-model dogfooding under `domain/`
+- OpenDomain self-model dogfooding under `opendomain/`
 
 ## Near-Term Work
 

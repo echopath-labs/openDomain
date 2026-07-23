@@ -103,6 +103,7 @@ OpenDomain 适合：
 - OpenSpec `affects_domain` grounding；
 - Candidate 边界检查；
 - Semantic Retrieval Index，作为派生的 read-first 检索视图；
+- 以 canonical `opendomain/` 为入口的确定性工作区解析；
 - ERP Order Cancellation 示例；
 - OpenDomain 自己的 self-model dogfooding。
 
@@ -130,7 +131,7 @@ OpenDomain 的 npm 包名是 `@echopath-labs/opendomain`，CLI 命令是 `opendo
 ```bash
 npm install -g @echopath-labs/opendomain
 opendomain init
-opendomain validate domain
+opendomain validate
 ```
 
 也可以从源码运行。
@@ -175,7 +176,7 @@ npm run opendomain -- validate examples/erp
 为一个 Feature 准备 Codex grounding：
 
 ```bash
-npm run opendomain -- prepare examples/erp/openspec/changes/order-cancellation/spec.md
+npm run prepare:demo
 ```
 
 构建并查询 Semantic Retrieval Index：
@@ -189,10 +190,10 @@ npm run opendomain -- index query sales.order --index /tmp/erp-index.json
 
 ### 1. 写长期业务语义
 
-把长期成立的业务知识写入 `domain/` 或 `examples/<name>/domain/`：
+把长期成立的业务知识写入项目根目录的 `opendomain/`：
 
 ```text
-domain/
+opendomain/
   contexts/
   concepts/
   rules/
@@ -200,6 +201,14 @@ domain/
   events/
   candidates/
 ```
+
+不传 source path 时，CLI 会从当前项目根目录解析工作区：
+
+- 优先使用 canonical `opendomain/`；
+- 在 `0.x` 期间，只有 `domain/` 时会兼容读取并给出迁移提示；
+- 两个根目录同时存在时只读取 `opendomain/`，发出 warning，不合并语料；
+- 默认只读取六类语义目录，不扫描 `examples/`、`generated/` 或 integration 配置；
+- 验证示例、fixture 或外部语料时，需要显式传入文件或目录。
 
 例如 `sales.order` 应该说明 Order 在 Sales context 中是什么意思，它不是什么，它受哪些规则和生命周期约束，以及证据是什么。
 
@@ -259,7 +268,7 @@ extracted_by: codex
 extracted_at: 2026-07-07
 evidence:
   - type: spec
-    location: examples/erp/domain/lifecycles/sales.order-lifecycle.md
+    location: examples/erp/opendomain/lifecycles/sales.order-lifecycle.md
     summary: Accepted lifecycle does not include Closed state.
     confidence: medium
 possible_conflicts:
@@ -342,7 +351,7 @@ OpenDomain 目前是 early alpha。
 - 内部项目记忆；
 - 未经授权的业务文档或代码片段。
 
-如果你要在公司内部使用 OpenDomain，建议在私有仓库维护项目自己的 `domain/` 文件。
+如果你要在公司内部使用 OpenDomain，建议在私有仓库维护项目自己的 `opendomain/` 文件。
 
 ## 贡献
 

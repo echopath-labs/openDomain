@@ -1,6 +1,6 @@
-import { access, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { parseMarkdownFile, FrontMatterError } from "./frontmatter.mjs";
+import { resolveWorkspaceSources } from "./workspace-resolver.mjs";
 import {
   createDomainSchemaRegistry,
   DOMAIN_SOURCE_TYPES,
@@ -49,7 +49,8 @@ export async function validatePath(targetPath, options = {}) {
   const result = {
     documents: [],
     errors: [],
-    warnings: []
+    warnings: [],
+    workspace: null
   };
 
   let schemaRegistry;
@@ -60,11 +61,21 @@ export async function validatePath(targetPath, options = {}) {
     return result;
   }
 
-  const files = await collectMarkdownFiles(targetPath, cwd, result);
+  const resolution = await resolveWorkspaceSources(targetPath, { cwd });
+  result.workspace = {
+    mode: resolution.mode,
+    source_root: resolution.sourceRootDisplay,
+    default_index_path: resolution.defaultIndexPath,
+    explicit: resolution.explicit
+  };
+  result.errors.push(...resolution.errors);
+  result.warnings.push(...resolution.warnings);
+
+  const files = resolution.files;
   for (const file of files) {
     try {
       const parsed = await parseMarkdownFile(file);
-      const relativeFile = path.relative(cwd, file) || path.basename(file);
+      const relativeFile = documentPath(file, resolution.projectRoot);
       const type = parsed.frontmatter.type;
 
       if (type === undefined || type === null || type === "") {
@@ -122,7 +133,7 @@ export async function validatePath(targetPath, options = {}) {
       });
     } catch (error) {
       addIssue(result.errors, {
-        file: path.relative(cwd, file) || file,
+        file: documentPath(file, resolution.projectRoot),
         field: error instanceof FrontMatterError ? error.field : "$",
         problem: error instanceof FrontMatterError ? error.problem : String(error.message ?? error),
         fix: "Add valid YAML front matter delimited by --- at the top of the Markdown file."
@@ -152,65 +163,6 @@ function addSchemaRegistryIssue(result, error) {
     problem: `Runtime schema registry is unavailable: ${error.message}`,
     fix: "Restore or reinstall the packaged OpenDomain schemas before validating domain knowledge."
   });
-}
-
-async function collectMarkdownFiles(targetPath, cwd, result) {
-  if (!targetPath) {
-    const roots = ["domain", "examples"]
-      .map((root) => path.join(cwd, root));
-    const files = [];
-    for (const root of roots) {
-      if (await exists(root)) {
-        files.push(...await walkMarkdown(root));
-      }
-    }
-    return files;
-  }
-
-  const absoluteTarget = path.resolve(cwd, targetPath);
-  if (!await exists(absoluteTarget)) {
-    addIssue(result.errors, {
-      file: targetPath,
-      field: "$",
-      problem: "Path does not exist.",
-      fix: "Pass an existing OpenDomain file or directory."
-    });
-    return [];
-  }
-
-  const targetStat = await stat(absoluteTarget);
-  if (targetStat.isFile()) {
-    return absoluteTarget.endsWith(".md") ? [absoluteTarget] : [];
-  }
-  return walkMarkdown(absoluteTarget);
-}
-
-async function walkMarkdown(root) {
-  const entries = await readdir(root, { withFileTypes: true });
-  const files = [];
-  for (const entry of entries) {
-    if (entry.name === ".git" || entry.name === "node_modules" || entry.name === ".codex") {
-      continue;
-    }
-    const fullPath = path.join(root, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...await walkMarkdown(fullPath));
-      continue;
-    }
-    if (entry.isFile() && entry.name.endsWith(".md") && entry.name !== "README.md") {
-      files.push(fullPath);
-    }
-  }
-  return files.sort();
-}
-
-async function exists(file) {
-  try {
-    await access(file);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 function validateDocuments(result, now) {
@@ -645,4 +597,16 @@ function deleteInternalPaths(result) {
   for (const document of result.documents) {
     delete document.absoluteFile;
   }
+}
+
+function documentPath(file, projectRoot) {
+  const relative = path.relative(projectRoot, file);
+  if (
+    relative === ".."
+    || relative.startsWith(`..${path.sep}`)
+    || path.isAbsolute(relative)
+  ) {
+    return file;
+  }
+  return (relative || path.basename(file)).split(path.sep).join("/");
 }

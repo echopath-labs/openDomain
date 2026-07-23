@@ -47,7 +47,8 @@ This workspace now includes the first MVP slices:
 - OpenSpec `affects_domain` grounding
 - Domain Candidate boundary checks
 - Semantic Retrieval Index as a derived read-first view
-- OpenDomain dogfooding under `domain/`
+- Deterministic workspace resolution with canonical `opendomain/` sources
+- OpenDomain dogfooding under `opendomain/`
 
 The source of truth remains Markdown with YAML front matter stored in Git.
 
@@ -60,7 +61,7 @@ Install the CLI from npm:
 ```bash
 npm install -g @echopath-labs/opendomain
 opendomain init
-opendomain validate domain
+opendomain validate
 ```
 
 Or try it from a source checkout:
@@ -71,14 +72,19 @@ Common commands:
 npm run opendomain -- help
 npm run opendomain -- init
 npm run opendomain -- validate
-npm run opendomain -- prepare examples/erp/openspec/changes/order-cancellation/spec.md
-npm run opendomain -- prepare --integration openspec examples/erp/openspec/changes/order-cancellation/spec.md
+npm run prepare:demo
 npm run opendomain -- candidate list examples/erp
 npm run opendomain -- candidate show candidate-0001-order-lifecycle examples/erp
 npm run opendomain -- index build examples/erp --out /tmp/erp-index.json
 npm run opendomain -- index query sales.order --index /tmp/erp-index.json
 npm test
 ```
+
+Commands without a source path resolve the current project's canonical
+`opendomain/` workspace. During `0.x`, a legacy `domain/` workspace remains
+readable when the canonical root is absent. If both exist, `opendomain/` wins
+with a warning; the roots are never merged. Pass a file or directory explicitly
+when validating a fixture or external corpus such as `examples/erp`.
 
 ## Project Status
 
@@ -111,7 +117,7 @@ License: MIT.
 │   ├── grounding-protocol.md
 │   ├── candidate-workflow.md
 │   └── decisions/
-├── domain/
+├── opendomain/
 │   └── README.md
 ├── examples/
 │   └── erp/
@@ -146,11 +152,11 @@ See [docs/semantic-retrieval-index.md](docs/semantic-retrieval-index.md).
 
 ## Dogfooding
 
-OpenDomain now models part of its own product semantics under `domain/`.
+OpenDomain now models part of its own product semantics under `opendomain/`.
 
 ```bash
-npm run opendomain -- validate domain
-npm run opendomain -- prepare domain/openspec/changes/self-model-maintenance/spec.md
+npm run opendomain -- validate
+npm run opendomain -- prepare examples/self-model/openspec/changes/self-model-maintenance/spec.md
 ```
 
 See [docs/dogfooding-self-model.md](docs/dogfooding-self-model.md).
@@ -159,7 +165,7 @@ See [docs/dogfooding-self-model.md](docs/dogfooding-self-model.md).
 
 Use this rule when preserving planning:
 
-- `domain/`: long-lived OpenDomain semantics
-- `domain/candidates/`: proposed or inferred semantics
+- `opendomain/`: long-lived OpenDomain semantics
+- `opendomain/candidates/`: proposed or inferred semantics
 - a project's optional `openspec/changes/`: future delivery work
 - `docs/`: narrative explanation and product guidance

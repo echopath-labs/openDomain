@@ -35,7 +35,7 @@ metadata 会继续输出，但 consumer 不应依赖它们作为 Grounding Proto
 protocol_version: "1.0"
 source:
   type: openspec
-  path: examples/erp/openspec/changes/order-cancellation/spec.md
+  path: openspec/changes/order-cancellation/spec.md
 intent:
   id: spec.order-cancellation
   name: Order cancellation
@@ -68,10 +68,12 @@ Grounding Request 只引用 OpenDomain ID，不复制业务定义，也不代表
 使用 JSON 输出：
 
 ```bash
-npm run opendomain -- prepare \
-  examples/erp/openspec/changes/order-cancellation/spec.md \
-  --json
+cd examples/erp
+opendomain prepare openspec/changes/order-cancellation/spec.md --json
 ```
+
+`prepare` resolves accepted OpenDomain sources from the current project
+workspace, so it must run from the project that owns the Feature spec.
 
 ## Semantic Closure
 

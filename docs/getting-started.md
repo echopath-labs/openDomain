@@ -4,7 +4,7 @@
 
 目标是在 10 分钟内完成三件事：
 
-1. 初始化 `domain/` 目录。
+1. 初始化 canonical `opendomain/` 目录。
 2. 验证生成的 OpenDomain 文件。
 3. 明确第一条真实业务知识应该如何进入模型。
 
@@ -33,7 +33,7 @@ opendomain init
 `opendomain init` 会创建：
 
 ```text
-domain/
+opendomain/
   README.md
   contexts/
     example.md
@@ -52,7 +52,7 @@ AGENTS.md
 ## 3. 验证生成结果
 
 ```bash
-opendomain validate domain
+opendomain validate
 ```
 
 通过验证只说明文件格式和引用关系成立，不代表这些 starter 内容已经是你的真实业务知识。
@@ -97,7 +97,7 @@ ERP 示例展示了：
 - Agent 本轮工作记录；
 - 只从代码或数据库里猜出来、还没人确认的业务知识。
 
-如果你不确定，就先写入 `domain/candidates/`。
+如果你不确定，就先写入 `opendomain/candidates/`。
 
 可以用 CLI 浏览和记录 Candidate 审查结果：
 

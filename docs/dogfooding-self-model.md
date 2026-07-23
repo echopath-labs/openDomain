@@ -3,16 +3,16 @@
 OpenDomain should use its own format to model its own long-lived product
 semantics.
 
-This is the first real `domain/` model in the repository. The ERP files under
-`examples/` remain examples; the OpenDomain self model under `domain/` is actual
-project knowledge.
+This is the first real `opendomain/` model in the repository. The ERP files under
+`examples/` remain examples; the OpenDomain self model under `opendomain/` is
+actual project knowledge.
 
 ## Boundary
 
 Use the repository layers this way:
 
-- `domain/`: long-lived OpenDomain product semantics
-- `domain/candidates/`: proposed OpenDomain semantics awaiting human review
+- `opendomain/`: long-lived OpenDomain product semantics
+- `opendomain/candidates/`: proposed OpenDomain semantics awaiting human review
 - a maintainer's private `openspec/changes/`: change intent, design, tasks, and acceptance
 - `docs/`: PRD, architecture, and development guidance
 - `examples/`: external example domains
@@ -54,8 +54,8 @@ Proposed self-model Candidate:
 
 Use this split when preserving planning output:
 
-- Put stable OpenDomain semantics in `domain/`.
-- Put uncertain inferred semantics in `domain/candidates/`.
+- Put stable OpenDomain semantics in `opendomain/`.
+- Put uncertain inferred semantics in `opendomain/candidates/`.
 - Put delivery plans in a private planning workspace such as `openspec/changes/`.
 - Put explanatory narrative in `docs/`.
 
@@ -79,7 +79,7 @@ This is now accepted self-model knowledge through:
 Before changing OpenDomain's own domain semantics, run:
 
 ```bash
-npm run opendomain -- prepare domain/openspec/changes/self-model-maintenance/spec.md
+npm run opendomain -- prepare examples/self-model/openspec/changes/self-model-maintenance/spec.md
 ```
 
 This returns the accepted OpenDomain files to read first and the Candidate
@@ -90,7 +90,7 @@ boundary for the proposed Semantic Retrieval Index.
 Validate real OpenDomain self-model files:
 
 ```bash
-npm run opendomain -- validate domain
+npm run opendomain -- validate
 ```
 
 Run all tests:
