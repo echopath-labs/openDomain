@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.0-alpha.5 - 2026-07-23
+
+- Harden YAML front matter parsing with deterministic YAML 1.2 policy checks
+  and safe semantic serialization.
+- Reject ambiguous, prototype-sensitive, and non-JSON metadata before it enters
+  validation, indexing, Semantic Closure, or grounding.
+- Enforce packaged Draft 2020-12 source schemas before documents enter the
+  validated corpus.
+- Fail closed with deterministic diagnostics when the packaged schema registry
+  is missing, malformed, or cannot be compiled.
+- Install dependencies in CI before repository validation.
+
 ## 0.1.0-alpha.4 - 2026-07-14
 
 - Add Grounding Protocol v1 request and pack fields with public JSON Schemas.
