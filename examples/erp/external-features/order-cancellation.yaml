@@ -1,0 +1,13 @@
+intent:
+  id: external.order-cancellation
+  name: Order Cancellation from Structured Planning
+  status: proposed
+domain:
+  concepts:
+    - sales.order
+  rules:
+    - sales.confirmed-order-cannot-be-deleted
+  lifecycles:
+    - sales.order-lifecycle
+  events:
+    - sales.order-confirmed

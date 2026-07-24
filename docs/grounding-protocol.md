@@ -16,6 +16,9 @@ OpenSpec / Spec Kit / other structured source
 Profile Runtime 负责格式适配，不属于稳定协议。Grounding Pack 也不是 source of
 truth；accepted OpenDomain Markdown 文件仍然决定业务语义。
 
+Profile 格式、Source Unit、Native Mapping 与 Sidecar Declaration 见
+[Integration Profile 使用指南](integration-profiles.md)。
+
 ## Version
 
 当前协议版本：

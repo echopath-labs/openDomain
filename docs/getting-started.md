@@ -44,6 +44,9 @@ opendomain/
   events/
   candidates/
     candidate-0001-first-domain-model.md
+  integrations/
+    profiles/
+      README.md
 AGENTS.md
 ```
 
@@ -77,6 +80,7 @@ ERP 示例展示了：
 - accepted domain event；
 - proposed Domain Candidate；
 - OpenSpec `affects_domain` 如何引用 OpenDomain ID。
+- repository-local Integration Profile 如何映射非 OpenSpec 结构化来源。
 
 ## 5. 写第一条真实 Domain Concept
 
@@ -141,6 +145,18 @@ opendomain prepare --integration openspec <feature-spec-or-dir>
 ```
 
 Codex 应先读取输出中 `Read first` 列出的 accepted source files，并把 `Candidate boundaries` 视为 proposed knowledge。
+
+如果项目使用其他结构化规划格式，可以先查看和验证本地 Integration Profile：
+
+```bash
+opendomain integrations list
+opendomain integrations validate
+opendomain prepare --profile <profile-id> <structured-file-or-bundle>
+```
+
+Profile 位于 `opendomain/integrations/profiles/`，只把显式结构化字段归一化成
+Grounding Request，不从正文推断业务语义。参见
+[Integration Profile 使用指南](integration-profiles.md)。
 
 ## 7. 基本原则
 

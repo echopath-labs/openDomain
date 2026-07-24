@@ -1,5 +1,11 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  writeFile
+} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -97,6 +103,55 @@ affects_domain:
 
   assert.equal(result.errors.length, 0);
   assert.deepEqual(result.request.affects_domain.concepts, ["sales.order"]);
+});
+
+test("automatic selection preserves OpenSpec input outside a project with local Profiles", async (context) => {
+  const project = await mkdtemp(path.join(os.tmpdir(), "opendomain-project-with-profile-"));
+  const external = await mkdtemp(path.join(os.tmpdir(), "opendomain-external-openspec-"));
+  context.after(() => Promise.all([
+    rm(project, { recursive: true, force: true }),
+    rm(external, { recursive: true, force: true })
+  ]));
+
+  await mkdir(path.join(project, "opendomain/integrations/profiles"), { recursive: true });
+  await writeFile(path.join(project, "opendomain/integrations/profiles/local.yaml"), `schema_version: "1.0"
+id: local-profile
+source_type: structured-feature
+source_unit:
+  kind: file
+  match:
+    paths:
+      - features/**
+intent:
+  id:
+    from: primary.id
+  name:
+    from: primary.name
+  status:
+    from: primary.status
+references:
+  mode: native
+  affects_domain:
+    concepts:
+      from: primary.affects.concepts
+`, "utf8");
+  const externalSpec = path.join(external, "spec.md");
+  await writeFile(externalSpec, `---
+type: feature_spec
+id: spec.external
+name: External OpenSpec request
+status: proposed
+affects_domain:
+  concepts:
+    - sales.order
+---
+`, "utf8");
+
+  const result = await buildGroundingRequest(externalSpec, { cwd: project });
+
+  assert.equal(result.errors.length, 0);
+  assert.equal(result.request.integration.id, "openspec");
+  assert.equal(result.request.integration.selected, "auto");
 });
 
 test("Context Budget deterministically estimates complete selected files", async () => {

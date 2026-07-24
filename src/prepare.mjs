@@ -8,13 +8,15 @@ export async function prepareGroundingPack(inputPath, options = {}) {
   const cwd = options.cwd ?? process.cwd();
   const requestResult = await buildGroundingRequest(inputPath, {
     cwd,
-    integration: options.integration ?? "auto"
+    integration: options.integration,
+    profile: options.profile
   });
 
   if (requestResult.errors.length > 0) {
-    return emptyPack({
+    return emptyGroundingPack({
       input: inputPath,
-      errors: requestResult.errors
+      errors: requestResult.errors,
+      warnings: requestResult.warnings ?? []
     });
   }
 
@@ -24,7 +26,10 @@ export async function prepareGroundingPack(inputPath, options = {}) {
   const affectedIds = collectAffectedIds(groundingRequest.affects_domain);
   const acceptedRootIds = [];
   const errors = [...corpus.errors];
-  const warnings = [...corpus.warnings];
+  const warnings = uniqueIssues([
+    ...(requestResult.warnings ?? []),
+    ...corpus.warnings
+  ]);
 
   for (const affected of affectedIds) {
     const document = documentsById.get(affected.id);
@@ -158,6 +163,12 @@ function formatPackIssues(pack) {
     lines.push(`  problem: ${error.problem}`);
     lines.push(`  fix: ${error.fix}`);
   }
+  if (pack.warnings.length > 0) {
+    lines.push("", "Warnings:");
+    for (const warning of pack.warnings) {
+      lines.push(`- ${warning.file} ${warning.field}: ${warning.problem}`);
+    }
+  }
   return `${lines.join("\n")}\n`;
 }
 
@@ -206,7 +217,7 @@ function compareById(left, right) {
   return left.id.localeCompare(right.id);
 }
 
-function emptyPack({ input, errors }) {
+export function emptyGroundingPack({ input, errors, warnings = [] }) {
   return {
     protocol_version: GROUNDING_PROTOCOL_VERSION,
     feature: {
@@ -225,8 +236,26 @@ function emptyPack({ input, errors }) {
     },
     avoided_semantic_errors: [],
     errors,
-    warnings: []
+    warnings
   };
+}
+
+function uniqueIssues(issues) {
+  const seen = new Set();
+  return issues.filter((issueItem) => {
+    const key = [
+      issueItem.severity,
+      issueItem.file,
+      issueItem.field,
+      issueItem.problem,
+      issueItem.fix
+    ].join("\0");
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
 }
 
 function issue(issueFields) {

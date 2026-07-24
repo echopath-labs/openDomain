@@ -7,23 +7,27 @@ human maintainers.
 
 - Markdown + YAML front matter source files
 - Parser and validator
-- CLI validation, ID listing, reference checks, grounding, and demo commands
+- CLI initialization, validation, Candidate review, indexing, grounding, and
+  integration inspection commands
 - OpenSpec `affects_domain` grounding
+- Declarative Integration Profile v1 with file and bundle Source Units, Native
+  Mapping, and Sidecar Domain Declaration
 - Domain Candidate boundary checks
 - Semantic Retrieval Index as a derived read-first view
+- Deterministic canonical and legacy workspace resolution
 - OpenDomain self-model dogfooding under `opendomain/`
 
 ## Near-Term Work
 
-1. Candidate review commands
-   - `opendomain candidate list`
-   - `opendomain candidate show <id>`
-   - stale Candidate review support
-
-2. Codex grounding CI
+1. Codex grounding CI
    - check `affects_domain` references
    - check grounding report shape
    - keep CI honest about what it can and cannot prove
+
+2. Integration consumer conformance
+   - validate Profile-generated Grounding Requests across external tools
+   - define EchoPath handoff and recovery consumption without protocol coupling
+   - add tool-specific examples only after the generic Profile contract holds
 
 3. OpenSpec archive and long-term recall
    - preserve change history
