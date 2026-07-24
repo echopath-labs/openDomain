@@ -3,8 +3,12 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { collectSemanticClosure } from "./semantic-closure.mjs";
 import { validatePath } from "./validator.mjs";
+import {
+  LEGACY_DEFAULT_INDEX_PATH,
+  resolveDefaultIndexPath
+} from "./workspace-resolver.mjs";
 
-export const DEFAULT_INDEX_PATH = ".opendomain/index.json";
+export const DEFAULT_INDEX_PATH = LEGACY_DEFAULT_INDEX_PATH;
 export const INDEX_SCHEMA = "opendomain.semantic-index.v1";
 
 export async function buildSemanticIndex(targetPath, options = {}) {
@@ -15,7 +19,8 @@ export async function buildSemanticIndex(targetPath, options = {}) {
   const result = {
     index: null,
     errors: validation.errors,
-    warnings: validation.warnings
+    warnings: validation.warnings,
+    defaultIndexPath: validation.workspace?.default_index_path ?? DEFAULT_INDEX_PATH
   };
 
   if (validation.errors.length > 0) {
@@ -31,7 +36,7 @@ export async function buildSemanticIndex(targetPath, options = {}) {
   result.index = {
     schema: INDEX_SCHEMA,
     generated_at: now.toISOString(),
-    source_root: targetPath ?? "<default>",
+    source_root: validation.workspace?.source_root ?? targetPath ?? "<default>",
     derived_from: "OpenDomain Markdown source files in Git",
     authoritative_source: "OpenDomain source files, not this index",
     entries: entries.sort(compareById)
@@ -66,12 +71,25 @@ export async function loadSemanticIndex(indexPath = DEFAULT_INDEX_PATH, options 
 
 export async function querySemanticIndex(query, options = {}) {
   const cwd = options.cwd ?? process.cwd();
-  const indexPath = options.indexPath ?? DEFAULT_INDEX_PATH;
+  let indexPath = options.indexPath;
+  const resolutionWarnings = [];
+  if (!indexPath) {
+    const resolution = await resolveDefaultIndexPath({ cwd });
+    resolutionWarnings.push(...resolution.warnings);
+    if (resolution.errors.length > 0) {
+      return emptyQueryResult(query, {
+        indexPath: null,
+        warnings: resolutionWarnings,
+        errors: resolution.errors
+      });
+    }
+    indexPath = resolution.defaultIndexPath;
+  }
   const loaded = await loadSemanticIndex(indexPath, { cwd });
   const index = loaded.index;
   const entriesById = new Map((index.entries ?? []).map((entry) => [entry.id, entry]));
   const errors = [];
-  const warnings = [];
+  const warnings = [...resolutionWarnings];
   const queryMode = query.context ? "context" : "id";
   let selectedEntries = [];
 
@@ -133,6 +151,27 @@ export async function querySemanticIndex(query, options = {}) {
     accepted_ids: readFirst.map((entry) => entry.id).sort(),
     candidate_boundaries: candidateBoundaries.map(toCandidateBoundary),
     verify_with: readFirst.map(toVerificationItem),
+    warnings,
+    errors
+  };
+}
+
+function emptyQueryResult(query, { indexPath, warnings, errors }) {
+  return {
+    query: query.context ? { context: query.context } : { id: query.id },
+    index_file: indexPath,
+    schema: null,
+    source_files_authoritative: true,
+    authoritative_source: "OpenDomain source files, not this index",
+    semantic_closure: {
+      policy: null,
+      root_ids: [],
+      selection_paths: []
+    },
+    read_first: [],
+    accepted_ids: [],
+    candidate_boundaries: [],
+    verify_with: [],
     warnings,
     errors
   };

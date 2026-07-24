@@ -14,7 +14,7 @@ test("valid ERP grounding example passes", async () => {
 });
 
 test("OpenDomain self model validates as real domain knowledge", async () => {
-  const result = await validatePath("domain", {
+  const result = await validatePath("opendomain", {
     cwd: process.cwd(),
     now: new Date("2026-07-03T00:00:00Z")
   });

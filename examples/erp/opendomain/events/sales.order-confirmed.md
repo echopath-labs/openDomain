@@ -12,7 +12,7 @@ related_lifecycle:
   - sales.order-lifecycle
 evidence:
   - type: human_review
-    location: examples/erp/domain/lifecycles/sales.order-lifecycle.md
+    location: examples/erp/opendomain/lifecycles/sales.order-lifecycle.md
     summary: Example fixture emits OrderConfirmed when the order enters Confirmed.
     confidence: high
 review:

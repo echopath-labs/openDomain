@@ -21,7 +21,7 @@ events:
   - sales.order-confirmed
 evidence:
   - type: human_review
-    location: examples/erp/domain/contexts/sales.md
+    location: examples/erp/opendomain/contexts/sales.md
     summary: Example fixture defines Order as the central Sales concept.
     confidence: high
 review:

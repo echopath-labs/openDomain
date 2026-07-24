@@ -24,12 +24,18 @@ Derived graph, index, search, MCP, or export views
 
 The source of truth is the set of OpenDomain files in Git:
 
-- `domain/` for project domain knowledge
+- `opendomain/` for canonical project domain knowledge
 - `examples/` for illustrative fixtures
 - `schemas/` for machine validation
 
 Derived views are not authoritative. A graph export, search index, embedding
 index, generated docs site, or MCP resource must be rebuildable from Git files.
+
+Commands without an explicit source target resolve only the current project's
+canonical `opendomain/` semantic directories. During `0.x`, legacy `domain/`
+remains a warning-producing fallback when the canonical root is absent. Dual
+roots are never merged. Explicit targets are available for examples, fixtures,
+and external corpora.
 
 The first derived retrieval view is documented in
 `docs/semantic-retrieval-index.md`.

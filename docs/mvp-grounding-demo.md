@@ -50,7 +50,7 @@ npm run opendomain -- validate examples/erp
 Prepare the Codex grounding pack for the feature:
 
 ```bash
-npm run opendomain -- prepare examples/erp/openspec/changes/order-cancellation/spec.md
+npm run prepare:demo
 ```
 
 Validate with machine-readable output:
@@ -62,7 +62,8 @@ npm run opendomain -- validate examples/erp --json
 Prepare with machine-readable output:
 
 ```bash
-npm run opendomain -- prepare examples/erp/openspec/changes/order-cancellation/spec.md --json
+cd examples/erp
+node ../../bin/opendomain.mjs prepare openspec/changes/order-cancellation/spec.md --json
 ```
 
 List known IDs:

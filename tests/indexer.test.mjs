@@ -79,7 +79,7 @@ test("index query warns when source file changed after build", async () => {
   assert.equal(build.errors.length, 0);
 
   const indexFile = await writeSemanticIndex(build.index, "index.json", { cwd: fixtureRoot });
-  await appendFile(path.join(fixtureRoot, "examples/erp/domain/concepts/sales.order.md"), "\n");
+  await appendFile(path.join(fixtureRoot, "examples/erp/opendomain/concepts/sales.order.md"), "\n");
 
   const query = await querySemanticIndex({ id: "sales.order" }, {
     cwd: fixtureRoot,

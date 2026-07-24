@@ -5,7 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import { validatePath } from "../src/validator.mjs";
 
-const VALID_TARGET = "examples/erp/domain/contexts";
+const VALID_TARGET = "examples/erp/opendomain/contexts";
 
 for (const failure of [
   {

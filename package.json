@@ -59,7 +59,7 @@
     "test": "node --test",
     "opendomain": "node ./bin/opendomain.mjs",
     "validate": "node ./bin/opendomain.mjs validate",
-    "prepare:demo": "node ./bin/opendomain.mjs prepare examples/erp/openspec/changes/order-cancellation/spec.md",
+    "prepare:demo": "cd examples/erp && node ../../bin/opendomain.mjs prepare openspec/changes/order-cancellation/spec.md",
     "demo": "node ./bin/opendomain.mjs demo order-cancellation",
     "prepublishOnly": "npm test && npm run opendomain -- validate"
   },

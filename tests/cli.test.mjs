@@ -1,10 +1,24 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { runCli } from "../src/cli.mjs";
 import { parseMarkdown } from "../src/frontmatter.mjs";
+
+const REPOSITORY_ROOT = process.cwd();
+const ERP_ROOT = path.join(REPOSITORY_ROOT, "examples/erp");
+
+test("help explains canonical and legacy workspace resolution", async () => {
+  const stdout = memoryStream();
+  const exitCode = await runCli(["help"], { stdout, stderr: memoryStream() });
+  const output = stdout.toString();
+
+  assert.equal(exitCode, 0);
+  assert.match(output, /canonical opendomain\//);
+  assert.match(output, /domain\/ is a warned fallback/);
+  assert.match(output, /roots are never merged/);
+});
 
 test("validate command returns JSON and zero exit code for valid ERP example", async () => {
   const stdout = memoryStream();
@@ -89,12 +103,12 @@ test("init command creates a minimal valid OpenDomain structure", async () => {
 
     assert.equal(exitCode, 0);
     assert.match(output, /OpenDomain init completed/);
-    assert.match(output, /domain\/contexts\/example\.md/);
-    assert.match(output, /domain\/concepts\/example\.concept\.md/);
-    assert.match(output, /domain\/candidates\/candidate-0001-first-domain-model\.md/);
+    assert.match(output, /opendomain\/contexts\/example\.md/);
+    assert.match(output, /opendomain\/concepts\/example\.concept\.md/);
+    assert.match(output, /opendomain\/candidates\/candidate-0001-first-domain-model\.md/);
 
     const validateStdout = memoryStream();
-    const validateExitCode = await runCli(["validate", "domain", "--json"], { stdout: validateStdout, stderr: memoryStream() });
+    const validateExitCode = await runCli(["validate", "--json"], { stdout: validateStdout, stderr: memoryStream() });
     const payload = JSON.parse(validateStdout.toString());
 
     assert.equal(validateExitCode, 0);
@@ -107,19 +121,61 @@ test("init command creates a minimal valid OpenDomain structure", async () => {
 
 test("init command does not overwrite existing files", async () => {
   await withTempCwd(async () => {
-    await mkdir("domain/contexts", { recursive: true });
-    await writeFile("domain/contexts/example.md", "existing content\n", "utf8");
+    await mkdir("opendomain/contexts", { recursive: true });
+    await writeFile("opendomain/contexts/example.md", "existing content\n", "utf8");
 
     const stdout = memoryStream();
     const stderr = memoryStream();
 
     const exitCode = await runCli(["init"], { stdout, stderr });
     const output = stdout.toString();
-    const existing = await readFile("domain/contexts/example.md", "utf8");
+    const existing = await readFile("opendomain/contexts/example.md", "utf8");
 
     assert.equal(exitCode, 0);
     assert.equal(existing, "existing content\n");
-    assert.match(output, /domain\/contexts\/example\.md \(already exists\)/);
+    assert.match(output, /opendomain\/contexts\/example\.md \(already exists\)/);
+  });
+});
+
+test("init command refuses to shadow a legacy-only workspace", async () => {
+  await withTempCwd(async () => {
+    await mkdir("domain/contexts", { recursive: true });
+    await writeFile("domain/contexts/existing.md", "legacy content\n", "utf8");
+
+    const stdout = memoryStream();
+    const exitCode = await runCli(["init", "--json"], {
+      stdout,
+      stderr: memoryStream()
+    });
+    const payload = JSON.parse(stdout.toString());
+
+    assert.equal(exitCode, 1);
+    assert.ok(payload.errors.some((error) => error.problem.includes("legacy-only")));
+    assert.ok(payload.warnings.some((warning) => warning.problem.includes("legacy")));
+    await assert.rejects(access("opendomain"), { code: "ENOENT" });
+    assert.equal(await readFile("domain/contexts/existing.md", "utf8"), "legacy content\n");
+  });
+});
+
+test("init command uses canonical workspace when both roots exist", async () => {
+  await withTempCwd(async () => {
+    await mkdir("opendomain/contexts", { recursive: true });
+    await writeFile("opendomain/contexts/example.md", "canonical content\n", "utf8");
+    await mkdir("domain/contexts", { recursive: true });
+    await writeFile("domain/contexts/example.md", "legacy content\n", "utf8");
+
+    const stdout = memoryStream();
+    const exitCode = await runCli(["init", "--json"], {
+      stdout,
+      stderr: memoryStream()
+    });
+    const payload = JSON.parse(stdout.toString());
+
+    assert.equal(exitCode, 0);
+    assert.ok(payload.warnings.some((warning) => warning.problem.includes("ignoring 'domain/'")));
+    assert.equal(await readFile("opendomain/contexts/example.md", "utf8"), "canonical content\n");
+    assert.equal(await readFile("domain/contexts/example.md", "utf8"), "legacy content\n");
+    await access("opendomain/candidates/candidate-0001-first-domain-model.md");
   });
 });
 
@@ -133,7 +189,7 @@ test("init command can copy the ERP example", async () => {
 
     assert.equal(exitCode, 0);
     assert.match(output, /Example: erp/);
-    assert.match(output, /examples\/erp\/domain\/concepts\/sales\.order\.md/);
+    assert.match(output, /examples\/erp\/opendomain\/concepts\/sales\.order\.md/);
 
     const validateStdout = memoryStream();
     const validateExitCode = await runCli(["validate", "examples/erp", "--json"], { stdout: validateStdout, stderr: memoryStream() });
@@ -149,7 +205,11 @@ test("prepare command returns grounding pack for a feature spec", async () => {
   const stdout = memoryStream();
   const stderr = memoryStream();
 
-  const exitCode = await runCli(["prepare", "examples/erp/openspec/changes/order-cancellation/spec.md"], { stdout, stderr });
+  const exitCode = await runCli(["prepare", "openspec/changes/order-cancellation/spec.md"], {
+    stdout,
+    stderr,
+    cwd: ERP_ROOT
+  });
   const output = stdout.toString();
 
   assert.equal(exitCode, 0);
@@ -164,7 +224,11 @@ test("prepare command returns JSON grounding pack", async () => {
   const stdout = memoryStream();
   const stderr = memoryStream();
 
-  const exitCode = await runCli(["prepare", "examples/erp/openspec/changes/order-cancellation/spec.md", "--json"], { stdout, stderr });
+  const exitCode = await runCli(["prepare", "openspec/changes/order-cancellation/spec.md", "--json"], {
+    stdout,
+    stderr,
+    cwd: ERP_ROOT
+  });
   const payload = JSON.parse(stdout.toString());
 
   assert.equal(exitCode, 0);
@@ -186,9 +250,9 @@ test("prepare command supports explicit OpenSpec integration", async () => {
     "prepare",
     "--integration",
     "openspec",
-    "examples/erp/openspec/changes/order-cancellation/spec.md",
+    "openspec/changes/order-cancellation/spec.md",
     "--json"
-  ], { stdout, stderr });
+  ], { stdout, stderr, cwd: ERP_ROOT });
   const payload = JSON.parse(stdout.toString());
 
   assert.equal(exitCode, 0);
@@ -203,11 +267,11 @@ test("prepare command supports trailing explicit OpenSpec integration", async ()
 
   const exitCode = await runCli([
     "prepare",
-    "examples/erp/openspec/changes/order-cancellation/spec.md",
+    "openspec/changes/order-cancellation/spec.md",
     "--integration",
     "openspec",
     "--json"
-  ], { stdout, stderr });
+  ], { stdout, stderr, cwd: ERP_ROOT });
   const payload = JSON.parse(stdout.toString());
 
   assert.equal(exitCode, 0);
@@ -223,8 +287,8 @@ test("prepare command rejects unsupported integrations", async () => {
     "prepare",
     "--integration",
     "spec-kit",
-    "examples/erp/openspec/changes/order-cancellation/spec.md"
-  ], { stdout, stderr });
+    "openspec/changes/order-cancellation/spec.md"
+  ], { stdout, stderr, cwd: ERP_ROOT });
   const output = stdout.toString();
 
   assert.equal(exitCode, 1);
@@ -236,7 +300,11 @@ test("prepare command accepts a directory containing one feature spec", async ()
   const stdout = memoryStream();
   const stderr = memoryStream();
 
-  const exitCode = await runCli(["prepare", "examples/erp/openspec/changes/order-cancellation"], { stdout, stderr });
+  const exitCode = await runCli(["prepare", "openspec/changes/order-cancellation"], {
+    stdout,
+    stderr,
+    cwd: ERP_ROOT
+  });
 
   assert.equal(exitCode, 0);
   assert.match(stdout.toString(), /Feature: spec\.order-cancellation/);
@@ -246,7 +314,10 @@ test("prepare command works for the OpenDomain self model", async () => {
   const stdout = memoryStream();
   const stderr = memoryStream();
 
-  const exitCode = await runCli(["prepare", "domain/openspec/changes/self-model-maintenance/spec.md"], { stdout, stderr });
+  const exitCode = await runCli([
+    "prepare",
+    "examples/self-model/openspec/changes/self-model-maintenance/spec.md"
+  ], { stdout, stderr });
   const output = stdout.toString();
 
   assert.equal(exitCode, 0);
@@ -259,7 +330,11 @@ test("prepare command fails when no feature spec exists", async () => {
   const stdout = memoryStream();
   const stderr = memoryStream();
 
-  const exitCode = await runCli(["prepare", "examples/erp/domain"], { stdout, stderr });
+  const exitCode = await runCli(["prepare", "opendomain"], {
+    stdout,
+    stderr,
+    cwd: ERP_ROOT
+  });
 
   assert.equal(exitCode, 1);
   assert.match(stdout.toString(), /No feature_spec found/);
@@ -322,11 +397,11 @@ test("candidate review records rejected decision metadata", async () => {
       "2026-07-08",
       "--reason",
       "Evidence does not support the proposed concept.",
-      "domain",
+      "opendomain",
       "--json"
     ], { stdout, stderr });
     const payload = JSON.parse(stdout.toString());
-    const file = await readFile("domain/candidates/candidate-1000-review.md", "utf8");
+    const file = await readFile("opendomain/candidates/candidate-1000-review.md", "utf8");
 
     assert.equal(exitCode, 0);
     assert.equal(payload.effective_state, "rejected");
@@ -336,7 +411,7 @@ test("candidate review records rejected decision metadata", async () => {
     assert.match(file, /decision_reason: Evidence does not support the proposed concept\./);
 
     const validateStdout = memoryStream();
-    const validateExitCode = await runCli(["validate", "domain", "--json"], { stdout: validateStdout, stderr: memoryStream() });
+    const validateExitCode = await runCli(["validate", "opendomain", "--json"], { stdout: validateStdout, stderr: memoryStream() });
     const validatePayload = JSON.parse(validateStdout.toString());
 
     assert.equal(validateExitCode, 0);
@@ -362,10 +437,10 @@ test("candidate accepted review maps to superseded without modifying accepted kn
       "2026-07-08",
       "--reason",
       "Human accepted the candidate; accepted source files will be updated manually.",
-      "domain"
+      "opendomain"
     ], { stdout, stderr });
     const output = stdout.toString();
-    const file = await readFile("domain/candidates/candidate-1001-accepted.md", "utf8");
+    const file = await readFile("opendomain/candidates/candidate-1001-accepted.md", "utf8");
 
     assert.equal(exitCode, 0);
     assert.match(output, /Decision: accepted/);
@@ -385,8 +460,8 @@ test("candidate review safely round trips YAML-like decision metadata and body",
       body: "# Candidate Fixture\n\nBody: keep [brackets], commas, and \"quotes\" unchanged.\n"
     });
     const before = parseMarkdown(
-      await readFile(`domain/candidates/${id}.md`, "utf8"),
-      `domain/candidates/${id}.md`
+      await readFile(`opendomain/candidates/${id}.md`, "utf8"),
+      `opendomain/candidates/${id}.md`
     );
 
     const stdout = memoryStream();
@@ -403,12 +478,12 @@ test("candidate review safely round trips YAML-like decision metadata and body",
       "2026-07-22",
       "--reason",
       reason,
-      "domain",
+      "opendomain",
       "--json"
     ], { stdout, stderr });
     const payload = JSON.parse(stdout.toString());
-    const content = await readFile(`domain/candidates/${id}.md`, "utf8");
-    const after = parseMarkdown(content, `domain/candidates/${id}.md`);
+    const content = await readFile(`opendomain/candidates/${id}.md`, "utf8");
+    const after = parseMarkdown(content, `opendomain/candidates/${id}.md`);
 
     assert.equal(exitCode, 0);
     assert.equal(payload.errors.length, 0);
@@ -420,7 +495,7 @@ test("candidate review safely round trips YAML-like decision metadata and body",
     assert.equal(after.body, before.body);
 
     const validateStdout = memoryStream();
-    const validateExitCode = await runCli(["validate", "domain", "--json"], {
+    const validateExitCode = await runCli(["validate", "opendomain", "--json"], {
       stdout: validateStdout,
       stderr: memoryStream()
     });
@@ -445,7 +520,7 @@ test("candidate list handles deprecated and stale candidates", async () => {
 
     const stdout = memoryStream();
     const stderr = memoryStream();
-    const exitCode = await runCli(["candidate", "list", "domain", "--json"], { stdout, stderr });
+    const exitCode = await runCli(["candidate", "list", "opendomain", "--json"], { stdout, stderr });
     const payload = JSON.parse(stdout.toString());
 
     assert.equal(exitCode, 0);
@@ -479,7 +554,7 @@ async function withTempCwd(callback) {
 }
 
 async function writeCandidate(id, options = {}) {
-  await mkdir("domain/candidates", { recursive: true });
+  await mkdir("opendomain/candidates", { recursive: true });
   const status = options.status ?? "proposed";
   const reviewState = status;
   const extractedAt = options.extractedAt ?? "2026-07-08";
@@ -498,7 +573,7 @@ async function writeCandidate(id, options = {}) {
     : "";
   const body = options.body ?? "# Candidate Fixture\n\nFixture candidate for CLI tests.\n";
 
-  await writeFile(`domain/candidates/${id}.md`, `---
+  await writeFile(`opendomain/candidates/${id}.md`, `---
 type: domain_candidate
 id: ${id}
 status: ${status}

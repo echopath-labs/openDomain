@@ -12,7 +12,8 @@ import {
 export async function runCli(argv, options = {}) {
   const io = {
     stdout: options.stdout ?? process.stdout,
-    stderr: options.stderr ?? process.stderr
+    stderr: options.stderr ?? process.stderr,
+    cwd: options.cwd ?? process.cwd()
   };
 
   const [command, subcommand, ...rest] = argv;
@@ -88,6 +89,12 @@ Usage:
   opendomain candidate review <candidate-id> --decision <decision> --reviewed-by <name> --reason <text> [path] [--json]
   opendomain demo order-cancellation
 
+Workspace:
+  Commands without [path] read the current project's canonical opendomain/.
+  During 0.x, domain/ is a warned fallback when opendomain/ is absent.
+  If both roots exist, opendomain/ wins; the roots are never merged.
+  Pass a Markdown file or directory explicitly for examples or external corpora.
+
 `);
 }
 
@@ -103,10 +110,11 @@ async function runInit(args, io) {
 
   if (parsed.errors.length > 0) {
     const result = {
-      target: process.cwd(),
+      target: io.cwd,
       example: parsed.example ?? null,
       created: [],
       skipped: [],
+      warnings: [],
       errors: parsed.errors,
       next_steps: []
     };
@@ -118,7 +126,7 @@ async function runInit(args, io) {
     return 1;
   }
 
-  const result = await initializeProject({ cwd: process.cwd(), example: parsed.example });
+  const result = await initializeProject({ cwd: io.cwd, example: parsed.example });
   if (parsed.json) {
     io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
   } else {
@@ -130,7 +138,7 @@ async function runInit(args, io) {
 
 async function runValidate(args, io) {
   const { json, paths } = splitArgs(args);
-  const result = await validatePath(paths[0], { cwd: process.cwd() });
+  const result = await validatePath(paths[0], { cwd: io.cwd });
 
   if (json) {
     io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
@@ -143,7 +151,7 @@ async function runValidate(args, io) {
 
 async function runCandidateList(args, io) {
   const parsed = parseCandidatePathArgs(args);
-  const result = await listCandidates(parsed.path, { cwd: process.cwd() });
+  const result = await listCandidates(parsed.path, { cwd: io.cwd });
 
   if (parsed.json) {
     io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
@@ -158,7 +166,7 @@ async function runCandidateShow(args, io) {
   const parsed = parseCandidateShowArgs(args);
   const result = parsed.errors.length > 0
     ? { source: parsed.path ?? "<default>", candidate: null, warnings: [], errors: parsed.errors }
-    : await showCandidate(parsed.id, parsed.path, { cwd: process.cwd() });
+    : await showCandidate(parsed.id, parsed.path, { cwd: io.cwd });
 
   if (parsed.json) {
     io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
@@ -185,7 +193,7 @@ async function runCandidateReview(args, io) {
         reviewedBy: parsed.reviewedBy,
         reviewedAt: parsed.reviewedAt,
         reason: parsed.reason
-      }, { cwd: process.cwd() });
+      }, { cwd: io.cwd });
 
   if (parsed.json) {
     io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
@@ -355,7 +363,7 @@ function parseCandidateReviewArgs(args) {
 async function runPrepare(args, io) {
   const parsed = parsePrepareArgs(args);
   const pack = await prepareGroundingPack(parsed.path, {
-    cwd: process.cwd(),
+    cwd: io.cwd,
     integration: parsed.integration
   });
 
@@ -396,10 +404,14 @@ function parsePrepareArgs(args) {
 
 async function runIndexBuild(args, io) {
   const parsed = parseIndexBuildArgs(args);
-  const result = await buildSemanticIndex(parsed.path, { cwd: process.cwd() });
+  const result = await buildSemanticIndex(parsed.path, { cwd: io.cwd });
 
   if (result.errors.length === 0) {
-    const file = await writeSemanticIndex(result.index, parsed.out, { cwd: process.cwd() });
+    const file = await writeSemanticIndex(
+      result.index,
+      parsed.out ?? result.defaultIndexPath,
+      { cwd: io.cwd }
+    );
     result.file = file;
   }
 
@@ -436,7 +448,7 @@ async function runIndexQuery(args, io) {
   try {
     result = await querySemanticIndex(
       parsed.context ? { context: parsed.context } : { id: parsed.id },
-      { cwd: process.cwd(), indexPath: parsed.indexPath }
+      { cwd: io.cwd, indexPath: parsed.indexPath }
     );
   } catch (error) {
     result = {
@@ -448,7 +460,7 @@ async function runIndexQuery(args, io) {
       warnings: [],
       errors: [{
         severity: "error",
-        file: parsed.indexPath,
+        file: parsed.indexPath ?? "<default index>",
         field: "$",
         problem: error instanceof Error ? error.message : String(error),
         fix: "Run opendomain index build or pass --index <file>."
@@ -467,7 +479,7 @@ async function runIndexQuery(args, io) {
 
 async function runIdsList(args, io) {
   const { json, paths } = splitArgs(args);
-  const result = await validatePath(paths[0], { cwd: process.cwd() });
+  const result = await validatePath(paths[0], { cwd: io.cwd });
   const ids = result.documents
     .filter((document) => document.id)
     .map((document) => ({
@@ -478,11 +490,17 @@ async function runIdsList(args, io) {
     .sort((left, right) => left.id.localeCompare(right.id));
 
   if (json) {
-    io.stdout.write(`${JSON.stringify({ ids }, null, 2)}\n`);
+    io.stdout.write(`${JSON.stringify({
+      ids,
+      workspace: result.workspace,
+      warnings: result.warnings,
+      errors: result.errors
+    }, null, 2)}\n`);
   } else {
     for (const item of ids) {
       io.stdout.write(`${item.id}\t${item.type}\t${item.file}\n`);
     }
+    printIssues([...result.errors, ...result.warnings], io.stdout);
   }
 
   return result.errors.length > 0 ? 1 : 0;
@@ -491,7 +509,7 @@ async function runIdsList(args, io) {
 function parseIndexBuildArgs(args) {
   const parsed = {
     json: false,
-    out: DEFAULT_INDEX_PATH,
+    out: undefined,
     path: undefined
   };
 
@@ -517,7 +535,7 @@ function parseIndexBuildArgs(args) {
 function parseIndexQueryArgs(args) {
   const parsed = {
     json: false,
-    indexPath: DEFAULT_INDEX_PATH,
+    indexPath: undefined,
     id: undefined,
     context: undefined,
     errors: []
@@ -703,7 +721,7 @@ function printCandidateReviewResult(result, stream) {
 function printInitResult(result, stream) {
   if (result.errors.length > 0) {
     stream.write(`OpenDomain init failed: ${result.errors.length} errors.\n`);
-    for (const issue of result.errors) {
+    for (const issue of [...result.errors, ...(result.warnings ?? [])]) {
       stream.write(`\n[${issue.severity}] ${issue.file}\n`);
       stream.write(`  field: ${issue.field}\n`);
       stream.write(`  problem: ${issue.problem}\n`);
@@ -739,6 +757,13 @@ function printInitResult(result, stream) {
   stream.write("\nNext steps:\n");
   for (const step of result.next_steps) {
     stream.write(`- ${step}\n`);
+  }
+
+  if ((result.warnings ?? []).length > 0) {
+    stream.write("\nWarnings:\n");
+    for (const warning of result.warnings) {
+      stream.write(`- ${warning.file} ${warning.field}: ${warning.problem}\n`);
+    }
   }
 }
 
@@ -788,7 +813,7 @@ function printIndexQueryResult(result, stream) {
 }
 
 async function runOrderCancellationDemo(io) {
-  const result = await validatePath("examples/erp", { cwd: process.cwd() });
+  const result = await validatePath("examples/erp", { cwd: io.cwd });
   const feature = result.documents.find((document) => document.id === "spec.order-cancellation");
   const references = feature?.frontmatter?.affects_domain ?? {};
 

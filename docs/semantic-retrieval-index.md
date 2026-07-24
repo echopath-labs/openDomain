@@ -14,6 +14,11 @@ Build the default index:
 npm run opendomain -- index build
 ```
 
+For a canonical workspace, this reads `opendomain/` and writes
+`opendomain/generated/index.json`. During the `0.x` legacy compatibility period,
+a project with only `domain/` writes `.opendomain/index.json`. If both roots
+exist, canonical wins with a warning and the corpora are not merged.
+
 Build an index for one domain tree:
 
 ```bash
@@ -56,7 +61,7 @@ Each entry contains a compact, parseable view of one source file:
   "name": "Order",
   "context": "sales",
   "status": "accepted",
-  "source_file": "examples/erp/domain/concepts/sales.order.md",
+  "source_file": "examples/erp/opendomain/concepts/sales.order.md",
   "summary": "An Order represents a customer's commercial request...",
   "relationships": [],
   "rules": ["sales.confirmed-order-cannot-be-deleted"],
@@ -93,3 +98,7 @@ results point Codex to source files; they do not replace source files.
 
 When a source file changes after index build, query emits a stale warning and
 the index should be rebuilt.
+
+Generated indexes are workspace artifacts, not accepted OpenDomain sources.
+Default discovery scans only the six semantic source directories and therefore
+does not ingest `opendomain/generated/`.

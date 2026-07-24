@@ -36,7 +36,7 @@ domain-modeling workflow.
 Before modifying OpenDomain's self model, Codex should run:
 
 ```bash
-npm run opendomain -- prepare domain/openspec/changes/self-model-maintenance/spec.md
+npm run opendomain -- prepare examples/self-model/openspec/changes/self-model-maintenance/spec.md
 ```
 
 Then read the accepted self-model files listed under `Read first`.

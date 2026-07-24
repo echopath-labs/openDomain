@@ -9,6 +9,7 @@ coverage/
 .codex/
 .echopath/
 .opendomain/
+/opendomain/generated/
 /AGENTS.md
 /openspec/
 .npmrc

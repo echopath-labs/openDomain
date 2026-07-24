@@ -12,10 +12,11 @@ import {
 } from "../src/indexer.mjs";
 import { prepareGroundingPack } from "../src/prepare.mjs";
 
-const FEATURE_PATH = "examples/erp/openspec/changes/order-cancellation/spec.md";
+const ERP_ROOT = path.resolve("examples/erp");
+const FEATURE_PATH = "openspec/changes/order-cancellation/spec.md";
 
 test("successful Grounding Pack exposes stable v1 fields and alpha metadata", async () => {
-  const pack = await prepareGroundingPack(FEATURE_PATH);
+  const pack = await prepareGroundingPack(FEATURE_PATH, { cwd: ERP_ROOT });
   const packSchema = await readJson("schemas/grounding-pack.schema.json");
   const requestSchema = await readJson("schemas/grounding-request.schema.json");
 
@@ -99,9 +100,9 @@ affects_domain:
 });
 
 test("Context Budget deterministically estimates complete selected files", async () => {
-  const pack = await prepareGroundingPack(FEATURE_PATH);
-  const requiredEstimate = await estimateFiles(pack.read_first.map((item) => item.file));
-  const candidateEstimate = await estimateFiles(pack.candidate_boundaries.map((item) => item.file));
+  const pack = await prepareGroundingPack(FEATURE_PATH, { cwd: ERP_ROOT });
+  const requiredEstimate = await estimateFiles(pack.read_first.map((item) => path.join(ERP_ROOT, item.file)));
+  const candidateEstimate = await estimateFiles(pack.candidate_boundaries.map((item) => path.join(ERP_ROOT, item.file)));
 
   assert.deepEqual(pack.context_budget.estimator, {
     id: "chars-div-4",
@@ -119,11 +120,14 @@ test("Context Budget deterministically estimates complete selected files", async
 });
 
 test("prepare and index query share accepted closure IDs for the same root", async () => {
-  const pack = await prepareGroundingPack(FEATURE_PATH);
-  const built = await buildSemanticIndex("examples/erp");
+  const pack = await prepareGroundingPack(FEATURE_PATH, { cwd: ERP_ROOT });
+  const built = await buildSemanticIndex(undefined, { cwd: ERP_ROOT });
   const directory = await mkdtemp(path.join(os.tmpdir(), "opendomain-protocol-index-"));
   const indexPath = await writeSemanticIndex(built.index, path.join(directory, "index.json"));
-  const query = await querySemanticIndex({ id: "sales.order" }, { indexPath });
+  const query = await querySemanticIndex({ id: "sales.order" }, {
+    cwd: ERP_ROOT,
+    indexPath
+  });
 
   assert.equal(built.errors.length, 0);
   assert.equal(query.errors.length, 0);

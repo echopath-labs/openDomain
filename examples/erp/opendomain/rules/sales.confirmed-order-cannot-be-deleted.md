@@ -10,7 +10,7 @@ severity: must
 rule_type: invariant
 evidence:
   - type: human_review
-    location: examples/erp/domain/concepts/sales.order.md
+    location: examples/erp/opendomain/concepts/sales.order.md
     summary: Example fixture treats confirmed order deletion as a stable invariant.
     confidence: high
 review:

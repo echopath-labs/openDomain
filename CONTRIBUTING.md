@@ -42,7 +42,8 @@ Keep the layers separate:
 - Run `npm run opendomain -- validate`.
 - Add or update tests for parser, validator, CLI, or index behavior changes.
 - Update docs when commands, formats, or workflow expectations change.
-- Do not commit generated `.opendomain/` indexes.
+- Do not treat `opendomain/generated/` or legacy `.opendomain/index.json`
+  as authoritative domain knowledge.
 
 ## Planning Artifacts
 
