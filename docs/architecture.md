@@ -15,7 +15,9 @@ CLI
   ↓
 Candidate workflow
   ↓
-OpenSpec reference checks
+Built-in adapters + declarative Integration Profile Runtime
+  ↓
+Grounding Request v1
   ↓
 Derived graph, index, search, MCP, or export views
 ```
@@ -36,6 +38,11 @@ canonical `opendomain/` semantic directories. During `0.x`, legacy `domain/`
 remains a warning-producing fallback when the canonical root is absent. Dual
 roots are never merged. Explicit targets are available for examples, fixtures,
 and external corpora.
+
+Repository-local Integration Profiles live under
+`opendomain/integrations/profiles/`. They are versioned configuration beside
+the semantic source, not accepted domain knowledge and not part of the default
+semantic corpus.
 
 The first derived retrieval view is documented in
 `docs/semantic-retrieval-index.md`.
@@ -78,6 +85,8 @@ OpenDomain optimizes for a stable Codex reading path:
 ```text
 OpenSpec affects_domain or code path hint
   ↓
+Built-in adapter or declarative Integration Profile
+  ↓
 Versioned Grounding Request
   ↓
 Shared Semantic Closure
@@ -95,9 +104,11 @@ It does not mean moving accepted facts into an index. Indexes and other derived
 views help Codex find files; OpenDomain Markdown files still decide truth.
 
 Grounding Protocol v1 defines the stable request-to-pack contract. Profile
-Runtime remains an optional format-normalization layer, and external consumers
-must not add tool-specific fields to the stable protocol. See
-`docs/grounding-protocol.md`.
+Runtime is the replaceable format-normalization layer: it resolves one bounded
+file or directory Source Unit and transports explicit structured intent and
+OpenDomain IDs. It does not infer, define, review, or promote domain knowledge.
+External consumers must not add tool-specific fields to the stable protocol.
+See `docs/grounding-protocol.md` and `docs/integration-profiles.md`.
 
 ## Planning Layers
 
@@ -145,9 +156,10 @@ promote proposed knowledge to accepted knowledge.
 
 Accepted knowledge requires evidence and human review metadata.
 
-## OpenSpec Integration
+## Integration Boundary
 
-OpenSpec may reference OpenDomain IDs through fields such as:
+The built-in OpenSpec adapter may reference OpenDomain IDs through fields such
+as:
 
 ```yaml
 affects_domain:
@@ -164,3 +176,9 @@ should explain what the business world means over time.
 
 OpenSpec should reference OpenDomain through IDs. It should not copy concept,
 rule, lifecycle, or event definitions into feature specs.
+
+Other planning tools may use repository-local declarative Profiles. Native
+Mapping reads explicit fields owned by the external format. Sidecar Mapping
+associates one strict Domain Declaration with a bounded directory Source Unit.
+Both produce the same Grounding Request v1 and neither changes accepted
+OpenDomain knowledge.

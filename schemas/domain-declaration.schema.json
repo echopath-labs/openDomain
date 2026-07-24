@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opendomain.dev/schemas/domain-declaration.schema.json",
+  "title": "OpenDomain Sidecar Domain Declaration v1",
+  "type": "object",
+  "required": ["schema_version", "affects_domain"],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "affects_domain": {
+      "type": "object",
+      "required": ["concepts", "rules", "lifecycles", "events"],
+      "properties": {
+        "concepts": {
+          "$ref": "#/$defs/idArray"
+        },
+        "rules": {
+          "$ref": "#/$defs/idArray"
+        },
+        "lifecycles": {
+          "$ref": "#/$defs/idArray"
+        },
+        "events": {
+          "$ref": "#/$defs/idArray"
+        }
+      },
+      "anyOf": [
+        {
+          "properties": {
+            "concepts": {
+              "minItems": 1
+            }
+          }
+        },
+        {
+          "properties": {
+            "rules": {
+              "minItems": 1
+            }
+          }
+        },
+        {
+          "properties": {
+            "lifecycles": {
+              "minItems": 1
+            }
+          }
+        },
+        {
+          "properties": {
+            "events": {
+              "minItems": 1
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "idArray": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "additionalProperties": false
+}

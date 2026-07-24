@@ -45,6 +45,10 @@ This workspace now includes the first MVP slices:
 - CLI commands for project init, validation, ID listing, reference checks,
   grounding, indexing, and demo
 - OpenSpec `affects_domain` grounding
+- Declarative repository-local Integration Profiles for structured non-OpenSpec
+  sources, with Native Mapping and Sidecar Domain Declaration
+- Deterministic file or bundle Source Units and explicit or automatic Profile
+  selection
 - Domain Candidate boundary checks
 - Semantic Retrieval Index as a derived read-first view
 - Deterministic workspace resolution with canonical `opendomain/` sources
@@ -73,6 +77,8 @@ npm run opendomain -- help
 npm run opendomain -- init
 npm run opendomain -- validate
 npm run prepare:demo
+npm run opendomain -- integrations validate
+npm run opendomain -- integrations list
 npm run opendomain -- candidate list examples/erp
 npm run opendomain -- candidate show candidate-0001-order-lifecycle examples/erp
 npm run opendomain -- index build examples/erp --out /tmp/erp-index.json
@@ -96,6 +102,7 @@ Useful entry points:
 - [Getting started](docs/getting-started.md)
 - [Usage guide](docs/usage.md)
 - [Grounding Protocol v1](docs/grounding-protocol.md)
+- [Integration Profile guide](docs/integration-profiles.md)
 - [Roadmap](ROADMAP.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
@@ -115,9 +122,11 @@ License: MIT.
 │   ├── glossary.md
 │   ├── architecture.md
 │   ├── grounding-protocol.md
+│   ├── integration-profiles.md
 │   ├── candidate-workflow.md
 │   └── decisions/
 ├── opendomain/
+│   ├── integrations/profiles/
 │   └── README.md
 ├── examples/
 │   └── erp/

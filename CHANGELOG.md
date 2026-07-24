@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Add repository-local declarative Integration Profile v1 for structured
+  planning sources beyond the built-in OpenSpec adapter.
+- Add safe file and bundle Source Units, Native Mapping, strict Sidecar Domain
+  Declaration, and deterministic explicit or automatic adapter selection.
+- Add `opendomain integrations list`, `opendomain integrations validate`, and
+  `opendomain prepare --profile <id>`.
+- Add Profile-aware initialization, ERP examples, package installation smoke
+  coverage, and complete usage documentation.
+
 ## 0.1.0-alpha.5 - 2026-07-23
 
 - Harden YAML front matter parsing with deterministic YAML 1.2 policy checks
