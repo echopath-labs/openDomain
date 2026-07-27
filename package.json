@@ -1,6 +1,6 @@
 {
   "name": "@echopath-labs/opendomain",
-  "version": "0.1.0-alpha.5",
+  "version": "0.1.0-alpha.6",
   "description": "Git-native, evidence-backed domain semantics for AI agents.",
   "license": "MIT",
   "author": {
@@ -67,12 +67,12 @@
     "prepublishOnly": "npm test && npm run opendomain -- validate"
   },
   "engines": {
-    "node": ">=20"
+    "node": "20 || >=22"
   },
   "dependencies": {
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
-    "minimatch": "^9.0.9",
+    "minimatch": "^10.2.5",
     "yaml": "^2.9.0"
   }
 }
