@@ -1,7 +1,12 @@
 import { validatePath } from "./validator.mjs";
-import { formatGroundingPack, prepareGroundingPack } from "./prepare.mjs";
+import {
+  emptyGroundingPack,
+  formatGroundingPack,
+  prepareGroundingPack
+} from "./prepare.mjs";
 import { initializeProject } from "./init.mjs";
 import { listCandidates, reviewCandidate, showCandidate } from "./candidates.mjs";
+import { inspectIntegrations } from "./profile-registry.mjs";
 import {
   DEFAULT_INDEX_PATH,
   buildSemanticIndex,
@@ -29,6 +34,10 @@ export async function runCli(argv, options = {}) {
 
   if (command === "prepare") {
     return runPrepare([subcommand, ...rest].filter(Boolean), io);
+  }
+
+  if (command === "integrations" && (subcommand === "list" || subcommand === "validate")) {
+    return runIntegrations(subcommand, rest, io);
   }
 
   if (command === "init") {
@@ -78,7 +87,9 @@ function printHelp(stream) {
 Usage:
   opendomain init [--example erp] [--json]
   opendomain validate [path] [--json]
-  opendomain prepare [--integration openspec] <feature-spec-or-dir> [--json]
+  opendomain prepare [--integration openspec | --profile <id>] <source-unit> [--json]
+  opendomain integrations list [--json]
+  opendomain integrations validate [--json]
   opendomain index build [path] [--out <file>] [--json]
   opendomain index query <domain-id> [--index <file>] [--json]
   opendomain index query --context <context-id> [--index <file>] [--json]
@@ -362,10 +373,16 @@ function parseCandidateReviewArgs(args) {
 
 async function runPrepare(args, io) {
   const parsed = parsePrepareArgs(args);
-  const pack = await prepareGroundingPack(parsed.path, {
-    cwd: io.cwd,
-    integration: parsed.integration
-  });
+  const pack = parsed.errors.length > 0
+    ? emptyGroundingPack({
+        input: parsed.path,
+        errors: parsed.errors
+      })
+    : await prepareGroundingPack(parsed.path, {
+        cwd: io.cwd,
+        integration: parsed.integration,
+        profile: parsed.profile
+      });
 
   if (parsed.json) {
     io.stdout.write(`${JSON.stringify(pack, null, 2)}\n`);
@@ -379,8 +396,10 @@ async function runPrepare(args, io) {
 function parsePrepareArgs(args) {
   const parsed = {
     json: false,
-    integration: "auto",
-    path: undefined
+    integration: undefined,
+    profile: undefined,
+    path: undefined,
+    errors: []
   };
 
   for (let index = 0; index < args.length; index += 1) {
@@ -390,13 +409,117 @@ function parsePrepareArgs(args) {
       continue;
     }
     if (arg === "--integration") {
-      parsed.integration = args[index + 1] ?? "";
-      index += 1;
+      if (parsed.integration !== undefined) {
+        parsed.errors.push(inputIssue(
+          "integration",
+          "--integration was provided more than once.",
+          "Select exactly one built-in integration."
+        ));
+      }
+      const value = args[index + 1];
+      if (!value || value.startsWith("--")) {
+        parsed.errors.push(inputIssue(
+          "integration",
+          "Missing integration ID after --integration.",
+          "Use --integration openspec."
+        ));
+      } else {
+        parsed.integration = value;
+        index += 1;
+      }
+      continue;
+    }
+    if (arg === "--profile") {
+      if (parsed.profile !== undefined) {
+        parsed.errors.push(inputIssue(
+          "profile",
+          "--profile was provided more than once.",
+          "Select exactly one repository-local Profile ID."
+        ));
+      }
+      const value = args[index + 1];
+      if (!value || value.startsWith("--")) {
+        parsed.errors.push(inputIssue(
+          "profile",
+          "Missing Integration Profile ID after --profile.",
+          "Use --profile <id> and pass one matching structured source path."
+        ));
+      } else {
+        parsed.profile = value;
+        index += 1;
+      }
+      continue;
+    }
+    if (arg.startsWith("--")) {
+      parsed.errors.push(inputIssue(
+        "$",
+        `Unknown prepare argument '${arg}'.`,
+        "Use --integration openspec, --profile <id>, --json, and one source path."
+      ));
       continue;
     }
     if (!parsed.path) {
       parsed.path = arg;
+      continue;
     }
+    parsed.errors.push(inputIssue(
+      "$",
+      `Unexpected extra source path '${arg}'.`,
+      "Pass exactly one feature spec, structured file, or bundle path."
+    ));
+  }
+
+  if (parsed.integration !== undefined && parsed.profile !== undefined) {
+    parsed.errors.push(inputIssue(
+      "integration",
+      "--integration and --profile cannot be used together.",
+      "Select the built-in adapter or one repository-local Profile."
+    ));
+  }
+
+  return parsed;
+}
+
+async function runIntegrations(mode, args, io) {
+  const parsed = parseIntegrationsArgs(args);
+  const result = parsed.errors.length > 0
+    ? {
+        workspace: null,
+        workspace_mode: null,
+        profile_directory: null,
+        profile_file_count: 0,
+        valid_profile_count: 0,
+        integrations: [],
+        warnings: [],
+        errors: parsed.errors
+      }
+    : await inspectIntegrations({ cwd: io.cwd });
+
+  if (parsed.json) {
+    io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  } else {
+    printIntegrationsResult(result, mode, io.stdout);
+  }
+
+  return result.errors.length > 0 ? 1 : 0;
+}
+
+function parseIntegrationsArgs(args) {
+  const parsed = {
+    json: false,
+    errors: []
+  };
+
+  for (const arg of args) {
+    if (arg === "--json") {
+      parsed.json = true;
+      continue;
+    }
+    parsed.errors.push(inputIssue(
+      "$",
+      `Unknown integrations argument '${arg}'.`,
+      "Run opendomain integrations list or opendomain integrations validate, optionally with --json."
+    ));
   }
 
   return parsed;
@@ -602,6 +725,39 @@ function printIndexBuildResult(result, stream) {
   stream.write(`Schema: ${result.index.schema}\n`);
   stream.write(`Entries: ${result.index.entries.length}\n`);
   stream.write("Boundary: derived view only; OpenDomain source files remain authoritative.\n");
+
+  if (result.warnings.length > 0) {
+    stream.write("\nWarnings:\n");
+    for (const warning of result.warnings) {
+      stream.write(`- ${warning.file} ${warning.field}: ${warning.problem}\n`);
+    }
+  }
+}
+
+function printIntegrationsResult(result, mode, stream) {
+  if (result.errors.length > 0) {
+    const label = mode === "validate"
+      ? "Integration Profile validation"
+      : "Integration discovery";
+    stream.write(`${label} failed: ${result.errors.length} errors.\n`);
+    printIssues([...result.errors, ...result.warnings], stream);
+    return;
+  }
+
+  if (mode === "validate") {
+    stream.write(`Integration Profile validation passed: ${result.valid_profile_count} repository-local Profiles checked.\n`);
+  } else {
+    stream.write("OpenDomain Integrations\n\n");
+    stream.write(`Workspace: ${result.workspace}\n`);
+    stream.write(`Profile directory: ${result.profile_directory}\n\n`);
+    for (const integration of result.integrations) {
+      const source = integration.source_file ?? "<built-in>";
+      stream.write(`- ${integration.id} [${integration.kind}] -> ${source}\n`);
+      stream.write(`  source_type: ${integration.source_type}\n`);
+      stream.write(`  source_unit: ${integration.source_unit_kind}\n`);
+      stream.write(`  references: ${integration.reference_mode}\n`);
+    }
+  }
 
   if (result.warnings.length > 0) {
     stream.write("\nWarnings:\n");
@@ -869,4 +1025,14 @@ function printIssue(issue, stream) {
   stream.write(`  field: ${issue.field}\n`);
   stream.write(`  problem: ${issue.problem}\n`);
   stream.write(`  fix: ${issue.fix}\n`);
+}
+
+function inputIssue(field, problem, fix) {
+  return {
+    severity: "error",
+    file: "<input>",
+    field,
+    problem,
+    fix
+  };
 }

@@ -108,6 +108,8 @@ opendomain/
   lifecycles/
   events/
   candidates/
+  integrations/
+    profiles/
 
 openspec/
   changes/
@@ -457,8 +459,21 @@ opendomain prepare --integration openspec openspec/changes/order-cancellation/sp
 所属项目的根目录执行。若从本仓库源码运行 ERP 示例，可直接使用
 `npm run prepare:demo`。
 
-当前 MVP 只支持 `openspec` built-in integration。Spec Kit 或其他工具的
-Integration Profile 仍处于设计阶段，不会执行动态插件代码。
+除 built-in OpenSpec adapter 外，项目可以在
+`opendomain/integrations/profiles/` 中声明本地 Integration Profile，把其他
+结构化规划格式归一化成同一 Grounding Request：
+
+```bash
+opendomain integrations validate
+opendomain integrations list
+opendomain prepare --profile structured-feature external-features/order-cancellation.yaml
+```
+
+省略选择参数时，Runtime 只在恰好一个 built-in adapter 或 Profile 匹配时继续；
+多重匹配会失败。Profile v1 支持安全 Markdown front matter、YAML、JSON，
+Native Mapping 和 Sidecar Domain Declaration，但不执行动态插件代码、不扫描
+正文、不推断领域 ID。完整格式与 bundle 示例见
+[Integration Profile 使用指南](integration-profiles.md)。
 
 输出会包含：
 
@@ -545,6 +560,9 @@ Index 不是 source of truth。它只回答“应该读哪些 source files”。
 | 为 Feature 准备 grounding | `npm run opendomain -- prepare <feature-spec-or-dir>` |
 | 输出 Grounding Protocol JSON | `npm run opendomain -- prepare <feature-spec-or-dir> --json` |
 | 显式使用 OpenSpec integration | `npm run opendomain -- prepare --integration openspec <feature-spec-or-dir>` |
+| 列出 integration | `npm run opendomain -- integrations list` |
+| 验证 Integration Profile | `npm run opendomain -- integrations validate` |
+| 显式使用本地 Profile | `npm run opendomain -- prepare --profile <profile-id> <source-unit>` |
 | 列出 Candidate | `npm run opendomain -- candidate list examples/erp` |
 | 查看 Candidate | `npm run opendomain -- candidate show <candidate-id> examples/erp` |
 | 记录 Candidate review | `npm run opendomain -- candidate review <candidate-id> --decision rejected --reviewed-by <name> --reason <text> examples/erp` |
@@ -594,6 +612,8 @@ AI 可以提出 Candidate，但不能静默提升为 accepted。
 当前版本仍然是 MVP：
 
 - Candidate promotion 仍是人工流程。
+- Profile Runtime 仅支持声明式 Native / Sidecar 模式；Embedded Declaration、
+  动态插件和 built-in Spec Kit adapter 尚未实现。
 - Index 是基于现有 OpenDomain 文件生成的 read-first index，不是 embedding search。
 - 还没有 graph export、MCP server、IDE 插件或审查 UI。
 - Validator 已执行六类领域 source 的 Runtime Schema，并覆盖引用、review、Candidate 和 lifecycle 规则，但不是完整语义推理器。

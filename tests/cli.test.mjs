@@ -18,6 +18,8 @@ test("help explains canonical and legacy workspace resolution", async () => {
   assert.match(output, /canonical opendomain\//);
   assert.match(output, /domain\/ is a warned fallback/);
   assert.match(output, /roots are never merged/);
+  assert.match(output, /integrations list/);
+  assert.match(output, /--profile <id>/);
 });
 
 test("validate command returns JSON and zero exit code for valid ERP example", async () => {
@@ -106,6 +108,8 @@ test("init command creates a minimal valid OpenDomain structure", async () => {
     assert.match(output, /opendomain\/contexts\/example\.md/);
     assert.match(output, /opendomain\/concepts\/example\.concept\.md/);
     assert.match(output, /opendomain\/candidates\/candidate-0001-first-domain-model\.md/);
+    assert.match(output, /opendomain\/integrations\/profiles\/README\.md/);
+    await access("opendomain/integrations/profiles/README.md");
 
     const validateStdout = memoryStream();
     const validateExitCode = await runCli(["validate", "--json"], { stdout: validateStdout, stderr: memoryStream() });
@@ -201,6 +205,35 @@ test("init command can copy the ERP example", async () => {
   });
 });
 
+test("integrations commands expose deterministic Profile inspection", async () => {
+  const listStdout = memoryStream();
+  const listExitCode = await runCli(["integrations", "list", "--json"], {
+    stdout: listStdout,
+    stderr: memoryStream(),
+    cwd: ERP_ROOT
+  });
+  const payload = JSON.parse(listStdout.toString());
+
+  assert.equal(listExitCode, 0);
+  assert.equal(payload.workspace, "opendomain");
+  assert.equal(payload.profile_file_count, 1);
+  assert.equal(payload.valid_profile_count, 1);
+  assert.deepEqual(
+    payload.integrations.map((integration) => integration.id),
+    ["openspec", "structured-feature"]
+  );
+
+  const validateStdout = memoryStream();
+  const validateExitCode = await runCli(["integrations", "validate"], {
+    stdout: validateStdout,
+    stderr: memoryStream(),
+    cwd: ERP_ROOT
+  });
+
+  assert.equal(validateExitCode, 0);
+  assert.match(validateStdout.toString(), /1 repository-local Profiles checked/);
+});
+
 test("prepare command returns grounding pack for a feature spec", async () => {
   const stdout = memoryStream();
   const stderr = memoryStream();
@@ -240,6 +273,175 @@ test("prepare command returns JSON grounding pack", async () => {
   assert.ok(payload.read_first.some((item) => item.id === "sales.order"));
   assert.ok(payload.candidate_boundaries.some((item) => item.id === "candidate-0001-order-lifecycle"));
   assert.equal(payload.errors.length, 0);
+});
+
+test("prepare command supports explicit and automatic Profile selection", async () => {
+  const explicitStdout = memoryStream();
+  const explicitExitCode = await runCli([
+    "prepare",
+    "--profile",
+    "structured-feature",
+    "external-features/order-cancellation.yaml",
+    "--json"
+  ], {
+    stdout: explicitStdout,
+    stderr: memoryStream(),
+    cwd: ERP_ROOT
+  });
+  const explicit = JSON.parse(explicitStdout.toString());
+
+  assert.equal(explicitExitCode, 0);
+  assert.equal(explicit.grounding_request.integration.id, "structured-feature");
+  assert.equal(explicit.grounding_request.integration.kind, "profile");
+  assert.equal(explicit.grounding_request.integration.selected, "explicit");
+  assert.equal(explicit.grounding_request.source.type, "structured-feature");
+  assert.equal(explicit.feature.id, "external.order-cancellation");
+  assert.deepEqual(explicit.grounding_request.affects_domain.rules, [
+    "sales.confirmed-order-cannot-be-deleted"
+  ]);
+  assert.ok(explicit.read_first.some((item) => item.id === "sales.order"));
+
+  const automaticStdout = memoryStream();
+  const automaticExitCode = await runCli([
+    "prepare",
+    "external-features/order-cancellation.yaml",
+    "--json"
+  ], {
+    stdout: automaticStdout,
+    stderr: memoryStream(),
+    cwd: ERP_ROOT
+  });
+  const automatic = JSON.parse(automaticStdout.toString());
+
+  assert.equal(automaticExitCode, 0);
+  assert.equal(automatic.grounding_request.integration.id, "structured-feature");
+  assert.equal(automatic.grounding_request.integration.selected, "auto");
+  assert.deepEqual(automatic.read_first, explicit.read_first);
+  assert.deepEqual(automatic.candidate_boundaries, explicit.candidate_boundaries);
+});
+
+test("prepare command rejects conflicting Profile selection before reading input", async () => {
+  const stdout = memoryStream();
+  const exitCode = await runCli([
+    "prepare",
+    "--integration",
+    "openspec",
+    "--profile",
+    "structured-feature",
+    "missing.yaml",
+    "--json"
+  ], {
+    stdout,
+    stderr: memoryStream(),
+    cwd: ERP_ROOT
+  });
+  const payload = JSON.parse(stdout.toString());
+
+  assert.equal(exitCode, 1);
+  assert.equal(payload.grounding_request, null);
+  assert.ok(payload.errors.some((error) => (
+    error.field === "integration"
+    && error.problem.includes("cannot be used together")
+  )));
+  assert.equal(payload.errors.some((error) => error.problem.includes("does not exist")), false);
+});
+
+test("prepare command rejects repeated selectors instead of applying argument order", async () => {
+  for (const args of [
+    [
+      "--profile",
+      "first-profile",
+      "--profile",
+      "second-profile",
+      "missing.yaml"
+    ],
+    [
+      "--integration",
+      "auto",
+      "--integration",
+      "openspec",
+      "missing.md"
+    ]
+  ]) {
+    const stdout = memoryStream();
+    const exitCode = await runCli(["prepare", ...args, "--json"], {
+      stdout,
+      stderr: memoryStream(),
+      cwd: ERP_ROOT
+    });
+    const payload = JSON.parse(stdout.toString());
+
+    assert.equal(exitCode, 1);
+    assert.ok(payload.errors.some((error) => (
+      error.problem.includes("provided more than once")
+    )));
+    assert.equal(payload.errors.some((error) => error.problem.includes("does not exist")), false);
+  }
+});
+
+test("automatic Profile selection fails on ambiguity", async () => {
+  const project = await mkdtemp(path.join(os.tmpdir(), "opendomain-cli-ambiguity-"));
+  try {
+    await writeCliProfile(project, "first-profile", "features/*.yaml");
+    await writeCliProfile(project, "second-profile", "features/*.yaml");
+    await mkdir(path.join(project, "features"), { recursive: true });
+    await writeFile(path.join(project, "features/add-x.yaml"), structuredFeature(), "utf8");
+
+    const stdout = memoryStream();
+    const exitCode = await runCli([
+      "prepare",
+      "features/add-x.yaml",
+      "--json"
+    ], {
+      stdout,
+      stderr: memoryStream(),
+      cwd: project
+    });
+    const payload = JSON.parse(stdout.toString());
+
+    assert.equal(exitCode, 1);
+    assert.ok(payload.errors.some((error) => (
+      error.problem.includes("Multiple integrations match")
+      && error.problem.includes("first-profile")
+      && error.problem.includes("second-profile")
+    )));
+  } finally {
+    await rm(project, { recursive: true, force: true });
+  }
+});
+
+test("Profile prepare fails when structured input declares no domain references", async () => {
+  const project = await mkdtemp(path.join(os.tmpdir(), "opendomain-cli-empty-scope-"));
+  try {
+    await writeCliProfile(project, "structured-feature", "features/*.yaml");
+    await mkdir(path.join(project, "features"), { recursive: true });
+    await writeFile(path.join(project, "features/add-x.yaml"), `id: feature.add-x
+name: Add X
+status: proposed
+`, "utf8");
+
+    const stdout = memoryStream();
+    const exitCode = await runCli([
+      "prepare",
+      "--profile",
+      "structured-feature",
+      "features/add-x.yaml",
+      "--json"
+    ], {
+      stdout,
+      stderr: memoryStream(),
+      cwd: project
+    });
+    const payload = JSON.parse(stdout.toString());
+
+    assert.equal(exitCode, 1);
+    assert.ok(payload.errors.some((error) => (
+      error.field === "references.affects_domain"
+      && error.problem.includes("no explicit OpenDomain references")
+    )));
+  } finally {
+    await rm(project, { recursive: true, force: true });
+  }
 });
 
 test("prepare command supports explicit OpenSpec integration", async () => {
@@ -593,4 +795,42 @@ ${possibleConflicts}${reviewLines.join("\n")}
 ---
 
 ${body}`, "utf8");
+}
+
+async function writeCliProfile(project, id, pattern) {
+  const directory = path.join(project, "opendomain/integrations/profiles");
+  await mkdir(directory, { recursive: true });
+  await writeFile(path.join(directory, `${id}.yaml`), `schema_version: "1.0"
+id: ${id}
+source_type: structured-feature
+source_unit:
+  kind: file
+  match:
+    paths:
+      - ${pattern}
+intent:
+  id:
+    from: primary.id
+  name:
+    from: primary.name
+  status:
+    from: primary.status
+    default: proposed
+references:
+  mode: native
+  affects_domain:
+    concepts:
+      from: primary.affects.concepts
+      coerce: array
+`, "utf8");
+}
+
+function structuredFeature() {
+  return `id: feature.add-x
+name: Add X
+status: proposed
+affects:
+  concepts:
+    - example.concept
+`;
 }

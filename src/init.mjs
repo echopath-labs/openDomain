@@ -12,7 +12,9 @@ const WORKSPACE_DIRECTORIES = [
   "opendomain/rules",
   "opendomain/lifecycles",
   "opendomain/events",
-  "opendomain/candidates"
+  "opendomain/candidates",
+  "opendomain/integrations",
+  "opendomain/integrations/profiles"
 ];
 
 export async function initializeProject(options = {}) {
@@ -66,6 +68,12 @@ export async function initializeProject(options = {}) {
   await writeFileIfMissing(
     path.join(cwd, "opendomain/candidates/candidate-0001-first-domain-model.md"),
     candidateTemplate(today),
+    cwd,
+    result
+  );
+  await writeFileIfMissing(
+    path.join(cwd, "opendomain/integrations/profiles/README.md"),
+    profileReadmeTemplate(),
     cwd,
     result
   );
@@ -169,9 +177,31 @@ Start with:
 - \`lifecycles/\`: states and transitions
 - \`events/\`: business facts that happened
 - \`candidates/\`: proposed or inferred domain knowledge awaiting human review
+- \`integrations/profiles/\`: declarative mappings from structured planning
+  artifacts into Grounding Request v1
 
 Do not treat generated starter files as accepted business truth. Replace the
 example content with reviewed knowledge from your own domain.
+`;
+}
+
+function profileReadmeTemplate() {
+  return `# OpenDomain Integration Profiles
+
+Store repository-local declarative Integration Profile YAML files here.
+Profiles map explicit structured planning metadata into Grounding Request v1;
+they are configuration, not accepted domain knowledge.
+
+Inspect this registry with:
+
+\`\`\`bash
+opendomain integrations list
+opendomain integrations validate
+\`\`\`
+
+Profiles must not execute code, infer IDs from prose, or promote Domain
+Candidates. See the packaged Integration Profile documentation and schema
+before adding a Profile.
 `;
 }
 

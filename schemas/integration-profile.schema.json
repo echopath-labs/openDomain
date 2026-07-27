@@ -1,0 +1,275 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opendomain.dev/schemas/integration-profile.schema.json",
+  "title": "OpenDomain Integration Profile v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "source_type",
+    "source_unit",
+    "intent",
+    "references"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "source_type": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*(\\.[a-z][a-z0-9_-]*)*$"
+    },
+    "source_unit": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/fileSourceUnit"
+        },
+        {
+          "$ref": "#/$defs/bundleSourceUnit"
+        }
+      ]
+    },
+    "intent": {
+      "type": "object",
+      "required": ["id", "name", "status"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/intentSelector"
+        },
+        "name": {
+          "$ref": "#/$defs/intentSelector"
+        },
+        "status": {
+          "$ref": "#/$defs/intentSelector"
+        }
+      },
+      "additionalProperties": false
+    },
+    "references": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/nativeReferences"
+        },
+        {
+          "$ref": "#/$defs/sidecarReferences"
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "fieldPath": {
+      "type": "string",
+      "pattern": "^(primary|manifest)(\\.[A-Za-z0-9_-]+)+$"
+    },
+    "pathPatterns": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "fileSourceUnit": {
+      "type": "object",
+      "required": ["kind", "match"],
+      "properties": {
+        "kind": {
+          "const": "file"
+        },
+        "match": {
+          "type": "object",
+          "required": ["paths"],
+          "properties": {
+            "paths": {
+              "$ref": "#/$defs/pathPatterns"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "bundleSourceUnit": {
+      "type": "object",
+      "required": ["kind", "match", "members"],
+      "properties": {
+        "kind": {
+          "const": "bundle"
+        },
+        "match": {
+          "type": "object",
+          "required": ["paths", "root_marker"],
+          "properties": {
+            "paths": {
+              "$ref": "#/$defs/pathPatterns"
+            },
+            "root_marker": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "members": {
+          "type": "object",
+          "required": ["primary"],
+          "properties": {
+            "primary": {
+              "$ref": "#/$defs/requiredMember"
+            },
+            "manifest": {
+              "$ref": "#/$defs/member"
+            },
+            "declaration": {
+              "$ref": "#/$defs/member"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "requiredMember": {
+      "type": "object",
+      "required": ["path", "required"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "required": {
+          "const": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "member": {
+      "type": "object",
+      "required": ["path", "required"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "required": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "intentSelector": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "$ref": "#/$defs/fieldPath"
+        },
+        "first_of": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/fieldPath"
+          }
+        },
+        "default": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "oneOf": [
+        {
+          "required": ["from"],
+          "not": {
+            "required": ["first_of"]
+          }
+        },
+        {
+          "required": ["first_of"],
+          "not": {
+            "required": ["from"]
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "referenceSelector": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "$ref": "#/$defs/fieldPath"
+        },
+        "first_of": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/fieldPath"
+          }
+        },
+        "coerce": {
+          "const": "array"
+        }
+      },
+      "oneOf": [
+        {
+          "required": ["from"],
+          "not": {
+            "required": ["first_of"]
+          }
+        },
+        {
+          "required": ["first_of"],
+          "not": {
+            "required": ["from"]
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "nativeReferences": {
+      "type": "object",
+      "required": ["mode", "affects_domain"],
+      "properties": {
+        "mode": {
+          "const": "native"
+        },
+        "affects_domain": {
+          "type": "object",
+          "minProperties": 1,
+          "properties": {
+            "concepts": {
+              "$ref": "#/$defs/referenceSelector"
+            },
+            "rules": {
+              "$ref": "#/$defs/referenceSelector"
+            },
+            "lifecycles": {
+              "$ref": "#/$defs/referenceSelector"
+            },
+            "events": {
+              "$ref": "#/$defs/referenceSelector"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "sidecarReferences": {
+      "type": "object",
+      "required": ["mode"],
+      "properties": {
+        "mode": {
+          "const": "sidecar"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

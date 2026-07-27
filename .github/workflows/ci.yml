@@ -29,3 +29,6 @@ jobs:
 
       - name: Validate OpenDomain
         run: npm run opendomain -- validate
+
+      - name: Run installed-package smoke
+        run: npm run smoke:package

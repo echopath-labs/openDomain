@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   FrontMatterError,
+  parseJsonMapping,
   parseMarkdown,
+  parseYamlMapping,
   serializeFrontmatter
 } from "../src/frontmatter.mjs";
 
@@ -140,6 +142,35 @@ test("parseMarkdown rejects non-string and unsupported mapping keys", () => {
 unsupported.key: value
 ---
 `, /Unsupported front matter key/i);
+});
+
+test("standalone YAML and JSON mappings reuse the structured trust boundary", () => {
+  const yaml = parseYamlMapping(`id: feature.add-x
+intent:
+  name: Add X
+`, "feature.yaml");
+  const json = parseJsonMapping(
+    `{"id":"feature.add-x","intent":{"name":"Add X"}}`,
+    "feature.json"
+  );
+
+  assert.equal(yaml.id, "feature.add-x");
+  assert.equal(yaml.intent.name, "Add X");
+  assert.equal(json.id, "feature.add-x");
+  assert.equal(json.intent.name, "Add X");
+
+  assert.throws(
+    () => parseYamlMapping("__proto__: injected\n", "unsafe.yaml"),
+    /prototype-sensitive/
+  );
+  assert.throws(
+    () => parseJsonMapping(`{"constructor":"injected"}`, "unsafe.json"),
+    /prototype-sensitive/
+  );
+  assert.throws(
+    () => parseJsonMapping(`["not", "an", "object"]`, "array.json"),
+    /must be an object/
+  );
 });
 
 function assertFrontMatterFailure(content, pattern) {

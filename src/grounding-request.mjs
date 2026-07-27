@@ -1,30 +1,58 @@
 import { access, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { parseMarkdownFile } from "./frontmatter.mjs";
+import { buildProfileGroundingRequest } from "./profile-mapping.mjs";
+import { loadIntegrationProfiles } from "./profile-registry.mjs";
 import { GROUNDING_PROTOCOL_VERSION } from "./protocol.mjs";
+import {
+  findMatchingProfileSourceUnits,
+  resolveProfileSourceUnit
+} from "./source-unit.mjs";
 
 const SUPPORTED_INTEGRATIONS = new Set(["auto", "openspec"]);
 const AFFECTS_DOMAIN_FIELDS = ["concepts", "rules", "lifecycles", "events"];
 
 export async function buildGroundingRequest(inputPath, options = {}) {
   const cwd = options.cwd ?? process.cwd();
+  const integrationProvided = options.integration !== undefined && options.integration !== null;
+  const profileProvided = options.profile !== undefined && options.profile !== null;
   const integration = options.integration ?? "auto";
 
-  if (!SUPPORTED_INTEGRATIONS.has(integration)) {
-    return {
-      request: null,
-      errors: [
-        issue({
-          file: "<input>",
-          field: "integration",
-          problem: `Unsupported integration '${integration}'.`,
-          fix: "Use --integration openspec or omit --integration for auto-detection."
-        })
-      ]
-    };
+  if (integrationProvided && profileProvided) {
+    return failedRequest(issue({
+      file: "<input>",
+      field: "integration",
+      problem: "--integration and --profile cannot be used together.",
+      fix: "Select the built-in adapter with --integration openspec, or one local Profile with --profile <id>."
+    }));
   }
 
-  return buildOpenSpecGroundingRequest(inputPath, cwd, integration);
+  if (profileProvided) {
+    if (typeof options.profile !== "string" || !options.profile.trim()) {
+      return failedRequest(issue({
+        file: "<input>",
+        field: "profile",
+        problem: "Missing Integration Profile ID.",
+        fix: "Run opendomain prepare --profile <id> <structured-file-or-bundle>."
+      }));
+    }
+    return buildSelectedProfileGroundingRequest(inputPath, options.profile, cwd);
+  }
+
+  if (!SUPPORTED_INTEGRATIONS.has(integration)) {
+    return failedRequest(issue({
+      file: "<input>",
+      field: "integration",
+      problem: `Unsupported integration '${integration}'.`,
+      fix: "Use --integration openspec, --profile <id>, or omit selection for auto-detection."
+    }));
+  }
+
+  if (integration === "openspec") {
+    return buildOpenSpecGroundingRequest(inputPath, cwd, integration);
+  }
+
+  return buildAutomaticGroundingRequest(inputPath, cwd);
 }
 
 export function collectAffectedIds(affectsDomain) {
@@ -41,7 +69,7 @@ export function collectAffectedIds(affectsDomain) {
   return ids;
 }
 
-async function buildOpenSpecGroundingRequest(inputPath, cwd, selectedIntegration) {
+export async function buildOpenSpecGroundingRequest(inputPath, cwd, selectedIntegration = "openspec") {
   if (!inputPath) {
     return {
       request: null,
@@ -52,7 +80,8 @@ async function buildOpenSpecGroundingRequest(inputPath, cwd, selectedIntegration
           problem: "Missing feature spec path.",
           fix: "Run opendomain prepare <feature-spec-or-dir>."
         })
-      ]
+      ],
+      warnings: []
     };
   }
 
@@ -67,7 +96,8 @@ async function buildOpenSpecGroundingRequest(inputPath, cwd, selectedIntegration
           problem: "Feature spec path does not exist.",
           fix: "Pass an existing feature spec file or directory."
         })
-      ]
+      ],
+      warnings: []
     };
   }
 
@@ -108,7 +138,8 @@ async function buildOpenSpecGroundingRequest(inputPath, cwd, selectedIntegration
           problem: "No feature_spec found.",
           fix: "Pass a Markdown feature spec with type: feature_spec."
         })
-      ]
+      ],
+      warnings: []
     };
   }
 
@@ -122,7 +153,8 @@ async function buildOpenSpecGroundingRequest(inputPath, cwd, selectedIntegration
           problem: "Multiple feature_spec files found.",
           fix: "Pass a single feature spec file for deterministic grounding."
         })
-      ]
+      ],
+      warnings: []
     };
   }
 
@@ -141,7 +173,8 @@ async function buildOpenSpecGroundingRequest(inputPath, cwd, selectedIntegration
           problem: "Feature spec is missing affects_domain.",
           fix: "Declare affected OpenDomain concepts, rules, lifecycles, or events."
         })
-      ]
+      ],
+      warnings: []
     };
   }
 
@@ -149,7 +182,8 @@ async function buildOpenSpecGroundingRequest(inputPath, cwd, selectedIntegration
   if (requestErrors.length > 0) {
     return {
       request: null,
-      errors: requestErrors
+      errors: requestErrors,
+      warnings: []
     };
   }
 
@@ -172,7 +206,164 @@ async function buildOpenSpecGroundingRequest(inputPath, cwd, selectedIntegration
       },
       affects_domain: normalizeAffectsDomain(feature.frontmatter.affects_domain)
     },
-    errors: []
+    errors: [],
+    warnings: []
+  };
+}
+
+async function buildAutomaticGroundingRequest(inputPath, cwd) {
+  const openSpecResult = await buildOpenSpecGroundingRequest(inputPath, cwd, "auto");
+  const registry = await loadIntegrationProfiles({
+    cwd,
+    allowMissingWorkspace: true
+  });
+  if (registry.errors.length > 0) {
+    return {
+      request: null,
+      errors: registry.errors,
+      warnings: registry.warnings
+    };
+  }
+
+  if (registry.profiles.length === 0) {
+    return {
+      ...openSpecResult,
+      warnings: [...(openSpecResult.warnings ?? []), ...registry.warnings]
+    };
+  }
+
+  const matchResult = await findMatchingProfileSourceUnits(
+    registry.profiles,
+    inputPath,
+    {
+      cwd,
+      outsideWorkspaceIsNoMatch: true
+    }
+  );
+  if (matchResult.errors.length > 0) {
+    return {
+      request: null,
+      errors: matchResult.errors,
+      warnings: registry.warnings
+    };
+  }
+
+  const candidates = [
+    ...(openSpecResult.request
+      ? [{
+          id: "openspec",
+          kind: "builtin",
+          requestResult: openSpecResult
+        }]
+      : []),
+    ...matchResult.matches.map((match) => ({
+      id: match.entry.id,
+      kind: "profile",
+      match
+    }))
+  ];
+
+  if (candidates.length === 0) {
+    return {
+      ...openSpecResult,
+      warnings: [...(openSpecResult.warnings ?? []), ...registry.warnings]
+    };
+  }
+
+  if (candidates.length > 1) {
+    return {
+      request: null,
+      errors: [issue({
+        file: inputPath ?? "<input>",
+        field: "integration",
+        problem: `Multiple integrations match this input: ${candidates.map((candidate) => candidate.id).sort().join(", ")}.`,
+        fix: "Narrow Profile path patterns, or select one integration explicitly with --profile <id> or --integration openspec."
+      })],
+      warnings: registry.warnings
+    };
+  }
+
+  const selected = candidates[0];
+  if (selected.kind === "builtin") {
+    return {
+      ...selected.requestResult,
+      warnings: [
+        ...(selected.requestResult.warnings ?? []),
+        ...registry.warnings
+      ]
+    };
+  }
+
+  if (selected.match.errors.length > 0) {
+    return {
+      request: null,
+      errors: selected.match.errors,
+      warnings: registry.warnings
+    };
+  }
+
+  const result = await buildProfileGroundingRequest(
+    selected.match.entry,
+    selected.match.sourceUnit,
+    { selected: "auto" }
+  );
+  return {
+    ...result,
+    warnings: [...(result.warnings ?? []), ...registry.warnings]
+  };
+}
+
+async function buildSelectedProfileGroundingRequest(inputPath, profileId, cwd) {
+  const registry = await loadIntegrationProfiles({ cwd });
+  if (registry.errors.length > 0) {
+    return {
+      request: null,
+      errors: registry.errors,
+      warnings: registry.warnings
+    };
+  }
+
+  const entry = registry.profiles.find((profile) => profile.id === profileId);
+  if (!entry) {
+    return {
+      request: null,
+      errors: [issue({
+        file: registry.profile_directory ?? "<workspace>",
+        field: "profile",
+        problem: `Integration Profile '${profileId}' was not found.`,
+        fix: "Run 'opendomain integrations list' and select an available repository-local Profile ID."
+      })],
+      warnings: registry.warnings
+    };
+  }
+
+  const resolution = await resolveProfileSourceUnit(entry, inputPath, { cwd });
+  if (resolution.errors.length > 0) {
+    return {
+      request: null,
+      errors: resolution.errors,
+      warnings: registry.warnings
+    };
+  }
+  if (!resolution.matched) {
+    return {
+      request: null,
+      errors: [issue({
+        file: inputPath ?? "<input>",
+        field: "profile",
+        problem: `Input does not match Integration Profile '${profileId}'.`,
+        fix: "Pass a file or bundle matched by the Profile, or select a different Profile ID."
+      })],
+      warnings: registry.warnings
+    };
+  }
+
+  const result = await buildProfileGroundingRequest(entry, resolution.sourceUnit, {
+    selected: "explicit"
+  });
+  return {
+    ...result,
+    warnings: [...(result.warnings ?? []), ...registry.warnings]
   };
 }
 
@@ -232,6 +423,14 @@ function issue(issueFields) {
     field: issueFields.field,
     problem: issueFields.problem,
     fix: issueFields.fix
+  };
+}
+
+function failedRequest(error) {
+  return {
+    request: null,
+    errors: [error],
+    warnings: []
   };
 }
 

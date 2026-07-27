@@ -99,8 +99,12 @@ OpenDomain 适合：
 - Bounded Context、Domain Concept、Business Rule、Lifecycle、Domain Event、Domain Candidate；
 - 安全 parser 和 Draft 2020-12 Runtime Schema 校验；
 - 在 Semantic Closure、index 和 grounding 前执行安全语料门禁；
-- CLI 命令：init、validate、ids list、refs check、prepare、index、demo；
+- CLI 命令：init、validate、ids list、refs check、prepare、integrations、
+  index、demo；
 - OpenSpec `affects_domain` grounding；
+- 面向结构化非 OpenSpec 来源的 repository-local 声明式 Integration Profile；
+- Native Mapping、Sidecar Domain Declaration，以及确定性的 file / bundle
+  Source Unit；
 - Candidate 边界检查；
 - Semantic Retrieval Index，作为派生的 read-first 检索视图；
 - 以 canonical `opendomain/` 为入口的确定性工作区解析；
@@ -200,6 +204,8 @@ opendomain/
   lifecycles/
   events/
   candidates/
+  integrations/
+    profiles/
 ```
 
 不传 source path 时，CLI 会从当前项目根目录解析工作区：
@@ -243,6 +249,20 @@ OpenSpec 描述这次变更，OpenDomain 描述长期语义。
 ```bash
 npm run opendomain -- prepare <feature-spec-or-dir>
 ```
+
+对于其他结构化规划格式，可以在
+`opendomain/integrations/profiles/` 中声明 repository-local Profile：
+
+```bash
+npm run opendomain -- integrations validate
+npm run opendomain -- integrations list
+npm run opendomain -- prepare --profile <profile-id> <structured-file-or-bundle>
+```
+
+未显式选择时，只有一个 built-in adapter 或 Profile 匹配才会继续；多重匹配会
+失败，不按优先级猜测。Profile 只归一化来源中明确存在的 intent 和 OpenDomain
+ID，不扫描正文、不推断 ID，也不创建或提升 Candidate。完整说明见
+[Integration Profile 使用指南](docs/integration-profiles.md)。
 
 输出会告诉 Codex：
 
@@ -293,6 +313,9 @@ Candidate 不是 accepted truth。它只是待人类审查的提案。
 | 输出 JSON 验证结果 | `npm run opendomain -- validate examples/erp --json` |
 | 为 Feature 准备 grounding | `npm run opendomain -- prepare <feature-spec-or-dir>` |
 | 显式使用 OpenSpec integration | `npm run opendomain -- prepare --integration openspec <feature-spec-or-dir>` |
+| 列出 integration | `npm run opendomain -- integrations list` |
+| 验证 Integration Profile | `npm run opendomain -- integrations validate` |
+| 显式使用本地 Profile | `npm run opendomain -- prepare --profile <profile-id> <source-unit>` |
 | 列出 Candidate | `npm run opendomain -- candidate list examples/erp` |
 | 查看 Candidate | `npm run opendomain -- candidate show <candidate-id> examples/erp` |
 | 记录 Candidate review | `npm run opendomain -- candidate review <candidate-id> --decision rejected --reviewed-by <name> --reason <text> examples/erp` |
@@ -313,6 +336,7 @@ Candidate 不是 accepted truth。它只是待人类审查的提案。
 - [MVP PRD](docs/product-prd.md)
 - [架构说明](docs/architecture.md)
 - [Grounding Protocol v1](docs/grounding-protocol.md)
+- [Integration Profile 使用指南](docs/integration-profiles.md)
 - [Candidate 工作流](docs/candidate-workflow.md)
 - [Semantic Retrieval Index](docs/semantic-retrieval-index.md)
 - [MVP Grounding Demo](docs/mvp-grounding-demo.md)
@@ -332,6 +356,7 @@ OpenDomain 目前是 early alpha。
 - 运行 ERP 示例；
 - 验证 OpenDomain 文件格式；
 - 为 OpenSpec Feature 生成 grounding pack；
+- 用声明式 Profile 为其他结构化规划来源生成 grounding pack；
 - 用 index 生成 read-first plan；
 - 在本仓库中 dogfood OpenDomain 自身模型。
 

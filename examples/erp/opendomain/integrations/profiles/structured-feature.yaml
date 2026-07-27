@@ -1,0 +1,28 @@
+schema_version: "1.0"
+id: structured-feature
+source_type: structured-feature
+source_unit:
+  kind: file
+  match:
+    paths:
+      - external-features/*.yaml
+intent:
+  id:
+    from: primary.intent.id
+  name:
+    from: primary.intent.name
+  status:
+    from: primary.intent.status
+    default: proposed
+references:
+  mode: native
+  affects_domain:
+    concepts:
+      from: primary.domain.concepts
+      coerce: array
+    rules:
+      from: primary.domain.rules
+    lifecycles:
+      from: primary.domain.lifecycles
+    events:
+      from: primary.domain.events
