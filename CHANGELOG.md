@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.6 - 2026-07-27
+
 - Add repository-local declarative Integration Profile v1 for structured
   planning sources beyond the built-in OpenSpec adapter.
 - Add safe file and bundle Source Units, Native Mapping, strict Sidecar Domain
@@ -10,6 +12,10 @@
   `opendomain prepare --profile <id>`.
 - Add Profile-aware initialization, ERP examples, package installation smoke
   coverage, and complete usage documentation.
+- Upgrade `minimatch` to the patched v10 line and align supported Node.js
+  releases to Node.js 20 or 22 and newer, with CI coverage for both LTS lines.
+- Add a project-specific release runbook covering validation, npm dist-tags,
+  registry smoke tests, GitHub releases, and rollback.
 
 ## 0.1.0-alpha.5 - 2026-07-23
 

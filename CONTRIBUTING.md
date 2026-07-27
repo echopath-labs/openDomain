@@ -7,7 +7,7 @@ Git-native, evidence-backed, and easy for AI agents to consume.
 
 Requirements:
 
-- Node.js 20 or newer
+- Node.js 20 or Node.js 22 and newer
 
 Useful commands:
 
@@ -44,6 +44,8 @@ Keep the layers separate:
 - Update docs when commands, formats, or workflow expectations change.
 - Do not treat `opendomain/generated/` or legacy `.opendomain/index.json`
   as authoritative domain knowledge.
+
+Maintainer releases must follow `docs/releasing.md`.
 
 ## Planning Artifacts
 
