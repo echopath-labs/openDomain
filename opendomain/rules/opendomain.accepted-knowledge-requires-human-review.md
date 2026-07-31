@@ -4,6 +4,7 @@ id: opendomain.accepted-knowledge-requires-human-review
 name: Accepted knowledge requires human review
 context: opendomain
 status: accepted
+compatibility_note: Evidence references moved to public product artifacts; semantic meaning is unchanged.
 applies_to:
   - opendomain.domain-knowledge
   - opendomain.domain-concept
@@ -13,12 +14,12 @@ severity: must
 rule_type: invariant
 evidence:
   - type: spec
-    location: docs/OPEN_DOMAIN_DEVELOPMENT_GUIDE.md
-    summary: Verified Domain Knowledge must be confirmed by humans.
+    location: schemas/concept.schema.json
+    summary: Accepted concepts require evidence and accepted human review metadata.
     confidence: high
-  - type: spec
-    location: docs/product-prd.md
-    summary: The PRD states AI can propose and human must accept.
+  - type: test
+    location: tests/validator.test.mjs
+    summary: Validator tests reject accepted knowledge without review metadata.
     confidence: high
 review:
   state: accepted

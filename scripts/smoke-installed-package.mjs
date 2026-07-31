@@ -51,7 +51,7 @@ try {
   const cli = path.join(installedRoot, "bin", "opendomain.mjs");
   await access(path.join(installedRoot, "schemas", "integration-profile.schema.json"));
   await access(path.join(installedRoot, "schemas", "domain-declaration.schema.json"));
-  await access(path.join(installedRoot, "docs", "integration-profiles.md"));
+  await access(path.join(installedRoot, "schemas", "assurance-result.schema.json"));
   await access(path.join(installedRoot, "scripts", "smoke-installed-package.mjs"));
 
   const init = await runJsonCli(cli, ["init", "--example", "erp", "--json"], consumer);
@@ -88,10 +88,21 @@ try {
   assert.equal(automatic.grounding_request.integration.selected, "auto");
   assert.deepEqual(automatic.read_first, explicit.read_first);
 
+  const assurance = await runJsonCli(cli, [
+    "assure",
+    "openspec/changes/order-cancellation/spec.md",
+    "--json"
+  ], exampleRoot);
+  assert.equal(assurance.grounding.status, "required");
+  assert.equal(assurance.preparation.state, "prepared");
+  assert.notEqual(assurance.policy.outcome, "fail");
+  assert.ok(assurance.preparation.accepted_ids.includes("sales.order"));
+
   process.stdout.write(
     `Installed-package smoke passed: ${packPayload[0].filename}, `
     + `${inspection.valid_profile_count} Profile, `
-    + `${automatic.read_first.length} grounded sources.\n`
+    + `${automatic.read_first.length} grounded sources, `
+    + `Assurance ${assurance.policy.outcome}.\n`
   );
 } finally {
   await rm(temporaryRoot, { recursive: true, force: true });

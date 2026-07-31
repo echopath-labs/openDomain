@@ -5,6 +5,7 @@ name: Domain Candidate
 context: opendomain
 status: accepted
 version: 1
+compatibility_note: Evidence references moved to public product artifacts; semantic meaning and version are unchanged.
 aliases:
   - Candidate
 not_synonyms:
@@ -22,12 +23,12 @@ lifecycles:
 events: []
 evidence:
   - type: spec
-    location: docs/OPEN_DOMAIN_DEVELOPMENT_GUIDE.md
-    summary: Domain Candidate is the default target for AI-discovered knowledge before human review.
+    location: schemas/candidate.schema.json
+    summary: The public Candidate schema requires proposed change, evidence, confidence, and review metadata.
     confidence: high
-  - type: spec
-    location: docs/candidate-workflow.md
-    summary: Candidate workflow is the safety boundary between AI inference and accepted business knowledge.
+  - type: code
+    location: src/candidates.mjs
+    summary: Candidate commands preserve proposed knowledge separately from accepted OpenDomain files.
     confidence: high
 review:
   state: accepted

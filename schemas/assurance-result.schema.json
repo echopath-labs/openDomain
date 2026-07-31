@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opendomain.dev/schemas/assurance-result.schema.json",
+  "title": "OpenDomain Grounding Assurance Result v1",
+  "type": "object",
+  "required": [
+    "assurance_version",
+    "grounding_request",
+    "grounding",
+    "preparation",
+    "policy",
+    "findings",
+    "grounding_pack"
+  ],
+  "properties": {
+    "assurance_version": {
+      "const": "1.0"
+    },
+    "grounding_request": {
+      "oneOf": [
+        { "$ref": "grounding-request.schema.json" },
+        { "type": "null" }
+      ]
+    },
+    "grounding": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": {
+          "oneOf": [
+            { "enum": ["required", "not_required", "unclassified"] },
+            { "type": "null" }
+          ]
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "preparation": {
+      "type": "object",
+      "required": ["state", "accepted_ids", "candidate_ids"],
+      "properties": {
+        "state": {
+          "enum": ["prepared", "not_required", "incomplete", "invalid"]
+        },
+        "accepted_ids": {
+          "$ref": "#/$defs/idArray"
+        },
+        "candidate_ids": {
+          "$ref": "#/$defs/idArray"
+        }
+      },
+      "additionalProperties": false
+    },
+    "policy": {
+      "type": "object",
+      "required": ["mode", "outcome"],
+      "properties": {
+        "mode": {
+          "enum": ["advisory", "enforced"]
+        },
+        "outcome": {
+          "enum": ["pass", "warn", "fail"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/finding"
+      }
+    },
+    "grounding_pack": {
+      "$ref": "grounding-pack.schema.json"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "preparation": {
+            "properties": {
+              "state": { "const": "invalid" }
+            },
+            "required": ["state"]
+          }
+        },
+        "required": ["preparation"]
+      },
+      "then": {
+        "properties": {
+          "policy": {
+            "properties": {
+              "outcome": { "const": "fail" }
+            },
+            "required": ["outcome"]
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "idArray": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "finding": {
+      "type": "object",
+      "required": ["code", "severity", "file", "field", "problem", "fix"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "severity": {
+          "enum": ["error", "warning"]
+        },
+        "file": {
+          "type": "string"
+        },
+        "field": {
+          "type": "string"
+        },
+        "problem": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fix": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

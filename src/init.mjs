@@ -200,8 +200,8 @@ opendomain integrations validate
 \`\`\`
 
 Profiles must not execute code, infer IDs from prose, or promote Domain
-Candidates. See the packaged Integration Profile documentation and schema
-before adding a Profile.
+Candidates. See the package README and Integration Profile schema before adding
+a Profile.
 `;
 }
 
@@ -317,11 +317,12 @@ This repository uses OpenDomain for long-lived domain semantics.
 Before implementing a non-trivial OpenSpec-style feature, run:
 
 \`\`\`bash
-opendomain prepare <feature-spec-or-dir>
+opendomain assure <feature-spec-or-dir>
 \`\`\`
 
-Read files listed under \`Read first\`. Treat files listed under
-\`Candidate boundaries\` as proposed knowledge, not accepted truth.
+Read files listed under \`Accepted grounding evidence\`. Treat files listed
+under \`Candidate boundaries\` as proposed knowledge, not accepted truth. A
+warning permits advisory progress but does not mean grounding is complete.
 
 Boundaries:
 

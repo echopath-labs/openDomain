@@ -15,6 +15,7 @@ Run both grounding paths from this directory:
 
 ```bash
 opendomain prepare openspec/changes/order-cancellation/spec.md
+opendomain assure openspec/changes/order-cancellation/spec.md
 opendomain integrations validate
 opendomain prepare --profile structured-feature external-features/order-cancellation.yaml
 ```

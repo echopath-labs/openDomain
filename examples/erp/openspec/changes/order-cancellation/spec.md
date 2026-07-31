@@ -3,6 +3,9 @@ type: feature_spec
 id: spec.order-cancellation
 name: Order cancellation
 status: proposed
+grounding:
+  status: required
+  rationale: Cancellation behavior is constrained by accepted order semantics and lifecycle rules.
 affects_domain:
   concepts:
     - sales.order

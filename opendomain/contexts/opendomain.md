@@ -3,12 +3,13 @@ type: bounded_context
 id: opendomain
 name: OpenDomain
 status: accepted
+compatibility_note: Evidence references moved to public product artifacts; semantic meaning is unchanged.
 owners:
   - opendomain-maintainer
 evidence:
   - type: spec
-    location: docs/OPEN_DOMAIN_DEVELOPMENT_GUIDE.md
-    summary: Defines OpenDomain as the Git-native, evidence-backed domain semantic layer.
+    location: README.md
+    summary: The public product definition describes OpenDomain as a Git-native, evidence-backed domain semantic layer.
     confidence: high
   - type: human_review
     location: conversation:2026-07-03-dogfood-opendomain-self-model

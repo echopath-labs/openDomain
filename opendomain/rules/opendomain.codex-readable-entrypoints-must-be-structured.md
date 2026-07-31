@@ -4,6 +4,7 @@ id: opendomain.codex-readable-entrypoints-must-be-structured
 name: Codex-readable entrypoints must be structured
 context: opendomain
 status: accepted
+compatibility_note: Evidence references moved to public product artifacts; semantic meaning is unchanged.
 applies_to:
   - opendomain.domain-knowledge
   - opendomain.grounding-pack
@@ -11,12 +12,12 @@ severity: must
 rule_type: policy
 evidence:
   - type: spec
-    location: docs/OPEN_DOMAIN_DEVELOPMENT_GUIDE.md
-    summary: OpenDomain files should be human reviewable, agent parseable, Git diffable, and tooling validated.
+    location: schemas/opendomain.schema.json
+    summary: Public JSON Schemas provide structured, machine-validated entrypoints for OpenDomain sources.
     confidence: high
   - type: spec
-    location: docs/product-prd.md
-    summary: OpenDomain's primary user is an AI coding agent that must locate and consume relevant domain semantics before changing software.
+    location: schemas/grounding-pack.schema.json
+    summary: Grounding Pack provides a structured read-first result with explicit Candidate boundaries.
     confidence: high
   - type: human_review
     location: conversation:2026-07-06-codex-readability

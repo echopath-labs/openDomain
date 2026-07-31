@@ -45,6 +45,8 @@ This workspace now includes the first MVP slices:
 - CLI commands for project init, validation, ID listing, reference checks,
   grounding, indexing, and demo
 - OpenSpec `affects_domain` grounding
+- Explicit `required`, `not_required`, and `unclassified` grounding decisions
+- Advisory and enforced Grounding Assurance for Codex and CI
 - Declarative repository-local Integration Profiles for structured non-OpenSpec
   sources, with Native Mapping and Sidecar Domain Declaration
 - Deterministic file or bundle Source Units and explicit or automatic Profile
@@ -57,8 +59,6 @@ This workspace now includes the first MVP slices:
 The source of truth remains Markdown with YAML front matter stored in Git.
 
 ## Usage
-
-Start with [docs/usage.md](docs/usage.md).
 
 Install the CLI from npm:
 
@@ -77,6 +77,7 @@ npm run opendomain -- help
 npm run opendomain -- init
 npm run opendomain -- validate
 npm run prepare:demo
+npm run opendomain -- assure examples/erp/openspec/changes/order-cancellation/spec.md
 npm run opendomain -- integrations validate
 npm run opendomain -- integrations list
 npm run opendomain -- candidate list examples/erp
@@ -92,21 +93,56 @@ readable when the canonical root is absent. If both exist, `opendomain/` wins
 with a warning; the roots are never merged. Pass a file or directory explicitly
 when validating a fixture or external corpus such as `examples/erp`.
 
+An OpenSpec-style source unit can declare an explicit grounding decision:
+
+```yaml
+grounding:
+  status: required
+  rationale: Cancellation is constrained by accepted order semantics.
+affects_domain:
+  concepts:
+    - sales.order
+  rules: []
+  lifecycles: []
+  events: []
+```
+
+The supported statuses are `required`, `not_required`, and `unclassified`.
+`not_required` requires a rationale and forbids every OpenDomain ID. Empty IDs
+under `required` represent an incomplete `domain_model_gap`; empty IDs never
+imply `not_required`.
+
+Run the read-only preflight locally or in CI:
+
+```bash
+opendomain assure <source-unit>
+opendomain assure <source-unit> --mode enforced --json
+```
+
+Advisory mode warns but exits zero for `unclassified` and `domain_model_gap`.
+Enforced mode fails those incomplete states. Malformed input, contradictions,
+broken references, integration ambiguity, and accepted/Candidate trust boundary
+violations fail in both modes. Run `opendomain init` before adopting Assurance
+in an existing project. The result reports observed evidence; it does not prove
+Agent comprehension or independently attest a historical repository state.
+
+Repository-local Integration Profiles can normalize explicit structured intent
+and OpenDomain IDs from non-OpenSpec sources. Profiles do not scan prose, infer
+IDs, execute code, create Candidates, or promote accepted knowledge. The
+machine-readable contracts are published under `schemas/`.
+
 ## Project Status
 
 OpenDomain is early alpha. The current repository is ready for public iteration,
 but the format and CLI may still change.
 
-Useful entry points:
+Public entry points:
 
-- [Getting started](docs/getting-started.md)
-- [Usage guide](docs/usage.md)
-- [Grounding Protocol v1](docs/grounding-protocol.md)
-- [Integration Profile guide](docs/integration-profiles.md)
-- [Roadmap](ROADMAP.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
 - [Changelog](CHANGELOG.md)
+- `schemas/` for machine-readable contracts
+- `examples/erp/` for synthetic integration fixtures
 
 License: MIT.
 
@@ -115,16 +151,6 @@ License: MIT.
 ```text
 .
 ├── README.md
-├── docs/
-│   ├── OPEN_DOMAIN_DEVELOPMENT_GUIDE.md
-│   ├── getting-started.md
-│   ├── vision.md
-│   ├── glossary.md
-│   ├── architecture.md
-│   ├── grounding-protocol.md
-│   ├── integration-profiles.md
-│   ├── candidate-workflow.md
-│   └── decisions/
 ├── opendomain/
 │   ├── integrations/profiles/
 │   └── README.md
@@ -150,14 +176,10 @@ npm run opendomain -- validate examples/erp
 npm run demo
 ```
 
-See [docs/mvp-grounding-demo.md](docs/mvp-grounding-demo.md).
-
 ## Semantic Retrieval Index
 
 The index is a derived read-first view. It helps Codex find accepted source
 files and related Candidate boundaries, but it is not source of truth.
-
-See [docs/semantic-retrieval-index.md](docs/semantic-retrieval-index.md).
 
 ## Dogfooding
 
@@ -165,10 +187,7 @@ OpenDomain now models part of its own product semantics under `opendomain/`.
 
 ```bash
 npm run opendomain -- validate
-npm run opendomain -- prepare examples/self-model/openspec/changes/self-model-maintenance/spec.md
 ```
-
-See [docs/dogfooding-self-model.md](docs/dogfooding-self-model.md).
 
 ## Planning Split
 
@@ -177,4 +196,8 @@ Use this rule when preserving planning:
 - `opendomain/`: long-lived OpenDomain semantics
 - `opendomain/candidates/`: proposed or inferred semantics
 - a project's optional `openspec/changes/`: future delivery work
-- `docs/`: narrative explanation and product guidance
+
+Maintainer OpenSpec, PRDs, ADRs, dogfooding, review notes, roadmaps, and release
+procedures are development-process records. They are intentionally excluded
+from this public repository and from the npm package. The OpenSpec files under
+`examples/erp/` are synthetic interoperability fixtures, not project records.

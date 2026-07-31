@@ -35,6 +35,7 @@ export async function prepareGroundingPack(inputPath, options = {}) {
     const document = documentsById.get(affected.id);
     if (!document) {
       errors.push(issue({
+        code: "broken_domain_reference",
         file: groundingRequest.source.path,
         field: affected.field,
         problem: `Broken affects_domain reference '${affected.id}'.`,
@@ -45,6 +46,7 @@ export async function prepareGroundingPack(inputPath, options = {}) {
 
     if (document.frontmatter.status !== "accepted") {
       errors.push(issue({
+        code: "non_accepted_domain_reference",
         file: groundingRequest.source.path,
         field: affected.field,
         problem: `Feature spec references non-accepted OpenDomain knowledge '${affected.id}'.`,
@@ -260,6 +262,7 @@ function uniqueIssues(issues) {
 
 function issue(issueFields) {
   return {
+    ...(issueFields.code ? { code: issueFields.code } : {}),
     severity: issueFields.severity ?? "error",
     file: issueFields.file,
     field: issueFields.field,

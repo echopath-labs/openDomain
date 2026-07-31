@@ -77,6 +77,44 @@ test("Grounding Request schema remains compatible with optional Profile metadata
   assert.deepEqual(issues, []);
 });
 
+test("Grounding Request schema accepts explicit decisions and requires skip rationale", () => {
+  const request = {
+    protocol_version: "1.0",
+    source: {
+      type: "openspec",
+      path: "changes/add-x/grounding.md"
+    },
+    intent: {
+      id: "spec.add-x",
+      name: "Add X",
+      status: "proposed"
+    },
+    grounding: {
+      status: "required"
+    },
+    affects_domain: {
+      concepts: [],
+      rules: [],
+      lifecycles: [],
+      events: []
+    }
+  };
+
+  assert.deepEqual(validateIntegrationValue("request", request), []);
+
+  request.grounding.status = "not_required";
+  const issues = validateIntegrationValue("request", request);
+  assert.ok(issues.some((issue) => issue.field === "grounding.rationale"));
+
+  request.grounding.rationale = "This source unit does not affect domain semantics.";
+  request.affects_domain.concepts = ["sales.order"];
+  const contradictoryIssues = validateIntegrationValue("request", request);
+  assert.ok(contradictoryIssues.some((issue) => (
+    issue.field === "affects_domain.concepts"
+    && issue.problem.includes("must NOT have more than 0 items")
+  )));
+});
+
 function nativeFileProfile() {
   return {
     schema_version: "1.0",

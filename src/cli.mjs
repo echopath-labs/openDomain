@@ -4,6 +4,11 @@ import {
   formatGroundingPack,
   prepareGroundingPack
 } from "./prepare.mjs";
+import {
+  assureGrounding,
+  formatAssuranceResult,
+  invalidAssuranceResult
+} from "./assurance.mjs";
 import { initializeProject } from "./init.mjs";
 import { listCandidates, reviewCandidate, showCandidate } from "./candidates.mjs";
 import { inspectIntegrations } from "./profile-registry.mjs";
@@ -34,6 +39,10 @@ export async function runCli(argv, options = {}) {
 
   if (command === "prepare") {
     return runPrepare([subcommand, ...rest].filter(Boolean), io);
+  }
+
+  if (command === "assure") {
+    return runAssure([subcommand, ...rest].filter(Boolean), io);
   }
 
   if (command === "integrations" && (subcommand === "list" || subcommand === "validate")) {
@@ -88,6 +97,7 @@ Usage:
   opendomain init [--example erp] [--json]
   opendomain validate [path] [--json]
   opendomain prepare [--integration openspec | --profile <id>] <source-unit> [--json]
+  opendomain assure [--integration openspec | --profile <id>] [--mode advisory|enforced] <source-unit> [--json]
   opendomain integrations list [--json]
   opendomain integrations validate [--json]
   opendomain index build [path] [--out <file>] [--json]
@@ -393,14 +403,43 @@ async function runPrepare(args, io) {
   return pack.errors.length > 0 ? 1 : 0;
 }
 
-function parsePrepareArgs(args) {
+async function runAssure(args, io) {
+  const parsed = parsePrepareArgs(args, {
+    command: "assure",
+    allowMode: true
+  });
+  const result = parsed.errors.length > 0
+    ? invalidAssuranceResult(parsed.errors, {
+        input: parsed.path,
+        mode: parsed.mode
+      })
+    : await assureGrounding(parsed.path, {
+        cwd: io.cwd,
+        integration: parsed.integration,
+        profile: parsed.profile,
+        mode: parsed.mode
+      });
+
+  if (parsed.json) {
+    io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  } else {
+    io.stdout.write(formatAssuranceResult(result));
+  }
+
+  return result.policy.outcome === "fail" ? 1 : 0;
+}
+
+function parsePrepareArgs(args, options = {}) {
+  const command = options.command ?? "prepare";
   const parsed = {
     json: false,
     integration: undefined,
     profile: undefined,
+    mode: options.allowMode ? "advisory" : undefined,
     path: undefined,
     errors: []
   };
+  let modeProvided = false;
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -450,11 +489,43 @@ function parsePrepareArgs(args) {
       }
       continue;
     }
+    if (arg === "--mode" && options.allowMode) {
+      if (modeProvided) {
+        parsed.errors.push(inputIssue(
+          "mode",
+          "--mode was provided more than once.",
+          "Select exactly one Assurance policy mode."
+        ));
+      }
+      modeProvided = true;
+      const value = args[index + 1];
+      if (!value || value.startsWith("--")) {
+        parsed.errors.push(inputIssue(
+          "mode",
+          "Missing Assurance policy mode after --mode.",
+          "Use --mode advisory or --mode enforced."
+        ));
+      } else {
+        index += 1;
+        if (!["advisory", "enforced"].includes(value)) {
+          parsed.errors.push(inputIssue(
+            "mode",
+            `Unsupported Assurance policy mode '${value}'.`,
+            "Use --mode advisory or --mode enforced."
+          ));
+        } else {
+          parsed.mode = value;
+        }
+      }
+      continue;
+    }
     if (arg.startsWith("--")) {
       parsed.errors.push(inputIssue(
         "$",
-        `Unknown prepare argument '${arg}'.`,
-        "Use --integration openspec, --profile <id>, --json, and one source path."
+        `Unknown ${command} argument '${arg}'.`,
+        options.allowMode
+          ? "Use --integration openspec, --profile <id>, --mode advisory|enforced, --json, and one source path."
+          : "Use --integration openspec, --profile <id>, --json, and one source path."
       ));
       continue;
     }

@@ -9,7 +9,9 @@ const SCHEMA_ID_PREFIX = "https://opendomain.dev/schemas/";
 const SCHEMA_DEFINITIONS = Object.freeze({
   profile: "integration-profile.schema.json",
   declaration: "domain-declaration.schema.json",
-  request: "grounding-request.schema.json"
+  request: "grounding-request.schema.json",
+  pack: "grounding-pack.schema.json",
+  assurance: "assurance-result.schema.json"
 });
 
 let defaultRegistry;

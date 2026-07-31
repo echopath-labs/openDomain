@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Add explicit `required`, `not_required`, and `unclassified` Grounding Request
+  decisions while preserving Grounding Protocol `1.0` compatibility.
+- Add read-only `opendomain assure` with advisory and enforced policy modes,
+  deterministic findings, brownfield model-gap handling, and a packaged result
+  schema.
+- Reject contradictory `not_required` domain references before Grounding Pack
+  preparation can resolve or expose accepted evidence.
+- Keep maintainer OpenSpec and narrative development records outside the public
+  repository and npm package; README and JSON Schemas remain the public usage
+  and contract entrypoints.
+
 ## 0.1.0-alpha.6 - 2026-07-27
 
 - Add repository-local declarative Integration Profile v1 for structured

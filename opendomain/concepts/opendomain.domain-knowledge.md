@@ -5,6 +5,7 @@ name: Domain Knowledge
 context: opendomain
 status: accepted
 version: 1
+compatibility_note: Evidence references moved to public product artifacts; semantic meaning and version are unchanged.
 aliases:
   - Business Knowledge
   - Domain Semantics
@@ -30,12 +31,12 @@ lifecycles: []
 events: []
 evidence:
   - type: spec
-    location: docs/OPEN_DOMAIN_DEVELOPMENT_GUIDE.md
-    summary: OpenDomain focuses on stable business/domain knowledge rather than change intent or agent continuity.
+    location: README.md
+    summary: The public boundary separates stable domain knowledge from change intent and Agent continuity.
     confidence: high
   - type: spec
-    location: docs/product-prd.md
-    summary: MVP defines OpenDomain as durable business semantics with evidence and review state.
+    location: schemas/opendomain.schema.json
+    summary: The public schema registry defines the supported domain semantic source types.
     confidence: high
 review:
   state: accepted
