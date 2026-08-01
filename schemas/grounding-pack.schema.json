@@ -59,7 +59,7 @@
         },
         "name": { "type": "string" },
         "status": { "const": "accepted" },
-        "file": { "type": "string", "minLength": 1 },
+        "file": { "type": "string", "minLength": 1, "pattern": "\\S" },
         "context": { "type": "string" }
       },
       "additionalProperties": true
@@ -72,7 +72,7 @@
         "status": { "type": "string", "minLength": 1 },
         "target_id": { "type": "string", "minLength": 1, "pattern": "\\S" },
         "confidence": { "type": "string" },
-        "file": { "type": "string", "minLength": 1 }
+        "file": { "type": "string", "minLength": 1, "pattern": "\\S" }
       },
       "additionalProperties": true
     },

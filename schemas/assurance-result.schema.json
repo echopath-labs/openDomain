@@ -42,16 +42,10 @@
     },
     "preparation": {
       "type": "object",
-      "required": ["state", "accepted_ids", "candidate_ids"],
+      "required": ["state"],
       "properties": {
         "state": {
           "enum": ["prepared", "not_required", "incomplete", "invalid"]
-        },
-        "accepted_ids": {
-          "$ref": "#/$defs/idArray"
-        },
-        "candidate_ids": {
-          "$ref": "#/$defs/idArray"
         }
       },
       "additionalProperties": false
@@ -120,9 +114,9 @@
           { "$ref": "#/$defs/requiredGroundingPair" }
         ],
         "properties": {
-          "preparation": {
+          "grounding_pack": {
             "properties": {
-              "accepted_ids": { "minItems": 1 }
+              "read_first": { "minItems": 1 }
             }
           },
           "policy": {
@@ -150,12 +144,6 @@
           { "$ref": "#/$defs/notRequiredGroundingPair" }
         ],
         "properties": {
-          "preparation": {
-            "properties": {
-              "accepted_ids": { "maxItems": 0 },
-              "candidate_ids": { "maxItems": 0 }
-            }
-          },
           "policy": {
             "properties": {
               "outcome": { "enum": ["pass", "warn"] }
@@ -347,15 +335,6 @@
         }
       },
       "required": ["grounding"]
-    },
-    "idArray": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "minLength": 1,
-        "pattern": "\\S"
-      },
-      "uniqueItems": true
     },
     "finding": {
       "type": "object",

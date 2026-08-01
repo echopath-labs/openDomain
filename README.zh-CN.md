@@ -288,8 +288,11 @@ Assurance 将状态判断、准备结果和执行策略分开报告：
 
 Result Schema 会将 `prepared` 绑定到 `required`，将 `not_required` 绑定到无 evidence
 的显式跳过，并限制 `incomplete` 只能对应 `required` 或 `unclassified`。
-`read_first` 只允许 bounded context、concept、rule、lifecycle 与 event；
-`domain_candidate` 必须留在 Candidate boundaries 中。
+`read_first` 只允许 bounded context、concept、rule、lifecycle 与 event，且每个
+evidence path 都必须包含非空白字符；`domain_candidate` 必须留在 Candidate
+boundaries 中。`preparation` 只报告状态，evidence ID、类型和路径只存在于
+`grounding_pack.read_first` 与 `grounding_pack.candidate_boundaries`，从结构上避免
+Assurance Result 携带相互矛盾的 evidence 摘要。
 
 存量项目应先运行 `opendomain init`。初始化后即使还没有 accepted knowledge，
 `required` 加空引用也会被识别为 `domain_model_gap`；完全缺少 OpenDomain workspace

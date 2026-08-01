@@ -96,7 +96,7 @@ try {
   assert.equal(assurance.grounding.status, "required");
   assert.equal(assurance.preparation.state, "prepared");
   assert.notEqual(assurance.policy.outcome, "fail");
-  assert.ok(assurance.preparation.accepted_ids.includes("sales.order"));
+  assert.ok(assurance.grounding_pack.read_first.some((item) => item.id === "sales.order"));
 
   process.stdout.write(
     `Installed-package smoke passed: ${packPayload[0].filename}, `

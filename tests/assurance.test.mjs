@@ -34,7 +34,7 @@ test("required grounding with accepted IDs is prepared and passes", async (conte
   assert.equal(result.grounding.status, "required");
   assert.equal(result.preparation.state, "prepared");
   assert.equal(result.policy.outcome, "pass");
-  assert.ok(result.preparation.accepted_ids.includes("sales.order"));
+  assert.ok(readFirstIds(result).includes("sales.order"));
   assert.deepEqual(validateIntegrationValue("assurance", result), []);
 });
 
@@ -63,7 +63,7 @@ test("externally constructed packs require accepted evidence for every affected 
 
   assert.equal(missingEvidence.preparation.state, "invalid");
   assert.equal(missingEvidence.policy.outcome, "fail");
-  assert.deepEqual(missingEvidence.preparation.accepted_ids, []);
+  assert.deepEqual(readFirstIds(missingEvidence), []);
   assert.ok(missingEvidence.findings.some((item) => (
     item.code === "unresolved_grounding_evidence"
     && item.problem.includes("sales.order")
@@ -83,17 +83,17 @@ test("externally constructed packs require accepted evidence for every affected 
 
   assert.equal(resolvedEvidence.preparation.state, "prepared");
   assert.equal(resolvedEvidence.policy.outcome, "pass");
-  assert.deepEqual(resolvedEvidence.preparation.accepted_ids, ["sales.order"]);
+  assert.deepEqual(readFirstIds(resolvedEvidence), ["sales.order"]);
   assert.deepEqual(validateIntegrationValue("assurance", resolvedEvidence), []);
 
-  const inconsistent = {
+  const forgedSummary = {
     ...resolvedEvidence,
     preparation: {
       ...resolvedEvidence.preparation,
-      accepted_ids: []
+      accepted_ids: ["sales.fake"]
     }
   };
-  assert.ok(validateIntegrationValue("assurance", inconsistent).length > 0);
+  assert.ok(validateIntegrationValue("assurance", forgedSummary).length > 0);
 });
 
 test("external accepted evidence must match the affected domain category", () => {
@@ -168,8 +168,28 @@ test("external Candidates cannot masquerade as accepted read-first evidence", ()
 
   assert.equal(result.preparation.state, "invalid");
   assert.equal(result.policy.outcome, "fail");
-  assert.deepEqual(result.preparation.accepted_ids, []);
+  assert.deepEqual(readFirstIds(result), []);
   assert.ok(result.findings.some((item) => item.code === "invalid_grounding_pack"));
+  assert.deepEqual(validateIntegrationValue("assurance", result), []);
+});
+
+test("external packs reject whitespace-only evidence paths", () => {
+  const result = evaluateGroundingPack(externalGroundingPack({
+    readFirst: [{
+      id: "sales.order",
+      type: "domain_concept",
+      status: "accepted",
+      file: "   "
+    }]
+  }));
+
+  assert.equal(result.preparation.state, "invalid");
+  assert.equal(result.policy.outcome, "fail");
+  assert.deepEqual(readFirstIds(result), []);
+  assert.ok(result.findings.some((item) => (
+    item.code === "invalid_grounding_pack"
+    && item.field === "read_first[0].file"
+  )));
   assert.deepEqual(validateIntegrationValue("assurance", result), []);
 });
 
@@ -331,7 +351,7 @@ test("Assurance Result schema binds preparation states to grounding statuses", (
     }]
   }));
   assert.equal(incomplete.preparation.state, "incomplete");
-  assert.deepEqual(incomplete.preparation.accepted_ids, ["sales.order"]);
+  assert.deepEqual(readFirstIds(incomplete), ["sales.order"]);
 
   const forgedPrepared = {
     ...incomplete,
@@ -409,7 +429,7 @@ test("not_required grounding needs a rationale and cannot contain domain IDs", a
   const brokenContradiction = await assureGrounding("feature.md", { cwd: project });
   assert.ok(brokenContradiction.findings.some((item) => item.code === "grounding_decision_contradiction"));
   assert.equal(brokenContradiction.grounding_pack.grounding_request, null);
-  assert.deepEqual(brokenContradiction.preparation.accepted_ids, []);
+  assert.deepEqual(readFirstIds(brokenContradiction), []);
 });
 
 test("prepared workspace evidence must match the affected domain category", async (context) => {
@@ -525,10 +545,10 @@ test("unclassified partial grounding stays incomplete under both policies", asyn
 
   assert.equal(advisory.preparation.state, "incomplete");
   assert.equal(advisory.policy.outcome, "warn");
-  assert.ok(advisory.preparation.accepted_ids.includes("sales.order"));
+  assert.ok(readFirstIds(advisory).includes("sales.order"));
   assert.equal(enforced.preparation.state, "incomplete");
   assert.equal(enforced.policy.outcome, "fail");
-  assert.ok(enforced.preparation.accepted_ids.includes("sales.order"));
+  assert.ok(readFirstIds(enforced).includes("sales.order"));
   assert.equal(
     enforced.findings.find((item) => item.code === "grounding_unclassified")?.severity,
     "error"
@@ -572,7 +592,7 @@ test("an initialized brownfield workspace can expose a model gap before acceptan
 
   assert.equal(result.preparation.state, "incomplete");
   assert.equal(result.policy.outcome, "warn");
-  assert.deepEqual(result.preparation.accepted_ids, []);
+  assert.deepEqual(readFirstIds(result), []);
   assert.ok(result.findings.some((item) => item.code === "domain_model_gap"));
 });
 
@@ -712,7 +732,7 @@ test("Profile v1 remains readable but Assurance keeps it unclassified", async ()
   assert.equal(advisory.grounding.status, "unclassified");
   assert.equal(advisory.preparation.state, "incomplete");
   assert.equal(advisory.policy.outcome, "warn");
-  assert.ok(advisory.preparation.accepted_ids.includes("sales.order"));
+  assert.ok(readFirstIds(advisory).includes("sales.order"));
   assert.ok(advisory.findings.some((item) => item.code === "legacy_grounding_status_missing"));
   assert.equal(enforced.policy.outcome, "fail");
 });
@@ -724,6 +744,10 @@ async function createProject(context) {
     recursive: true
   });
   return project;
+}
+
+function readFirstIds(result) {
+  return result.grounding_pack.read_first.map((item) => item.id);
 }
 
 async function writeFeature(project, options) {

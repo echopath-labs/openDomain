@@ -136,7 +136,11 @@ Agent comprehension or independently attest a historical repository state.
 The Result Schema binds `prepared` to `required`, `not_required` to an explicit
 evidence-free skip, and `incomplete` to `required` or `unclassified`.
 `read_first` accepts only bounded contexts, concepts, rules, lifecycles, and
-events; `domain_candidate` entries remain confined to Candidate boundaries.
+events, and every evidence path must contain non-whitespace text;
+`domain_candidate` entries remain confined to Candidate boundaries.
+`preparation` reports only its state. Evidence IDs, types, and paths live only
+in `grounding_pack.read_first` and `grounding_pack.candidate_boundaries`, so an
+Assurance Result cannot carry a divergent evidence summary.
 
 Repository-local Integration Profiles can normalize explicit structured intent
 and OpenDomain IDs from non-OpenSpec sources. Profiles do not scan prose, infer

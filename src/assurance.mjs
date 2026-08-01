@@ -107,9 +107,7 @@ export function evaluateGroundingPack(inputPack, options = {}) {
       ...(grounding.rationale ? { rationale: grounding.rationale } : {})
     },
     preparation: {
-      state,
-      accepted_ids: uniqueIds(pack.read_first),
-      candidate_ids: uniqueIds(pack.candidate_boundaries)
+      state
     },
     policy: {
       mode,
@@ -260,10 +258,6 @@ function affectedEvidenceIssues(affectedIds, readFirst) {
     }
   }
   return issues;
-}
-
-function uniqueIds(items) {
-  return [...new Set(items.map((item) => item.id))];
 }
 
 export function invalidAssuranceResult(errors, options = {}) {
