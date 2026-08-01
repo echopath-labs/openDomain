@@ -15,6 +15,8 @@
   Request Builder while rejecting external Packs that omit `grounding`.
 - Reject whitespace-only skip rationales, sanitize external diagnostic codes,
   and enforce incomplete-state policy outcomes in the public Result Schema.
+- Reject affected IDs whose accepted evidence type does not match the declared
+  concepts, rules, lifecycles, or events category.
 - Keep maintainer OpenSpec and narrative development records outside the public
   repository and npm package; README and JSON Schemas remain the public usage
   and contract entrypoints.

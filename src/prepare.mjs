@@ -44,6 +44,17 @@ export async function prepareGroundingPack(inputPath, options = {}) {
       continue;
     }
 
+    if (document.type !== affected.expectedType) {
+      errors.push(issue({
+        code: "domain_reference_type_mismatch",
+        file: groundingRequest.source.path,
+        field: affected.field,
+        problem: `Reference '${affected.id}' points to ${document.type}, expected ${affected.expectedType}.`,
+        fix: `Move the id to the correct affects_domain section or reference a ${affected.expectedType}.`
+      }));
+      continue;
+    }
+
     if (document.frontmatter.status !== "accepted") {
       errors.push(issue({
         code: "non_accepted_domain_reference",

@@ -1,4 +1,5 @@
 import path from "node:path";
+import { AFFECTS_DOMAIN_TYPES } from "./domain-reference-types.mjs";
 import { parseMarkdownFile, FrontMatterError } from "./frontmatter.mjs";
 import { resolveWorkspaceSources } from "./workspace-resolver.mjs";
 import {
@@ -34,13 +35,6 @@ const REQUIRED_FIELDS = {
     "review"
   ],
   feature_spec: ["type", "id", "name", "status", "affects_domain"]
-};
-
-const AFFECTS_DOMAIN_TYPES = {
-  concepts: "domain_concept",
-  rules: "business_rule",
-  lifecycles: "lifecycle",
-  events: "domain_event"
 };
 
 export async function validatePath(targetPath, options = {}) {

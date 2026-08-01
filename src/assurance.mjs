@@ -58,16 +58,13 @@ export function evaluateGroundingPack(inputPack, options = {}) {
           fix: "Investigate the domain and propose Domain Candidates before enforcing this request."
         }));
       } else {
-        const unresolved = unresolvedAffectedIds(affectedIds, pack.read_first);
-        if (unresolved.length > 0) {
-          findings.push(finding({
-            code: "unresolved_grounding_evidence",
+        const evidenceIssues = affectedEvidenceIssues(affectedIds, pack.read_first);
+        if (evidenceIssues.length > 0) {
+          findings.push(...evidenceIssues.map((item) => finding({
+            ...item,
             severity: "error",
-            file: request.source.path,
-            field: unresolved[0].field,
-            problem: `Grounding is required, but accepted evidence was not resolved for: ${unresolved.map((item) => item.id).join(", ")}.`,
-            fix: "Rebuild the Grounding Pack and ensure every declared affects_domain ID resolves to accepted OpenDomain knowledge."
-          }));
+            file: request.source.path
+          })));
         } else {
           state = "prepared";
         }
@@ -188,20 +185,38 @@ function normalizePackIssueField(field) {
     : field;
 }
 
-function unresolvedAffectedIds(affectedIds, readFirst) {
-  const resolvedIds = new Set(
-    readFirst
-      .filter((item) => item?.status === "accepted")
-      .map((item) => item.id)
-  );
-  const seen = new Set();
-  return affectedIds.filter((item) => {
-    if (seen.has(item.id)) {
-      return false;
+function affectedEvidenceIssues(affectedIds, readFirst) {
+  const acceptedById = new Map();
+  for (const item of readFirst.filter((entry) => entry?.status === "accepted")) {
+    const matches = acceptedById.get(item.id) ?? [];
+    matches.push(item);
+    acceptedById.set(item.id, matches);
+  }
+
+  const issues = [];
+  for (const affected of affectedIds) {
+    const evidence = acceptedById.get(affected.id) ?? [];
+    if (evidence.length === 0) {
+      issues.push({
+        code: "unresolved_grounding_evidence",
+        field: affected.field,
+        problem: `Grounding is required, but accepted evidence was not resolved for '${affected.id}'.`,
+        fix: "Rebuild the Grounding Pack and ensure every declared affects_domain ID resolves to accepted OpenDomain knowledge."
+      });
+      continue;
     }
-    seen.add(item.id);
-    return !resolvedIds.has(item.id);
-  });
+
+    if (!evidence.some((item) => item.type === affected.expectedType)) {
+      const actualTypes = [...new Set(evidence.map((item) => item.type))].sort();
+      issues.push({
+        code: "domain_reference_type_mismatch",
+        field: affected.field,
+        problem: `Reference '${affected.id}' resolves to ${actualTypes.join(", ")} evidence, expected ${affected.expectedType}.`,
+        fix: `Move the id to the correct affects_domain section or provide accepted ${affected.expectedType} evidence.`
+      });
+    }
+  }
+  return issues;
 }
 
 function uniqueIds(items) {

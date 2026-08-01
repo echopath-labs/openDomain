@@ -95,6 +95,29 @@ test("externally constructed packs require accepted evidence for every affected 
   assert.ok(validateIntegrationValue("assurance", inconsistent).length > 0);
 });
 
+test("external accepted evidence must match the affected domain category", () => {
+  const result = evaluateGroundingPack(externalGroundingPack({
+    affectedConcepts: [],
+    affectedRules: ["sales.order"],
+    readFirst: [{
+      id: "sales.order",
+      type: "domain_concept",
+      name: "Order",
+      status: "accepted",
+      file: "opendomain/concepts/sales.order.md",
+      context: "sales"
+    }]
+  }));
+
+  assert.equal(result.preparation.state, "invalid");
+  assert.equal(result.policy.outcome, "fail");
+  assert.ok(result.findings.some((item) => (
+    item.code === "domain_reference_type_mismatch"
+    && item.field === "affects_domain.rules[0]"
+  )));
+  assert.deepEqual(validateIntegrationValue("assurance", result), []);
+});
+
 test("externally constructed packs reject missing and unsupported grounding statuses", () => {
   for (const pack of [
     externalGroundingPack({ status: undefined }),
@@ -231,6 +254,28 @@ test("not_required grounding needs a rationale and cannot contain domain IDs", a
   assert.ok(brokenContradiction.findings.some((item) => item.code === "grounding_decision_contradiction"));
   assert.equal(brokenContradiction.grounding_pack.grounding_request, null);
   assert.deepEqual(brokenContradiction.preparation.accepted_ids, []);
+});
+
+test("prepared workspace evidence must match the affected domain category", async (context) => {
+  const project = await createProject(context);
+  await writeFeature(project, {
+    status: "required",
+    concepts: [],
+    rules: ["sales.order"]
+  });
+
+  const pack = await prepareGroundingPack("feature.md", { cwd: project });
+  assert.ok(pack.errors.some((item) => (
+    item.code === "domain_reference_type_mismatch"
+    && item.field === "affects_domain.rules[0]"
+  )));
+  assert.equal(pack.read_first.some((item) => item.id === "sales.order"), false);
+
+  const result = await assureGrounding("feature.md", { cwd: project });
+  assert.equal(result.preparation.state, "invalid");
+  assert.equal(result.policy.outcome, "fail");
+  assert.ok(result.findings.some((item) => item.code === "domain_reference_type_mismatch"));
+  assert.deepEqual(validateIntegrationValue("assurance", result), []);
 });
 
 test("unclassified partial grounding stays incomplete under both policies", async (context) => {
@@ -459,6 +504,9 @@ async function writeFeature(project, options) {
   const concepts = options.concepts?.length
     ? `\n${options.concepts.map((id) => `    - ${id}`).join("\n")}`
     : " []";
+  const rules = options.rules?.length
+    ? `\n${options.rules.map((id) => `    - ${id}`).join("\n")}`
+    : " []";
 
   await writeFile(path.join(project, "feature.md"), `---
 type: feature_spec
@@ -467,7 +515,7 @@ name: Assurance test
 status: proposed
 ${grounding}affects_domain:
   concepts:${concepts}
-  rules: []
+  rules:${rules}
   lifecycles: []
   events: []
 ---
@@ -510,7 +558,7 @@ function externalGroundingPack(options = {}) {
     grounding,
     affects_domain: {
       concepts: options.affectedConcepts ?? ["sales.order"],
-      rules: [],
+      rules: options.affectedRules ?? [],
       lifecycles: [],
       events: []
     }

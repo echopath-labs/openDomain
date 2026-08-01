@@ -1,5 +1,9 @@
 import { access, readdir, stat } from "node:fs/promises";
 import path from "node:path";
+import {
+  AFFECTS_DOMAIN_FIELDS,
+  AFFECTS_DOMAIN_TYPES
+} from "./domain-reference-types.mjs";
 import { parseMarkdownFile } from "./frontmatter.mjs";
 import { buildProfileGroundingRequest } from "./profile-mapping.mjs";
 import { loadIntegrationProfiles } from "./profile-registry.mjs";
@@ -10,7 +14,6 @@ import {
 } from "./source-unit.mjs";
 
 const SUPPORTED_INTEGRATIONS = new Set(["auto", "openspec"]);
-const AFFECTS_DOMAIN_FIELDS = ["concepts", "rules", "lifecycles", "events"];
 const GROUNDING_STATUSES = new Set(["required", "not_required", "unclassified"]);
 const GROUNDING_FIELDS = new Set(["status", "rationale"]);
 
@@ -64,7 +67,8 @@ export function collectAffectedIds(affectsDomain) {
     values.forEach((id, index) => {
       ids.push({
         id,
-        field: `affects_domain.${field}[${index}]`
+        field: `affects_domain.${field}[${index}]`,
+        expectedType: AFFECTS_DOMAIN_TYPES[field]
       });
     });
   }

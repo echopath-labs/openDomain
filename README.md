@@ -111,6 +111,9 @@ The supported statuses are `required`, `not_required`, and `unclassified`.
 `not_required` requires a non-whitespace rationale and forbids every OpenDomain
 ID. Empty IDs under `required` represent an incomplete `domain_model_gap`;
 empty IDs never imply `not_required`.
+Every affected ID must also match its declared category: `concepts` resolve to
+`domain_concept`, `rules` to `business_rule`, `lifecycles` to `lifecycle`, and
+`events` to `domain_event`.
 
 Run the read-only preflight locally or in CI:
 

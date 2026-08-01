@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { AFFECTS_DOMAIN_FIELDS } from "./domain-reference-types.mjs";
 import {
   parseJsonMapping,
   parseMarkdownFile,
@@ -8,8 +9,6 @@ import {
 import { validateIntegrationValue } from "./integration-schema-validator.mjs";
 import { GROUNDING_PROTOCOL_VERSION } from "./protocol.mjs";
 import { publicSourceUnit } from "./source-unit.mjs";
-
-const AFFECTS_DOMAIN_FIELDS = ["concepts", "rules", "lifecycles", "events"];
 
 export async function buildProfileGroundingRequest(entry, sourceUnit, options = {}) {
   const memberData = new Map();

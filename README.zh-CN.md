@@ -268,6 +268,10 @@ Grounding Requirement 有三个显式状态：
 | `not_required` | 这次工作不涉及领域语义；必须提供非空白 rationale，且不能声明任何 OpenDomain ID |
 | `unclassified` | Agent 或维护者尚无足够证据完成判断 |
 
+每个 affected ID 还必须与声明类别一致：`concepts` 对应 `domain_concept`，
+`rules` 对应 `business_rule`，`lifecycles` 对应 `lifecycle`，`events` 对应
+`domain_event`。
+
 Assurance 将状态判断、准备结果和执行策略分开报告：
 
 | 准备结果 | advisory | enforced |
