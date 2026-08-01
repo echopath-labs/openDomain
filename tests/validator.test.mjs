@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import test from "node:test";
 import { validatePath } from "../src/validator.mjs";
 
@@ -63,6 +66,51 @@ test("broken affects_domain references fail", async () => {
   assert.ok(result.errors.some((issue) => issue.problem.includes("Broken affects_domain reference 'sales.missing-rule'")));
 });
 
+test("repository validation applies Grounding Request decision rules", async (context) => {
+  const project = await mkdtemp(path.join(os.tmpdir(), "opendomain-grounding-validation-"));
+  context.after(() => rm(project, { recursive: true, force: true }));
+
+  for (const testCase of [
+    {
+      grounding: "grounding:\n  status: sometimes",
+      concepts: "[]",
+      code: "invalid_grounding_decision"
+    },
+    {
+      grounding: "grounding:\n  status: not_required",
+      concepts: "[]",
+      code: "grounding_rationale_required"
+    },
+    {
+      grounding: "grounding:\n  status: not_required\n  rationale: No domain impact.",
+      concepts: "[sales.order]",
+      code: "grounding_decision_contradiction"
+    },
+    {
+      grounding: "grounding:\n  status: required",
+      concepts: "[x]",
+      code: "invalid_affects_domain"
+    }
+  ]) {
+    await writeFile(path.join(project, "feature.md"), `---
+type: feature_spec
+id: spec.invalid-grounding
+name: Invalid grounding
+status: proposed
+${testCase.grounding}
+affects_domain:
+  concepts: ${testCase.concepts}
+  rules: []
+  lifecycles: []
+  events: []
+---
+`, "utf8");
+
+    const result = await validatePath("feature.md", { cwd: project });
+    assert.ok(result.errors.some((issue) => issue.code === testCase.code));
+  }
+});
+
 test("stale candidates warn without failing validation", async () => {
   const result = await validatePath("examples/erp", {
     cwd: process.cwd(),
@@ -93,14 +141,14 @@ test("schema-invalid accepted Rule is excluded from the validated corpus", async
 
   assert.deepEqual(
     result.errors.map((issue) => issue.field),
-    ["applies_to", "id", "name", "review.reviewed_at", "rule_type", "severity"]
+    ["applies_to", "name", "review.reviewed_at", "rule_type", "severity"]
   );
   assert.ok(result.errors.every((issue) => (
     issue.file.endsWith("invalid-rule.md")
     && issue.problem.includes("rule.schema.json")
     && issue.fix.includes("schemas/rule.schema.json")
   )));
-  assert.equal(result.documents.some((document) => document.id === "BAD"), false);
+  assert.equal(result.documents.some((document) => document.id === "sales.invalid-rule"), false);
   assert.equal(result.documents.some((document) => document.id === "sales"), true);
 });
 

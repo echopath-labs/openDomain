@@ -5,6 +5,7 @@ name: Domain Concept
 context: opendomain
 status: accepted
 version: 1
+compatibility_note: Evidence references moved to public product artifacts; semantic meaning and version are unchanged.
 aliases:
   - Concept
 not_synonyms:
@@ -21,8 +22,8 @@ lifecycles: []
 events: []
 evidence:
   - type: spec
-    location: docs/OPEN_DOMAIN_DEVELOPMENT_GUIDE.md
-    summary: Domain Concept is listed as an MVP core semantic object.
+    location: schemas/concept.schema.json
+    summary: The public concept schema defines the structured Domain Concept contract.
     confidence: high
 review:
   state: accepted

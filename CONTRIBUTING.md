@@ -18,12 +18,7 @@ npm run opendomain -- validate
 
 ## Product Boundaries
 
-Before changing OpenDomain, read:
-
-- `docs/OPEN_DOMAIN_DEVELOPMENT_GUIDE.md`
-- `docs/usage.md`
-
-Keep the layers separate:
+Keep the layers described in the repository README separate:
 
 - OpenDomain stores long-lived domain semantics.
 - OpenSpec stores change intent, requirements, tasks, and acceptance.
@@ -41,11 +36,12 @@ Keep the layers separate:
 - Run `npm test`.
 - Run `npm run opendomain -- validate`.
 - Add or update tests for parser, validator, CLI, or index behavior changes.
-- Update docs when commands, formats, or workflow expectations change.
+- Update the public README when commands, formats, or workflow expectations change.
 - Do not treat `opendomain/generated/` or legacy `.opendomain/index.json`
   as authoritative domain knowledge.
 
-Maintainer releases must follow `docs/releasing.md`.
+Maintainer release procedures and development records are kept outside the
+public product repository.
 
 ## Planning Artifacts
 

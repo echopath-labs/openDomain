@@ -1,5 +1,10 @@
 import path from "node:path";
+import {
+  AFFECTS_DOMAIN_TYPES,
+  validateAffectsDomainShape
+} from "./domain-reference-types.mjs";
 import { parseMarkdownFile, FrontMatterError } from "./frontmatter.mjs";
+import { validateGroundingDecision } from "./grounding-decision.mjs";
 import { resolveWorkspaceSources } from "./workspace-resolver.mjs";
 import {
   createDomainSchemaRegistry,
@@ -34,13 +39,6 @@ const REQUIRED_FIELDS = {
     "review"
   ],
   feature_spec: ["type", "id", "name", "status", "affects_domain"]
-};
-
-const AFFECTS_DOMAIN_TYPES = {
-  concepts: "domain_concept",
-  rules: "business_rule",
-  lifecycles: "lifecycle",
-  events: "domain_event"
 };
 
 export async function validatePath(targetPath, options = {}) {
@@ -493,14 +491,20 @@ function validateFeatureSpec(document, domainById, result) {
     return;
   }
 
+  const groundingDecision = validateGroundingDecision(frontmatter, document.file);
+  for (const error of groundingDecision.errors) {
+    addIssue(result.errors, error);
+  }
+  for (const warning of groundingDecision.warnings) {
+    addIssue(result.warnings, warning);
+  }
+
   const affectsDomain = frontmatter.affects_domain;
-  if (!affectsDomain || typeof affectsDomain !== "object") {
-    addIssue(result.errors, {
-      file: document.file,
-      field: "affects_domain",
-      problem: "Feature spec must declare affected OpenDomain IDs.",
-      fix: "Add affects_domain.concepts, rules, lifecycles, or events."
-    });
+  const affectsDomainErrors = validateAffectsDomainShape(affectsDomain, document.file);
+  for (const error of affectsDomainErrors) {
+    addIssue(result.errors, error);
+  }
+  if (!affectsDomain || typeof affectsDomain !== "object" || Array.isArray(affectsDomain)) {
     return;
   }
 
@@ -585,6 +589,7 @@ function valueKind(value) {
 
 function addIssue(target, issue) {
   target.push({
+    ...(issue.code ? { code: issue.code } : {}),
     severity: issue.severity ?? "error",
     file: issue.file,
     field: issue.field,

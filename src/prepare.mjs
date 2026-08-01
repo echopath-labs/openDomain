@@ -35,6 +35,7 @@ export async function prepareGroundingPack(inputPath, options = {}) {
     const document = documentsById.get(affected.id);
     if (!document) {
       errors.push(issue({
+        code: "broken_domain_reference",
         file: groundingRequest.source.path,
         field: affected.field,
         problem: `Broken affects_domain reference '${affected.id}'.`,
@@ -43,8 +44,20 @@ export async function prepareGroundingPack(inputPath, options = {}) {
       continue;
     }
 
+    if (document.type !== affected.expectedType) {
+      errors.push(issue({
+        code: "domain_reference_type_mismatch",
+        file: groundingRequest.source.path,
+        field: affected.field,
+        problem: `Reference '${affected.id}' points to ${document.type}, expected ${affected.expectedType}.`,
+        fix: `Move the id to the correct affects_domain section or reference a ${affected.expectedType}.`
+      }));
+      continue;
+    }
+
     if (document.frontmatter.status !== "accepted") {
       errors.push(issue({
+        code: "non_accepted_domain_reference",
         file: groundingRequest.source.path,
         field: affected.field,
         problem: `Feature spec references non-accepted OpenDomain knowledge '${affected.id}'.`,
@@ -150,7 +163,7 @@ export function formatGroundingPack(pack) {
 
   lines.push("", "Final response reminder:");
   lines.push("- Include 'Domain Grounding Used' with the accepted IDs read.");
-  lines.push("- Report Candidate files as proposed knowledge, not accepted truth.");
+  lines.push("- Preserve each Candidate review status and never report it as accepted truth.");
 
   return `${lines.join("\n")}\n`;
 }
@@ -260,6 +273,7 @@ function uniqueIssues(issues) {
 
 function issue(issueFields) {
   return {
+    ...(issueFields.code ? { code: issueFields.code } : {}),
     severity: issueFields.severity ?? "error",
     file: issueFields.file,
     field: issueFields.field,

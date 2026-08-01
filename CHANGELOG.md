@@ -2,6 +2,55 @@
 
 ## Unreleased
 
+- Add explicit `required`, `not_required`, and `unclassified` Grounding Request
+  decisions while preserving Grounding Protocol `1.0` compatibility.
+- Add read-only `opendomain assure` with advisory and enforced policy modes,
+  deterministic findings, brownfield model-gap handling, and a packaged result
+  schema.
+- Reject contradictory `not_required` domain references before Grounding Pack
+  preparation can resolve or expose accepted evidence.
+- Fail closed when an externally supplied Grounding Pack is schema-invalid or
+  lacks accepted evidence for any declared affected ID.
+- Normalize Integration Profile v1 requests to `unclassified` in the trusted
+  Request Builder while rejecting external Packs that omit `grounding`.
+- Reject whitespace-only skip rationales, sanitize external diagnostic codes,
+  and enforce incomplete-state policy outcomes in the public Result Schema.
+- Reject affected IDs whose accepted evidence type does not match the declared
+  concepts, rules, lifecycles, or events category.
+- Reject whitespace-only integration IDs, constrain Pack diagnostic severities,
+  and share Grounding Request decision rules with repository validation.
+- Preserve recognized OpenSpec errors during auto-selection, reject unknown
+  affected-domain categories, and reject duplicate Pack evidence IDs.
+- Bind Assurance preparation states to compatible grounding statuses and reject
+  `not_required` Packs that carry grounding evidence.
+- Restrict `read_first` to accepted semantic-closure types so Candidates cannot
+  masquerade as accepted grounding evidence.
+- Reject whitespace-only evidence paths and keep evidence IDs solely in the
+  Grounding Pack instead of duplicating mutable summaries in Assurance Result.
+- Reject IDs shared across accepted and Candidate evidence, and keep the
+  Grounding Request and classification solely in the embedded Grounding Pack.
+- Require Candidate boundaries to use the Candidate ID, status, and confidence
+  contract and to target accepted evidence in the same Grounding Pack.
+- Reject `pass` Results that carry findings or Pack diagnostics, and clarify
+  that semantic coverage requires a fresh Assurance run rather than Schema-only
+  validation of persisted or third-party JSON.
+- Enforce canonical dotted IDs for affected domain objects and type-specific IDs
+  for accepted evidence, and preserve each Candidate review status in text output.
+- Validate declared evidence before applying `unclassified` policy so unresolved
+  or mistyped affected IDs fail in both advisory and enforced modes.
+- Reject leading/trailing whitespace, line breaks, and terminal control
+  characters in Pack paths and diagnostic text, and escape schema-derived field
+  names before rendering Assurance text.
+- Require accepted and Candidate evidence paths to be normalized,
+  repository-relative paths without traversal or platform-specific roots.
+- Treat caller-supplied Grounding Packs as unverified input that cannot produce
+  completed Assurance; regenerate from the current Source Unit and workspace.
+- Reject `warn` Results that contain error findings or Pack errors, matching the
+  runtime policy outcome.
+- Keep maintainer OpenSpec and narrative development records outside the public
+  repository and npm package; README and JSON Schemas remain the public usage
+  and contract entrypoints.
+
 ## 0.1.0-alpha.6 - 2026-07-27
 
 - Add repository-local declarative Integration Profile v1 for structured

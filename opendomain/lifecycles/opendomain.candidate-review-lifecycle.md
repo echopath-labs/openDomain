@@ -4,6 +4,7 @@ id: opendomain.candidate-review-lifecycle
 name: Candidate review lifecycle
 context: opendomain
 status: accepted
+compatibility_note: Evidence references moved to public product artifacts; semantic meaning is unchanged.
 applies_to:
   - opendomain.domain-candidate
 states:
@@ -53,12 +54,12 @@ related_rules:
   - opendomain.candidate-is-not-accepted-knowledge
 evidence:
   - type: spec
-    location: docs/product-prd.md
-    summary: The PRD defines Candidate review, stale warning, and human promotion gate behavior.
+    location: schemas/candidate.schema.json
+    summary: The public Candidate schema defines proposed and final review states.
     confidence: high
-  - type: spec
-    location: docs/candidate-workflow.md
-    summary: Candidate workflow supports accept, reject, supersede, deprecate, and review states.
+  - type: test
+    location: tests/cli.test.mjs
+    summary: Candidate CLI tests cover review decisions, stale warnings, and accepted-knowledge separation.
     confidence: high
 review:
   state: accepted

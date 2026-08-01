@@ -13,7 +13,7 @@
       "required": ["type", "path"],
       "properties": {
         "type": { "type": "string", "minLength": 1 },
-        "path": { "type": "string", "minLength": 1 }
+        "path": { "$ref": "#/$defs/safePath" }
       },
       "additionalProperties": true
     },
@@ -21,11 +21,39 @@
       "type": "object",
       "required": ["id", "name", "status"],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "minLength": 1, "pattern": "\\S" },
         "name": { "type": "string", "minLength": 1 },
         "status": { "type": "string", "minLength": 1 }
       },
       "additionalProperties": true
+    },
+    "grounding": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": {
+          "enum": ["required", "not_required", "unclassified"]
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": { "const": "not_required" }
+            },
+            "required": ["status"]
+          },
+          "then": {
+            "required": ["rationale"]
+          }
+        }
+      ],
+      "additionalProperties": false
     },
     "affects_domain": {
       "type": "object",
@@ -39,11 +67,46 @@
       "additionalProperties": false
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "grounding": {
+            "properties": {
+              "status": { "const": "not_required" }
+            },
+            "required": ["status"]
+          }
+        },
+        "required": ["grounding"]
+      },
+      "then": {
+        "properties": {
+          "affects_domain": {
+            "properties": {
+              "concepts": { "maxItems": 0 },
+              "rules": { "maxItems": 0 },
+              "lifecycles": { "maxItems": 0 },
+              "events": { "maxItems": 0 }
+            }
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
     "idArray": {
       "type": "array",
-      "items": { "type": "string", "minLength": 1 },
+      "items": { "$ref": "#/$defs/domainObjectId" },
       "uniqueItems": true
+    },
+    "domainObjectId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_-]*)+$"
+    },
+    "safePath": {
+      "type": "string",
+      "pattern": "^(?!.*[\\u0000-\\u001F\\u007F])\\S(?:.*\\S)?$"
     }
   },
   "additionalProperties": true

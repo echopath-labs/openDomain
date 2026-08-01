@@ -5,6 +5,7 @@ name: Business Rule
 context: opendomain
 status: accepted
 version: 1
+compatibility_note: Evidence references moved to public product artifacts; semantic meaning and version are unchanged.
 aliases:
   - Domain Rule
   - Invariant
@@ -22,8 +23,8 @@ lifecycles: []
 events: []
 evidence:
   - type: spec
-    location: docs/OPEN_DOMAIN_DEVELOPMENT_GUIDE.md
-    summary: Business Rule is listed as a core object for invariants, policies, constraints, and exceptions.
+    location: schemas/rule.schema.json
+    summary: The public rule schema defines the structured Business Rule contract.
     confidence: high
 review:
   state: accepted

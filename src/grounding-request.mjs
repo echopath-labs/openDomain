@@ -1,6 +1,12 @@
 import { access, readdir, stat } from "node:fs/promises";
 import path from "node:path";
+import {
+  AFFECTS_DOMAIN_FIELDS,
+  AFFECTS_DOMAIN_TYPES,
+  validateAffectsDomainShape
+} from "./domain-reference-types.mjs";
 import { parseMarkdownFile } from "./frontmatter.mjs";
+import { validateGroundingDecision } from "./grounding-decision.mjs";
 import { buildProfileGroundingRequest } from "./profile-mapping.mjs";
 import { loadIntegrationProfiles } from "./profile-registry.mjs";
 import { GROUNDING_PROTOCOL_VERSION } from "./protocol.mjs";
@@ -10,7 +16,6 @@ import {
 } from "./source-unit.mjs";
 
 const SUPPORTED_INTEGRATIONS = new Set(["auto", "openspec"]);
-const AFFECTS_DOMAIN_FIELDS = ["concepts", "rules", "lifecycles", "events"];
 
 export async function buildGroundingRequest(inputPath, options = {}) {
   const cwd = options.cwd ?? process.cwd();
@@ -62,7 +67,8 @@ export function collectAffectedIds(affectsDomain) {
     values.forEach((id, index) => {
       ids.push({
         id,
-        field: `affects_domain.${field}[${index}]`
+        field: `affects_domain.${field}[${index}]`,
+        expectedType: AFFECTS_DOMAIN_TYPES[field]
       });
     });
   }
@@ -72,6 +78,7 @@ export function collectAffectedIds(affectsDomain) {
 export async function buildOpenSpecGroundingRequest(inputPath, cwd, selectedIntegration = "openspec") {
   if (!inputPath) {
     return {
+      matched: false,
       request: null,
       errors: [
         issue({
@@ -88,6 +95,7 @@ export async function buildOpenSpecGroundingRequest(inputPath, cwd, selectedInte
   const absoluteInput = path.resolve(cwd, inputPath);
   if (!await exists(absoluteInput)) {
     return {
+      matched: false,
       request: null,
       errors: [
         issue({
@@ -130,6 +138,7 @@ export async function buildOpenSpecGroundingRequest(inputPath, cwd, selectedInte
 
   if (featureSpecs.length === 0) {
     return {
+      matched: false,
       request: null,
       errors: parseErrors.length > 0 ? parseErrors : [
         issue({
@@ -145,6 +154,7 @@ export async function buildOpenSpecGroundingRequest(inputPath, cwd, selectedInte
 
   if (featureSpecs.length > 1) {
     return {
+      matched: true,
       request: null,
       errors: [
         issue({
@@ -159,35 +169,26 @@ export async function buildOpenSpecGroundingRequest(inputPath, cwd, selectedInte
   }
 
   const feature = featureSpecs[0];
-  if (
-    !feature.frontmatter.affects_domain
-    || typeof feature.frontmatter.affects_domain !== "object"
-    || Array.isArray(feature.frontmatter.affects_domain)
-  ) {
-    return {
-      request: null,
-      errors: [
-        issue({
-          file: feature.sourceFile,
-          field: "affects_domain",
-          problem: "Feature spec is missing affects_domain.",
-          fix: "Declare affected OpenDomain concepts, rules, lifecycles, or events."
-        })
-      ],
-      warnings: []
-    };
-  }
 
-  const requestErrors = validateRequestFields(feature);
+  const groundingDecision = validateGroundingDecision(
+    feature.frontmatter,
+    feature.sourceFile
+  );
+  const requestErrors = [
+    ...validateRequestFields(feature),
+    ...groundingDecision.errors
+  ];
   if (requestErrors.length > 0) {
     return {
+      matched: true,
       request: null,
       errors: requestErrors,
-      warnings: []
+      warnings: groundingDecision.warnings
     };
   }
 
   return {
+    matched: true,
     request: {
       protocol_version: GROUNDING_PROTOCOL_VERSION,
       source: {
@@ -204,15 +205,19 @@ export async function buildOpenSpecGroundingRequest(inputPath, cwd, selectedInte
         name: feature.frontmatter.name,
         status: feature.frontmatter.status
       },
+      grounding: groundingDecision.grounding,
       affects_domain: normalizeAffectsDomain(feature.frontmatter.affects_domain)
     },
     errors: [],
-    warnings: []
+    warnings: groundingDecision.warnings
   };
 }
 
 async function buildAutomaticGroundingRequest(inputPath, cwd) {
   const openSpecResult = await buildOpenSpecGroundingRequest(inputPath, cwd, "auto");
+  if (openSpecResult.matched && openSpecResult.errors.length > 0) {
+    return openSpecResult;
+  }
   const registry = await loadIntegrationProfiles({
     cwd,
     allowMissingWorkspace: true
@@ -274,6 +279,7 @@ async function buildAutomaticGroundingRequest(inputPath, cwd) {
     return {
       request: null,
       errors: [issue({
+        code: "ambiguous_integration",
         file: inputPath ?? "<input>",
         field: "integration",
         problem: `Multiple integrations match this input: ${candidates.map((candidate) => candidate.id).sort().join(", ")}.`,
@@ -378,7 +384,10 @@ function normalizeAffectsDomain(affectsDomain) {
 }
 
 function validateRequestFields(feature) {
-  const errors = [];
+  const errors = validateAffectsDomainShape(
+    feature.frontmatter.affects_domain,
+    feature.sourceFile
+  );
   for (const field of ["id", "name", "status"]) {
     if (typeof feature.frontmatter[field] !== "string" || !feature.frontmatter[field].trim()) {
       errors.push(issue({
@@ -390,34 +399,12 @@ function validateRequestFields(feature) {
     }
   }
 
-  for (const field of AFFECTS_DOMAIN_FIELDS) {
-    const values = feature.frontmatter.affects_domain[field];
-    if (values !== undefined && !Array.isArray(values)) {
-      errors.push(issue({
-        file: feature.sourceFile,
-        field: `affects_domain.${field}`,
-        problem: `Feature spec affects_domain.${field} must be an array.`,
-        fix: `Use a YAML list of OpenDomain IDs for affects_domain.${field}.`
-      }));
-      continue;
-    }
-    for (const [index, id] of (values ?? []).entries()) {
-      if (typeof id !== "string" || !id.trim()) {
-        errors.push(issue({
-          file: feature.sourceFile,
-          field: `affects_domain.${field}[${index}]`,
-          problem: "Affected OpenDomain ID must be a non-empty string.",
-          fix: "Use a stable OpenDomain ID or remove the invalid list item."
-        }));
-      }
-    }
-  }
-
   return errors;
 }
 
 function issue(issueFields) {
   return {
+    ...(issueFields.code ? { code: issueFields.code } : {}),
     severity: issueFields.severity ?? "error",
     file: issueFields.file,
     field: issueFields.field,

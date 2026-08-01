@@ -5,6 +5,7 @@ name: Grounding Pack
 context: opendomain
 status: accepted
 version: 1
+compatibility_note: Evidence references moved to public product artifacts; semantic meaning and version are unchanged.
 aliases:
   - Domain Grounding Pack
 not_synonyms:
@@ -25,12 +26,12 @@ events:
   - opendomain.grounding-prepared
 evidence:
   - type: spec
-    location: docs/mvp-grounding-demo.md
-    summary: The MVP grounding demo defines the Domain Grounding Pack as the Codex read-first output.
+    location: schemas/grounding-pack.schema.json
+    summary: The public Grounding Pack schema defines accepted read-first evidence and separate Candidate boundaries.
     confidence: high
-  - type: spec
-    location: AGENTS.md
-    summary: Repository instructions require Codex to use opendomain prepare before non-trivial feature work.
+  - type: code
+    location: src/prepare.mjs
+    summary: The preparation pipeline derives a task-scoped Grounding Pack from validated OpenDomain sources.
     confidence: high
 review:
   state: accepted

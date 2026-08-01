@@ -11,12 +11,12 @@ extracted_by: codex
 extracted_at: 2026-07-03
 evidence:
   - type: spec
-    location: docs/product-prd.md
-    summary: Derived views and indexes are planned as retrieval layers, not source of truth.
+    location: README.md
+    summary: The public product description identifies the index as a derived read-first view rather than source of truth.
     confidence: medium
-  - type: spec
-    location: docs/architecture.md
-    summary: Derived graph, index, search, MCP, or export views must be rebuildable from OpenDomain Git files.
+  - type: code
+    location: src/indexer.mjs
+    summary: The implemented index is rebuilt from validated OpenDomain Git source files.
     confidence: high
   - type: human_review
     location: conversation:2026-07-03-semantic-retrieval-index

@@ -48,10 +48,20 @@ test("Domain Declaration schema requires strict non-empty domain scope", () => {
   extra.intent = { id: "spec.invalid" };
   const extraIssues = validateIntegrationValue("declaration", extra);
   assert.ok(extraIssues.some((issue) => issue.field === "intent"));
+
+  const blank = structuredClone(valid);
+  blank.affects_domain.concepts = ["   "];
+  const blankIssues = validateIntegrationValue("declaration", blank);
+  assert.ok(blankIssues.some((issue) => issue.field === "affects_domain.concepts[0]"));
+
+  const nonCanonical = structuredClone(valid);
+  nonCanonical.affects_domain.concepts = ["x"];
+  const nonCanonicalIssues = validateIntegrationValue("declaration", nonCanonical);
+  assert.ok(nonCanonicalIssues.some((issue) => issue.field === "affects_domain.concepts[0]"));
 });
 
 test("Grounding Request schema remains compatible with optional Profile metadata", () => {
-  const issues = validateIntegrationValue("request", {
+  const request = {
     protocol_version: "1.0",
     source: {
       type: "structured-feature",
@@ -72,9 +82,78 @@ test("Grounding Request schema remains compatible with optional Profile metadata
       id: "structured-feature",
       kind: "profile"
     }
-  });
+  };
+  const issues = validateIntegrationValue("request", request);
 
   assert.deepEqual(issues, []);
+
+  const blank = {
+    protocol_version: "1.0",
+    source: {
+      type: "structured-feature",
+      path: "features/add-x.yaml"
+    },
+    intent: {
+      id: "feature.add-x",
+      name: "Add X",
+      status: "proposed"
+    },
+    affects_domain: {
+      concepts: ["   "],
+      rules: [],
+      lifecycles: [],
+      events: []
+    }
+  };
+  const blankIssues = validateIntegrationValue("request", blank);
+  assert.ok(blankIssues.some((issue) => issue.field === "affects_domain.concepts[0]"));
+
+  const nonCanonical = structuredClone(request);
+  nonCanonical.affects_domain.concepts = ["x"];
+  const nonCanonicalIssues = validateIntegrationValue("request", nonCanonical);
+  assert.ok(nonCanonicalIssues.some((issue) => issue.field === "affects_domain.concepts[0]"));
+});
+
+test("Grounding Request schema accepts explicit decisions and requires skip rationale", () => {
+  const request = {
+    protocol_version: "1.0",
+    source: {
+      type: "openspec",
+      path: "changes/add-x/grounding.md"
+    },
+    intent: {
+      id: "spec.add-x",
+      name: "Add X",
+      status: "proposed"
+    },
+    grounding: {
+      status: "required"
+    },
+    affects_domain: {
+      concepts: [],
+      rules: [],
+      lifecycles: [],
+      events: []
+    }
+  };
+
+  assert.deepEqual(validateIntegrationValue("request", request), []);
+
+  request.grounding.status = "not_required";
+  const issues = validateIntegrationValue("request", request);
+  assert.ok(issues.some((issue) => issue.field === "grounding.rationale"));
+
+  request.grounding.rationale = "   ";
+  const whitespaceIssues = validateIntegrationValue("request", request);
+  assert.ok(whitespaceIssues.some((issue) => issue.field === "grounding.rationale"));
+
+  request.grounding.rationale = "This source unit does not affect domain semantics.";
+  request.affects_domain.concepts = ["sales.order"];
+  const contradictoryIssues = validateIntegrationValue("request", request);
+  assert.ok(contradictoryIssues.some((issue) => (
+    issue.field === "affects_domain.concepts"
+    && issue.problem.includes("must NOT have more than 0 items")
+  )));
 });
 
 function nativeFileProfile() {

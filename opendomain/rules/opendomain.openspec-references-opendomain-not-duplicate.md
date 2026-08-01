@@ -4,22 +4,19 @@ id: opendomain.openspec-references-opendomain-not-duplicate
 name: OpenSpec references OpenDomain, not duplicates it
 context: opendomain
 status: accepted
+compatibility_note: Evidence references moved to public product artifacts; semantic meaning is unchanged.
 applies_to:
   - opendomain.domain-knowledge
 severity: must
 rule_type: invariant
 evidence:
   - type: spec
-    location: docs/OPEN_DOMAIN_DEVELOPMENT_GUIDE.md
-    summary: OpenSpec should reference OpenDomain rather than copy stable domain definitions.
+    location: README.md
+    summary: The public product boundary requires OpenSpec to reference rather than copy OpenDomain definitions.
     confidence: high
   - type: spec
-    location: docs/architecture.md
-    summary: OpenSpec may reference OpenDomain IDs and should explain why a change exists, while OpenDomain explains long-lived business meaning.
-    confidence: high
-  - type: spec
-    location: docs/product-prd.md
-    summary: PRD defines affects_domain as an OpenSpec reference convention and states OpenSpec does not duplicate OpenDomain definitions.
+    location: examples/erp/openspec/changes/order-cancellation/spec.md
+    summary: The synthetic OpenSpec fixture references accepted OpenDomain IDs through affects_domain.
     confidence: high
 review:
   state: accepted

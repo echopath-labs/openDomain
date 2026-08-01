@@ -4,18 +4,19 @@ id: opendomain.candidate-is-not-accepted-knowledge
 name: Candidate is not accepted knowledge
 context: opendomain
 status: accepted
+compatibility_note: Evidence references moved to public product artifacts; semantic meaning is unchanged.
 applies_to:
   - opendomain.domain-candidate
 severity: must
 rule_type: invariant
 evidence:
   - type: spec
-    location: docs/product-prd.md
-    summary: Candidate can safely carry AI-inferred knowledge but does not automatically become accepted.
+    location: schemas/candidate.schema.json
+    summary: Domain Candidate status cannot be accepted and remains separate from accepted source schemas.
     confidence: high
   - type: spec
-    location: docs/mvp-grounding-demo.md
-    summary: Candidate boundaries are proposed knowledge only.
+    location: schemas/grounding-pack.schema.json
+    summary: Grounding Pack exposes Candidates through a separate candidate_boundaries collection.
     confidence: high
 review:
   state: accepted

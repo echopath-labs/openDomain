@@ -12,6 +12,9 @@ coverage/
 /opendomain/generated/
 /AGENTS.md
 /openspec/
+/docs/
+/ROADMAP.md
+/examples/self-model/openspec/
 .npmrc
 .env
 .env.*

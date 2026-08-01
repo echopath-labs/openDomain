@@ -99,9 +99,11 @@ OpenDomain 适合：
 - Bounded Context、Domain Concept、Business Rule、Lifecycle、Domain Event、Domain Candidate；
 - 安全 parser 和 Draft 2020-12 Runtime Schema 校验；
 - 在 Semantic Closure、index 和 grounding 前执行安全语料门禁；
-- CLI 命令：init、validate、ids list、refs check、prepare、integrations、
+- CLI 命令：init、validate、ids list、refs check、prepare、assure、integrations、
   index、demo；
 - OpenSpec `affects_domain` grounding；
+- 显式 `required` / `not_required` / `unclassified` Grounding Request；
+- 面向 Codex 与 CI 的 advisory / enforced Grounding Assurance；
 - 面向结构化非 OpenSpec 来源的 repository-local 声明式 Integration Profile；
 - Native Mapping、Sidecar Domain Declaration，以及确定性的 file / bundle
   Source Unit；
@@ -175,6 +177,7 @@ npm run opendomain -- validate
 
 ```bash
 npm run opendomain -- validate examples/erp
+(cd examples/erp && node ../../bin/opendomain.mjs assure openspec/changes/order-cancellation/spec.md)
 ```
 
 为一个 Feature 准备 Codex grounding：
@@ -228,6 +231,9 @@ type: feature_spec
 id: spec.order-cancellation
 name: Order cancellation
 status: proposed
+grounding:
+  status: required
+  rationale: Cancellation behavior is constrained by accepted order semantics.
 affects_domain:
   concepts:
     - sales.order
@@ -244,11 +250,76 @@ OpenSpec 描述这次变更，OpenDomain 描述长期语义。
 
 ### 3. Codex 先 grounding 再实现
 
-在实现非平凡 Feature 前，Codex 应运行：
+在实现非平凡 Feature 前，Codex 默认执行只读 Assurance：
 
 ```bash
-npm run opendomain -- prepare <feature-spec-or-dir>
+npm run opendomain -- assure <feature-spec-or-dir>
+npm run opendomain -- assure <feature-spec-or-dir> --mode enforced --json
 ```
+
+`assure` 会复用 `prepare` 的解析和 Semantic Closure。只需要查看原始 Grounding
+Pack、而不需要策略判断时，可以单独运行
+`npm run opendomain -- prepare <feature-spec-or-dir>`。
+
+Grounding Requirement 有三个显式状态：
+
+| 状态 | 含义 |
+| --- | --- |
+| `required` | 这次工作受长期领域语义约束，需要准备 accepted context |
+| `not_required` | 这次工作不涉及领域语义；必须提供非空白 rationale，且不能声明任何 OpenDomain ID |
+| `unclassified` | Agent 或维护者尚无足够证据完成判断 |
+
+每个 affected ID 还必须与声明类别一致：`concepts` 对应 `domain_concept`，
+`rules` 对应 `business_rule`，`lifecycles` 对应 `lifecycle`，`events` 对应
+`domain_event`，并且 ID 必须包含非空白文本。当 `opendomain validate` 的目标中
+包含 `feature_spec` 时，它会应用与 `prepare`、`assure` 相同的 grounding decision
+规则。
+
+未知 affected-domain 类别属于非法输入。一个已经被识别为 OpenSpec、但校验失败的
+来源不会回退成匹配的 Profile；外部 Grounding Pack 也不能包含重复的 evidence 或
+Candidate ID。
+
+Assurance 将状态判断、准备结果和执行策略分开报告：
+
+| 准备结果 | advisory | enforced |
+| --- | --- | --- |
+| `prepared` / 合法 `not_required` | `pass` | `pass` |
+| `unclassified` / `domain_model_gap` | `warn`，exit 0 | `fail`，exit 1 |
+| 格式错误、矛盾或断裂引用 | `fail`，exit 1 | `fail`，exit 1 |
+
+`unclassified` Request 仍会校验所有已经声明的 affected ID；缺失 evidence 或类型
+不匹配属于 malformed Pack，在 advisory 与 enforced 下都会 fail。
+
+Result Schema 会将 `prepared` 绑定到 `required`，将 `not_required` 绑定到无 evidence
+的显式跳过，并限制 `incomplete` 只能对应 `required` 或 `unclassified`。
+它只校验结构与可表达的局部不变量，包括 `pass` 不得携带 finding 或 Pack
+diagnostic，以及 `warn` 不得携带 error finding 或 Pack error；它不会重新验证
+持久化或第三方 JSON 的语义覆盖。CI 必须针对当前 workspace 重新运行
+`opendomain assure`。
+受影响的 concept、rule、lifecycle 与 event ID 必须符合其 OpenDomain source object
+使用的 canonical dotted ID 格式；Grounding Pack evidence ID 也会按声明类型校验。
+`read_first` 只允许 bounded context、concept、rule、lifecycle 与 event，且每个
+evidence path 都必须包含非空白字符；`domain_candidate` 必须留在 Candidate
+boundaries 中。Assurance 输出的 path 必须是无首尾空白、换行或终端控制字符的
+单行值；evidence 与 Candidate path 还必须是无绝对根、反斜杠及 `.` / `..` 穿越
+段的规范化仓库相对路径。外部 diagnostic 文本也遵循相同控制字符边界；schema
+派生的 finding 会先转义属性名中的控制字符，再进入终端输出。调用方直接提供或
+持久化的 Grounding Pack 即使结构合法，也不能建立 completed Assurance；必须针对
+当前 Source Unit 和 workspace 重新运行 `opendomain assure`，从已校验的 OpenDomain
+source 重新生成 accepted evidence 与 Semantic Closure。`preparation` 只报告状态，Grounding Request 与 classification
+只存在于 `grounding_pack.grounding_request`，evidence ID、类型和路径只存在于
+`grounding_pack.read_first` 与 `grounding_pack.candidate_boundaries`。同一个 ID
+不能同时出现在两个 evidence 集合中，Assurance Result 不再携带可能相互矛盾的
+request、classification 或 evidence 摘要。
+每个 Candidate boundary 都必须符合 Candidate ID、生命周期状态与 confidence
+约束，且 `target_id` 必须指向同一 Pack 中的 accepted `read_first` evidence。
+Assurance 文本输出会保留该 review status，包括最终的 `rejected`、`superseded`
+或 `deprecated` 决定。
+
+存量项目应先运行 `opendomain init`。初始化后即使还没有 accepted knowledge，
+`required` 加空引用也会被识别为 `domain_model_gap`；完全缺少 OpenDomain workspace
+则是环境错误。Assurance Result 报告本次执行观察到的事实，但不能证明 Agent 已经
+理解模型，也不能独立证明某个历史仓库状态。
 
 对于其他结构化规划格式，可以在
 `opendomain/integrations/profiles/` 中声明 repository-local Profile：
@@ -261,13 +332,17 @@ npm run opendomain -- prepare --profile <profile-id> <structured-file-or-bundle>
 
 未显式选择时，只有一个 built-in adapter 或 Profile 匹配才会继续；多重匹配会
 失败，不按优先级猜测。Profile 只归一化来源中明确存在的 intent 和 OpenDomain
-ID，不扫描正文、不推断 ID，也不创建或提升 Candidate。完整说明见
-[Integration Profile 使用指南](docs/integration-profiles.md)。
+ID，不扫描正文、不推断 ID，不执行脚本，也不创建或提升 Candidate。Profile 和
+Sidecar Declaration 的正式机器契约位于 `schemas/`。
 
-输出会告诉 Codex：
+Profile v1 尚不支持 grounding decision mapping，因此受信 Request Builder 会将
+请求归一化为 `unclassified`。当前应使用 advisory Assurance，或改用能够携带显式
+decision 的 integration；在契约扩展前，它不会通过 enforced Assurance。
 
-- `Read first`：先读哪些 accepted source files；
-- `Candidate boundaries`：哪些内容只是 proposed，不能当真；
+`assure` 与 `prepare` 的 grounding evidence 会告诉 Codex：
+
+- `Accepted grounding evidence` / `Read first`：先读哪些 accepted source files；
+- `Candidate boundaries`：显示各 Candidate 的 review status，均不能当作 accepted truth；
 - `Avoided semantic errors`：实现时要避免哪些业务语义错误。
 
 ### 4. 不确定知识先写 Candidate
@@ -312,6 +387,8 @@ Candidate 不是 accepted truth。它只是待人类审查的提案。
 | 验证指定目录 | `npm run opendomain -- validate examples/erp` |
 | 输出 JSON 验证结果 | `npm run opendomain -- validate examples/erp --json` |
 | 为 Feature 准备 grounding | `npm run opendomain -- prepare <feature-spec-or-dir>` |
+| 执行 advisory Assurance | `npm run opendomain -- assure <source-unit>` |
+| 执行 enforced Assurance | `npm run opendomain -- assure <source-unit> --mode enforced --json` |
 | 显式使用 OpenSpec integration | `npm run opendomain -- prepare --integration openspec <feature-spec-or-dir>` |
 | 列出 integration | `npm run opendomain -- integrations list` |
 | 验证 Integration Profile | `npm run opendomain -- integrations validate` |
@@ -326,24 +403,15 @@ Candidate 不是 accepted truth。它只是待人类审查的提案。
 | 查询 context | `npm run opendomain -- index query --context sales --index /tmp/erp-index.json` |
 | 运行 demo | `npm run demo` |
 | 运行测试 | `npm test` |
-| 验证项目自己的 OpenSpec workspace | `openspec validate --all --json` |
 
-## 文档
+## 公开资料
 
-- [快速上手](docs/getting-started.md)
-- [使用说明](docs/usage.md)
-- [产品愿景](docs/vision.md)
-- [MVP PRD](docs/product-prd.md)
-- [架构说明](docs/architecture.md)
-- [Grounding Protocol v1](docs/grounding-protocol.md)
-- [Integration Profile 使用指南](docs/integration-profiles.md)
-- [Candidate 工作流](docs/candidate-workflow.md)
-- [Semantic Retrieval Index](docs/semantic-retrieval-index.md)
-- [MVP Grounding Demo](docs/mvp-grounding-demo.md)
-- [OpenDomain self-model dogfooding](docs/dogfooding-self-model.md)
-- [开发指南](docs/OPEN_DOMAIN_DEVELOPMENT_GUIDE.md)
-- [路线图](ROADMAP.md)
+- [English README](README.md)
 - [变更日志](CHANGELOG.md)
+- [贡献指南](CONTRIBUTING.md)
+- [安全策略](SECURITY.md)
+- `schemas/`：机器可读的正式格式契约
+- `examples/erp/`：不包含真实项目过程信息的合成互操作示例
 
 ## 当前状态
 
@@ -356,6 +424,7 @@ OpenDomain 目前是 early alpha。
 - 运行 ERP 示例；
 - 验证 OpenDomain 文件格式；
 - 为 OpenSpec Feature 生成 grounding pack；
+- 用 advisory / enforced Assurance 区分准备状态与策略结果；
 - 用声明式 Profile 为其他结构化规划来源生成 grounding pack；
 - 用 index 生成 read-first plan；
 - 在本仓库中 dogfood OpenDomain 自身模型。
@@ -365,6 +434,8 @@ OpenDomain 目前是 early alpha。
 ## 开源边界
 
 这个仓库只包含通用领域语义层、工具链、示例和 OpenDomain 自身模型。
+维护者的 OpenSpec、PRD、ADR、复盘、dogfooding 和发布过程记录不属于公开产品
+仓库，也不会包含在 npm 包中。
 
 请不要提交：
 

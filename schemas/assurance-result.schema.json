@@ -1,0 +1,378 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opendomain.dev/schemas/assurance-result.schema.json",
+  "title": "OpenDomain Grounding Assurance Result v1",
+  "$comment": "This schema validates result shape and expressible local invariants. Semantic evidence coverage must be regenerated with opendomain assure; schema validation alone does not attest an untrusted or persisted result.",
+  "type": "object",
+  "required": [
+    "assurance_version",
+    "preparation",
+    "policy",
+    "findings",
+    "grounding_pack"
+  ],
+  "properties": {
+    "assurance_version": {
+      "const": "1.0"
+    },
+    "preparation": {
+      "type": "object",
+      "required": ["state"],
+      "properties": {
+        "state": {
+          "enum": ["prepared", "not_required", "incomplete", "invalid"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "policy": {
+      "type": "object",
+      "required": ["mode", "outcome"],
+      "properties": {
+        "mode": {
+          "enum": ["advisory", "enforced"]
+        },
+        "outcome": {
+          "enum": ["pass", "warn", "fail"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/finding"
+      }
+    },
+    "grounding_pack": {
+      "$ref": "grounding-pack.schema.json"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "preparation": {
+            "properties": {
+              "state": { "const": "invalid" }
+            },
+            "required": ["state"]
+          }
+        },
+        "required": ["preparation"]
+      },
+      "then": {
+        "properties": {
+          "policy": {
+            "properties": {
+              "outcome": { "const": "fail" }
+            },
+            "required": ["outcome"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "preparation": {
+            "properties": {
+              "state": { "const": "prepared" }
+            },
+            "required": ["state"]
+          }
+        },
+        "required": ["preparation"]
+      },
+      "then": {
+        "allOf": [
+          { "$ref": "#/$defs/requiredGroundingPair" }
+        ],
+        "properties": {
+          "grounding_pack": {
+            "properties": {
+              "read_first": { "minItems": 1 }
+            }
+          },
+          "policy": {
+            "properties": {
+              "outcome": { "enum": ["pass", "warn"] }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "preparation": {
+            "properties": {
+              "state": { "const": "not_required" }
+            },
+            "required": ["state"]
+          }
+        },
+        "required": ["preparation"]
+      },
+      "then": {
+        "allOf": [
+          { "$ref": "#/$defs/notRequiredGroundingPair" }
+        ],
+        "properties": {
+          "policy": {
+            "properties": {
+              "outcome": { "enum": ["pass", "warn"] }
+            }
+          },
+          "grounding_pack": {
+            "properties": {
+              "read_first": { "maxItems": 0 },
+              "candidate_boundaries": { "maxItems": 0 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "preparation": {
+            "properties": {
+              "state": { "const": "incomplete" }
+            },
+            "required": ["state"]
+          }
+        },
+        "required": ["preparation"]
+      },
+      "then": {
+        "oneOf": [
+          { "$ref": "#/$defs/requiredGroundingPair" },
+          { "$ref": "#/$defs/unclassifiedGroundingPair" }
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "preparation": {
+            "properties": {
+              "state": { "const": "incomplete" }
+            },
+            "required": ["state"]
+          },
+          "policy": {
+            "properties": {
+              "mode": { "const": "advisory" }
+            },
+            "required": ["mode"]
+          }
+        },
+        "required": ["preparation", "policy"]
+      },
+      "then": {
+        "properties": {
+          "policy": {
+            "properties": {
+              "outcome": { "const": "warn" }
+            },
+            "required": ["outcome"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "preparation": {
+            "properties": {
+              "state": { "const": "incomplete" }
+            },
+            "required": ["state"]
+          },
+          "policy": {
+            "properties": {
+              "mode": { "const": "enforced" }
+            },
+            "required": ["mode"]
+          }
+        },
+        "required": ["preparation", "policy"]
+      },
+      "then": {
+        "properties": {
+          "policy": {
+            "properties": {
+              "outcome": { "const": "fail" }
+            },
+            "required": ["outcome"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "policy": {
+            "properties": {
+              "outcome": { "const": "pass" }
+            },
+            "required": ["outcome"]
+          }
+        },
+        "required": ["policy"]
+      },
+      "then": {
+        "properties": {
+          "findings": { "maxItems": 0 },
+          "grounding_pack": {
+            "properties": {
+              "errors": { "maxItems": 0 },
+              "warnings": { "maxItems": 0 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "policy": {
+            "properties": {
+              "outcome": { "const": "warn" }
+            },
+            "required": ["outcome"]
+          }
+        },
+        "required": ["policy"]
+      },
+      "then": {
+        "properties": {
+          "findings": {
+            "items": {
+              "properties": {
+                "severity": { "const": "warning" }
+              },
+              "required": ["severity"]
+            }
+          },
+          "grounding_pack": {
+            "properties": {
+              "errors": { "maxItems": 0 }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "requiredGroundingPair": {
+      "$ref": "#/$defs/groundingPairRequired"
+    },
+    "notRequiredGroundingPair": {
+      "$ref": "#/$defs/groundingPairNotRequired"
+    },
+    "unclassifiedGroundingPair": {
+      "$ref": "#/$defs/groundingPairUnclassified"
+    },
+    "groundingPairRequired": {
+      "properties": {
+        "grounding_pack": {
+          "properties": {
+            "grounding_request": { "$ref": "#/$defs/requiredRequest" }
+          }
+        }
+      }
+    },
+    "groundingPairNotRequired": {
+      "properties": {
+        "grounding_pack": {
+          "properties": {
+            "grounding_request": { "$ref": "#/$defs/notRequiredRequest" }
+          }
+        }
+      }
+    },
+    "groundingPairUnclassified": {
+      "properties": {
+        "grounding_pack": {
+          "properties": {
+            "grounding_request": { "$ref": "#/$defs/unclassifiedRequest" }
+          }
+        }
+      }
+    },
+    "requiredRequest": {
+      "type": "object",
+      "properties": {
+        "grounding": {
+          "properties": {
+            "status": { "const": "required" }
+          },
+          "required": ["status"]
+        }
+      },
+      "required": ["grounding"]
+    },
+    "notRequiredRequest": {
+      "type": "object",
+      "properties": {
+        "grounding": {
+          "properties": {
+            "status": { "const": "not_required" }
+          },
+          "required": ["status", "rationale"]
+        }
+      },
+      "required": ["grounding"]
+    },
+    "unclassifiedRequest": {
+      "type": "object",
+      "properties": {
+        "grounding": {
+          "properties": {
+            "status": { "const": "unclassified" }
+          },
+          "required": ["status"]
+        }
+      },
+      "required": ["grounding"]
+    },
+    "finding": {
+      "type": "object",
+      "required": ["code", "severity", "file", "field", "problem", "fix"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "severity": {
+          "enum": ["error", "warning"]
+        },
+        "file": {
+          "$ref": "#/$defs/safePath"
+        },
+        "field": {
+          "$ref": "#/$defs/safeLine"
+        },
+        "problem": {
+          "$ref": "#/$defs/safeLine"
+        },
+        "fix": {
+          "$ref": "#/$defs/safeLine"
+        }
+      },
+      "additionalProperties": false
+    },
+    "safePath": {
+      "type": "string",
+      "pattern": "^(?!.*[\\u0000-\\u001F\\u007F])\\S(?:.*\\S)?$"
+    },
+    "safeLine": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+    }
+  },
+  "additionalProperties": false
+}

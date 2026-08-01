@@ -4,6 +4,7 @@ id: opendomain.index-is-derived-view-not-source-of-truth
 name: Index is derived view, not source of truth
 context: opendomain
 status: accepted
+compatibility_note: Evidence references moved to public product artifacts; semantic meaning is unchanged.
 applies_to:
   - opendomain.domain-knowledge
   - opendomain.grounding-pack
@@ -11,12 +12,12 @@ severity: must
 rule_type: invariant
 evidence:
   - type: spec
-    location: docs/architecture.md
-    summary: Derived views such as graph exports, search indexes, and MCP resources are rebuildable from Git files and are not authoritative.
+    location: README.md
+    summary: The public product description identifies the Semantic Retrieval Index as a derived read-first view.
     confidence: high
-  - type: spec
-    location: docs/product-prd.md
-    summary: MVP treats derived views as later outputs and keeps Git files as source of truth.
+  - type: code
+    location: src/indexer.mjs
+    summary: The indexer derives rebuildable entries from validated OpenDomain source files.
     confidence: high
   - type: human_review
     location: conversation:2026-07-03-semantic-retrieval-index

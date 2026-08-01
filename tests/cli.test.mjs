@@ -20,6 +20,8 @@ test("help explains canonical and legacy workspace resolution", async () => {
   assert.match(output, /roots are never merged/);
   assert.match(output, /integrations list/);
   assert.match(output, /--profile <id>/);
+  assert.match(output, /opendomain assure/);
+  assert.match(output, /--mode advisory\|enforced/);
 });
 
 test("validate command returns JSON and zero exit code for valid ERP example", async () => {
@@ -78,9 +80,9 @@ test("validate command reports deterministic runtime schema diagnostics", async 
   assert.equal(exitCode, 1);
   assert.deepEqual(
     payload.errors.map((issue) => issue.field),
-    ["applies_to", "id", "name", "review.reviewed_at", "rule_type", "severity"]
+    ["applies_to", "name", "review.reviewed_at", "rule_type", "severity"]
   );
-  assert.equal(payload.documents.some((document) => document.id === "BAD"), false);
+  assert.equal(payload.documents.some((document) => document.id === "sales.invalid-rule"), false);
 });
 
 test("order cancellation demo explains the avoided semantic error", async () => {
@@ -110,6 +112,7 @@ test("init command creates a minimal valid OpenDomain structure", async () => {
     assert.match(output, /opendomain\/candidates\/candidate-0001-first-domain-model\.md/);
     assert.match(output, /opendomain\/integrations\/profiles\/README\.md/);
     await access("opendomain/integrations/profiles/README.md");
+    assert.match(await readFile("AGENTS.md", "utf8"), /opendomain assure <feature-spec-or-dir>/);
 
     const validateStdout = memoryStream();
     const validateExitCode = await runCli(["validate", "--json"], { stdout: validateStdout, stderr: memoryStream() });
@@ -512,14 +515,32 @@ test("prepare command accepts a directory containing one feature spec", async ()
   assert.match(stdout.toString(), /Feature: spec\.order-cancellation/);
 });
 
-test("prepare command works for the OpenDomain self model", async () => {
+test("prepare command works for the OpenDomain self model", async (context) => {
   const stdout = memoryStream();
   const stderr = memoryStream();
+  const fixtureRoot = await mkdtemp(path.join(os.tmpdir(), "opendomain-self-model-feature-"));
+  const featurePath = path.join(fixtureRoot, "feature.md");
+  context.after(() => rm(fixtureRoot, { recursive: true, force: true }));
+  await writeFile(featurePath, `---
+type: feature_spec
+id: spec.opendomain-self-model-maintenance
+name: OpenDomain self-model maintenance
+status: proposed
+grounding:
+  status: required
+  rationale: Self-model maintenance changes OpenDomain's stable product semantics.
+affects_domain:
+  concepts:
+    - opendomain.domain-knowledge
+  rules: []
+  lifecycles: []
+  events: []
+---
 
-  const exitCode = await runCli([
-    "prepare",
-    "examples/self-model/openspec/changes/self-model-maintenance/spec.md"
-  ], { stdout, stderr });
+# OpenDomain self-model maintenance
+`, "utf8");
+
+  const exitCode = await runCli(["prepare", featurePath], { stdout, stderr });
   const output = stdout.toString();
 
   assert.equal(exitCode, 0);

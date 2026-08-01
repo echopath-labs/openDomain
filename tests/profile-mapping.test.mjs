@@ -36,6 +36,12 @@ domain:
       name: "Add X",
       status: "proposed"
     });
+    assert.deepEqual(result.request.grounding, {
+      status: "unclassified"
+    });
+    assert.ok(result.warnings.some((item) => (
+      item.code === "legacy_grounding_status_missing"
+    )));
     assert.deepEqual(result.request.affects_domain, {
       concepts: ["sales.order"],
       rules: ["sales.confirmed-order-cannot-be-deleted"],

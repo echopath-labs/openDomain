@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { access, cp, mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { access, cp, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -135,6 +135,22 @@ async function seedErpWorkspace(project, workspaceDirectory) {
   await cp(
     path.join(REPOSITORY_ROOT, "examples/erp/openspec/changes/order-cancellation/spec.md"),
     path.join(project, "feature.md")
+  );
+
+  // Keep workspace-resolution assertions independent from Candidate aging.
+  const candidatePath = path.join(
+    project,
+    workspaceDirectory,
+    "candidates/candidate-0001-order-lifecycle.md"
+  );
+  const candidate = await readFile(candidatePath, "utf8");
+  await writeFile(
+    candidatePath,
+    candidate.replace(
+      /^extracted_at: .*$/m,
+      `extracted_at: ${new Date().toISOString().slice(0, 10)}`
+    ),
+    "utf8"
   );
 }
 

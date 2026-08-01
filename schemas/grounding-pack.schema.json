@@ -35,11 +35,11 @@
     },
     "errors": {
       "type": "array",
-      "items": { "$ref": "#/$defs/diagnostic" }
+      "items": { "$ref": "#/$defs/errorDiagnostic" }
     },
     "warnings": {
       "type": "array",
-      "items": { "$ref": "#/$defs/diagnostic" }
+      "items": { "$ref": "#/$defs/warningDiagnostic" }
     }
   },
   "$defs": {
@@ -48,23 +48,58 @@
       "required": ["id", "type", "status", "file"],
       "properties": {
         "id": { "type": "string", "minLength": 1 },
-        "type": { "type": "string", "minLength": 1 },
+        "type": {
+          "enum": [
+            "bounded_context",
+            "domain_concept",
+            "business_rule",
+            "lifecycle",
+            "domain_event"
+          ]
+        },
         "name": { "type": "string" },
         "status": { "const": "accepted" },
-        "file": { "type": "string", "minLength": 1 },
+        "file": { "$ref": "#/$defs/repositoryPath" },
         "context": { "type": "string" }
       },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": { "const": "bounded_context" }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "id": { "pattern": "^[a-z][a-z0-9_-]*$" }
+            }
+          },
+          "else": {
+            "properties": {
+              "id": {
+                "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_-]*)+$"
+              }
+            }
+          }
+        }
+      ],
       "additionalProperties": true
     },
     "candidateBoundary": {
       "type": "object",
-      "required": ["id", "status", "target_id", "file"],
+      "required": ["id", "status", "target_id", "confidence", "file"],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
-        "status": { "type": "string", "minLength": 1 },
-        "target_id": { "type": "string", "minLength": 1 },
-        "confidence": { "type": "string" },
-        "file": { "type": "string", "minLength": 1 }
+        "id": {
+          "type": "string",
+          "pattern": "^candidate-[0-9]{4}(-[a-z0-9]+)*$"
+        },
+        "status": {
+          "enum": ["proposed", "rejected", "superseded", "deprecated"]
+        },
+        "target_id": { "type": "string", "minLength": 1, "pattern": "\\S" },
+        "confidence": { "enum": ["low", "medium", "high"] },
+        "file": { "$ref": "#/$defs/repositoryPath" }
       },
       "additionalProperties": true
     },
@@ -108,12 +143,45 @@
       "required": ["severity", "file", "field", "problem", "fix"],
       "properties": {
         "severity": { "enum": ["error", "warning"] },
-        "file": { "type": "string" },
-        "field": { "type": "string" },
-        "problem": { "type": "string", "minLength": 1 },
-        "fix": { "type": "string", "minLength": 1 }
+        "file": { "$ref": "#/$defs/safePath" },
+        "field": { "$ref": "#/$defs/safeLine" },
+        "problem": { "$ref": "#/$defs/safeLine" },
+        "fix": { "$ref": "#/$defs/safeLine" }
       },
       "additionalProperties": true
+    },
+    "errorDiagnostic": {
+      "allOf": [
+        { "$ref": "#/$defs/diagnostic" },
+        {
+          "properties": {
+            "severity": { "const": "error" }
+          }
+        }
+      ]
+    },
+    "warningDiagnostic": {
+      "allOf": [
+        { "$ref": "#/$defs/diagnostic" },
+        {
+          "properties": {
+            "severity": { "const": "warning" }
+          }
+        }
+      ]
+    },
+    "safePath": {
+      "type": "string",
+      "pattern": "^(?!.*[\\u0000-\\u001F\\u007F])\\S(?:.*\\S)?$"
+    },
+    "repositoryPath": {
+      "type": "string",
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!\\.{1,2}(?:/|$))(?!.*(?:/\\.{1,2}(?:/|$)|//))(?!.*[\\u0000-\\u001F\\u007F])(?!.*[/]$)\\S(?:.*\\S)?$"
+    },
+    "safeLine": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
     }
   },
   "additionalProperties": true
