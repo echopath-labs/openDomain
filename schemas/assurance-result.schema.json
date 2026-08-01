@@ -123,6 +123,64 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "preparation": {
+            "properties": {
+              "state": { "const": "incomplete" }
+            },
+            "required": ["state"]
+          },
+          "policy": {
+            "properties": {
+              "mode": { "const": "advisory" }
+            },
+            "required": ["mode"]
+          }
+        },
+        "required": ["preparation", "policy"]
+      },
+      "then": {
+        "properties": {
+          "policy": {
+            "properties": {
+              "outcome": { "const": "warn" }
+            },
+            "required": ["outcome"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "preparation": {
+            "properties": {
+              "state": { "const": "incomplete" }
+            },
+            "required": ["state"]
+          },
+          "policy": {
+            "properties": {
+              "mode": { "const": "enforced" }
+            },
+            "required": ["mode"]
+          }
+        },
+        "required": ["preparation", "policy"]
+      },
+      "then": {
+        "properties": {
+          "policy": {
+            "properties": {
+              "outcome": { "const": "fail" }
+            },
+            "required": ["outcome"]
+          }
+        }
+      }
     }
   ],
   "$defs": {

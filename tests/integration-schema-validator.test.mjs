@@ -106,6 +106,10 @@ test("Grounding Request schema accepts explicit decisions and requires skip rati
   const issues = validateIntegrationValue("request", request);
   assert.ok(issues.some((issue) => issue.field === "grounding.rationale"));
 
+  request.grounding.rationale = "   ";
+  const whitespaceIssues = validateIntegrationValue("request", request);
+  assert.ok(whitespaceIssues.some((issue) => issue.field === "grounding.rationale"));
+
   request.grounding.rationale = "This source unit does not affect domain semantics.";
   request.affects_domain.concepts = ["sales.order"];
   const contradictoryIssues = validateIntegrationValue("request", request);

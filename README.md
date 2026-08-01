@@ -108,9 +108,9 @@ affects_domain:
 ```
 
 The supported statuses are `required`, `not_required`, and `unclassified`.
-`not_required` requires a rationale and forbids every OpenDomain ID. Empty IDs
-under `required` represent an incomplete `domain_model_gap`; empty IDs never
-imply `not_required`.
+`not_required` requires a non-whitespace rationale and forbids every OpenDomain
+ID. Empty IDs under `required` represent an incomplete `domain_model_gap`;
+empty IDs never imply `not_required`.
 
 Run the read-only preflight locally or in CI:
 

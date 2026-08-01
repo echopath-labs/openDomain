@@ -265,7 +265,7 @@ Grounding Requirement 有三个显式状态：
 | 状态 | 含义 |
 | --- | --- |
 | `required` | 这次工作受长期领域语义约束，需要准备 accepted context |
-| `not_required` | 这次工作不涉及领域语义；必须提供 rationale，且不能声明任何 OpenDomain ID |
+| `not_required` | 这次工作不涉及领域语义；必须提供非空白 rationale，且不能声明任何 OpenDomain ID |
 | `unclassified` | Agent 或维护者尚无足够证据完成判断 |
 
 Assurance 将状态判断、准备结果和执行策略分开报告：

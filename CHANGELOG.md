@@ -13,6 +13,8 @@
   lacks accepted evidence for any declared affected ID.
 - Normalize Integration Profile v1 requests to `unclassified` in the trusted
   Request Builder while rejecting external Packs that omit `grounding`.
+- Reject whitespace-only skip rationales, sanitize external diagnostic codes,
+  and enforce incomplete-state policy outcomes in the public Result Schema.
 - Keep maintainer OpenSpec and narrative development records outside the public
   repository and npm package; README and JSON Schemas remain the public usage
   and contract entrypoints.

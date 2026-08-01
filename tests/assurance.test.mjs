@@ -127,6 +127,64 @@ test("malformed external pack paths cannot invalidate Assurance diagnostics", ()
   assert.deepEqual(validateIntegrationValue("assurance", result), []);
 });
 
+test("external not_required rationale must contain non-whitespace text", () => {
+  const result = evaluateGroundingPack(externalGroundingPack({
+    status: "not_required",
+    rationale: "   ",
+    affectedConcepts: []
+  }));
+
+  assert.equal(result.preparation.state, "invalid");
+  assert.equal(result.policy.outcome, "fail");
+  assert.ok(result.findings.some((item) => item.code === "invalid_grounding_decision"));
+  assert.deepEqual(validateIntegrationValue("assurance", result), []);
+});
+
+test("external diagnostic codes are sanitized before Assurance output", () => {
+  const pack = externalGroundingPack({ status: "unclassified" });
+  pack.warnings.push({
+    code: "INVALID-CODE",
+    severity: "warning",
+    file: "feature.md",
+    field: "$",
+    problem: "External warning.",
+    fix: "Review the external warning."
+  });
+
+  const result = evaluateGroundingPack(pack);
+
+  assert.equal(result.preparation.state, "incomplete");
+  assert.equal(result.policy.outcome, "warn");
+  assert.ok(result.findings.some((item) => item.code === "grounding_preparation_warning"));
+  assert.ok(result.findings.every((item) => item.code !== "INVALID-CODE"));
+  assert.deepEqual(validateIntegrationValue("assurance", result), []);
+});
+
+test("Assurance Result schema enforces policy outcomes for incomplete states", () => {
+  const advisory = evaluateGroundingPack(externalGroundingPack({
+    status: "unclassified"
+  }));
+  const enforced = evaluateGroundingPack(externalGroundingPack({
+    status: "unclassified"
+  }), { mode: "enforced" });
+
+  assert.equal(advisory.policy.outcome, "warn");
+  assert.equal(enforced.policy.outcome, "fail");
+  assert.deepEqual(validateIntegrationValue("assurance", advisory), []);
+  assert.deepEqual(validateIntegrationValue("assurance", enforced), []);
+
+  for (const result of [advisory, enforced]) {
+    const inconsistent = {
+      ...result,
+      policy: {
+        ...result.policy,
+        outcome: "pass"
+      }
+    };
+    assert.ok(validateIntegrationValue("assurance", inconsistent).length > 0);
+  }
+});
+
 test("not_required grounding needs a rationale and cannot contain domain IDs", async (context) => {
   const project = await createProject(context);
   await writeFeature(project, {
@@ -429,6 +487,9 @@ function externalGroundingPack(options = {}) {
   } else if (!("status" in options)) {
     grounding.status = "required";
   }
+  if (options.rationale !== undefined) {
+    grounding.rationale = options.rationale;
+  }
 
   pack.feature = {
     id: "spec.external-pack",
@@ -448,7 +509,7 @@ function externalGroundingPack(options = {}) {
     },
     grounding,
     affects_domain: {
-      concepts: ["sales.order"],
+      concepts: options.affectedConcepts ?? ["sales.order"],
       rules: [],
       lifecycles: [],
       events: []

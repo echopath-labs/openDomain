@@ -8,6 +8,7 @@ import {
 export const ASSURANCE_VERSION = "1.0";
 
 const POLICY_MODES = new Set(["advisory", "enforced"]);
+const FINDING_CODE_PATTERN = /^[a-z][a-z0-9_]*$/;
 
 export async function assureGrounding(inputPath, options = {}) {
   const mode = options.mode ?? "advisory";
@@ -34,7 +35,7 @@ export function evaluateGroundingPack(inputPack, options = {}) {
 
   if (pack.errors.length === 0 && grounding.status !== null) {
     if (grounding.status === "not_required") {
-      if (!grounding.rationale) {
+      if (!grounding.rationale?.trim()) {
         findings.push(finding({
           code: "grounding_rationale_required",
           severity: "error",
@@ -305,11 +306,16 @@ function incompleteFinding(mode, fields) {
 }
 
 function toFinding(item, fallbackSeverity) {
+  const severity = item.severity ?? fallbackSeverity;
   return finding({
     ...item,
-    code: item.code ?? inferFindingCode(item, fallbackSeverity),
-    severity: item.severity ?? fallbackSeverity
+    code: validFindingCode(item.code) ? item.code : inferFindingCode(item, severity),
+    severity
   });
+}
+
+function validFindingCode(code) {
+  return typeof code === "string" && FINDING_CODE_PATTERN.test(code);
 }
 
 function inferFindingCode(item, severity) {
