@@ -39,7 +39,8 @@
 - Validate declared evidence before applying `unclassified` policy so unresolved
   or mistyped affected IDs fail in both advisory and enforced modes.
 - Reject leading/trailing whitespace, line breaks, and terminal control
-  characters in Pack, Request, and Assurance text fields rendered by the CLI.
+  characters in Pack paths and diagnostic text, and escape schema-derived field
+  names before rendering Assurance text.
 - Keep maintainer OpenSpec and narrative development records outside the public
   repository and npm package; README and JSON Schemas remain the public usage
   and contract entrypoints.

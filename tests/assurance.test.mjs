@@ -472,6 +472,30 @@ test("external diagnostics reject multiline and terminal-control text", () => {
   }
 });
 
+test("schema-derived findings escape unsafe property names", () => {
+  const pack = externalGroundingPack({ status: "unclassified" });
+  pack.grounding_request.grounding["forged\n\u001b[31mfield"] = true;
+
+  const result = evaluateGroundingPack(pack);
+
+  assert.equal(result.preparation.state, "invalid");
+  assert.equal(result.policy.outcome, "fail");
+  assert.ok(result.findings.some((item) => (
+    item.field.includes("forged\\u000a\\u001b[31mfield")
+  )));
+  assert.ok(result.findings.every((item) => !/[\u0000-\u001F\u007F]/.test([
+    item.file,
+    item.field,
+    item.problem,
+    item.fix
+  ].join(""))));
+  assert.deepEqual(validateIntegrationValue("assurance", result), []);
+
+  const output = formatAssuranceResult(result);
+  assert.doesNotMatch(output, /forged\n\u001b/);
+  assert.doesNotMatch(output, /\u001b/);
+});
+
 test("externally constructed packs reject missing and unsupported grounding statuses", () => {
   for (const pack of [
     externalGroundingPack({ status: undefined }),

@@ -10,6 +10,7 @@ export const ASSURANCE_VERSION = "1.0";
 const POLICY_MODES = new Set(["advisory", "enforced"]);
 const FINDING_CODE_PATTERN = /^[a-z][a-z0-9_]*$/;
 const SAFE_INLINE_PATH_PATTERN = /^(?!.*[\u0000-\u001F\u007F])\S(?:.*\S)?$/;
+const CONTROL_CHARACTER_PATTERN = /[\u0000-\u001F\u007F]/g;
 
 export async function assureGrounding(inputPath, options = {}) {
   const mode = options.mode ?? "advisory";
@@ -445,11 +446,21 @@ function finding(fields) {
   return {
     code: fields.code,
     severity: fields.severity,
-    file: fields.file ?? "<input>",
-    field: fields.field ?? "$",
-    problem: fields.problem,
-    fix: fields.fix
+    file: safeInputPath(fields.file),
+    field: safeFindingLine(fields.field, "$"),
+    problem: safeFindingLine(fields.problem, "Assurance evaluation failed."),
+    fix: safeFindingLine(
+      fields.fix,
+      "Review the input and regenerate the Grounding Pack."
+    )
   };
+}
+
+function safeFindingLine(value, fallback) {
+  const line = typeof value === "string" && value.length > 0 ? value : fallback;
+  return line.replace(CONTROL_CHARACTER_PATTERN, (character) => (
+    `\\u${character.codePointAt(0).toString(16).padStart(4, "0")}`
+  ));
 }
 
 function uniqueFindings(items) {
