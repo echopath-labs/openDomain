@@ -165,7 +165,23 @@ function validateAssurancePackSemantics(pack) {
 
   issues.push(...duplicateIdIssues(pack?.read_first, "read_first"));
   issues.push(...duplicateIdIssues(pack?.candidate_boundaries, "candidate_boundaries"));
+  if (request?.grounding?.status === "not_required") {
+    issues.push(...unexpectedSkipEvidenceIssues(pack?.read_first, "read_first"));
+    issues.push(...unexpectedSkipEvidenceIssues(pack?.candidate_boundaries, "candidate_boundaries"));
+  }
   return issues;
+}
+
+function unexpectedSkipEvidenceIssues(items, field) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return [];
+  }
+  return [{
+    severity: "error",
+    field,
+    problem: `Grounding marked not_required cannot carry ${field} evidence.`,
+    fix: `Remove ${field} evidence or classify grounding as required or unclassified.`
+  }];
 }
 
 function duplicateIdIssues(items, field) {

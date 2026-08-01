@@ -231,6 +231,25 @@ test("external not_required rationale must contain non-whitespace text", () => {
   assert.deepEqual(validateIntegrationValue("assurance", result), []);
 });
 
+test("external not_required packs cannot carry grounding evidence", () => {
+  const result = evaluateGroundingPack(externalGroundingPack({
+    status: "not_required",
+    rationale: "No domain semantics are affected.",
+    affectedConcepts: [],
+    readFirst: [{
+      id: "sales.order",
+      type: "domain_concept",
+      status: "accepted",
+      file: "opendomain/concepts/sales.order.md"
+    }]
+  }));
+
+  assert.equal(result.preparation.state, "invalid");
+  assert.equal(result.policy.outcome, "fail");
+  assert.ok(result.findings.some((item) => item.code === "invalid_grounding_pack"));
+  assert.deepEqual(validateIntegrationValue("assurance", result), []);
+});
+
 test("external diagnostic codes are sanitized before Assurance output", () => {
   const pack = externalGroundingPack({ status: "unclassified" });
   pack.warnings.push({
@@ -274,6 +293,50 @@ test("Assurance Result schema enforces policy outcomes for incomplete states", (
     };
     assert.ok(validateIntegrationValue("assurance", inconsistent).length > 0);
   }
+});
+
+test("Assurance Result schema binds preparation states to grounding statuses", () => {
+  const incomplete = evaluateGroundingPack(externalGroundingPack({
+    status: "unclassified",
+    readFirst: [{
+      id: "sales.order",
+      type: "domain_concept",
+      status: "accepted",
+      file: "opendomain/concepts/sales.order.md"
+    }]
+  }));
+  assert.equal(incomplete.preparation.state, "incomplete");
+  assert.deepEqual(incomplete.preparation.accepted_ids, ["sales.order"]);
+
+  const forgedPrepared = {
+    ...incomplete,
+    preparation: {
+      ...incomplete.preparation,
+      state: "prepared"
+    },
+    policy: {
+      ...incomplete.policy,
+      outcome: "pass"
+    }
+  };
+  assert.ok(validateIntegrationValue("assurance", forgedPrepared).length > 0);
+
+  const notRequired = evaluateGroundingPack(externalGroundingPack({
+    status: "not_required",
+    rationale: "No domain semantics are affected.",
+    affectedConcepts: []
+  }));
+  assert.equal(notRequired.preparation.state, "not_required");
+  assert.deepEqual(validateIntegrationValue("assurance", notRequired), []);
+
+  const forgedSkip = {
+    ...notRequired,
+    grounding: {
+      ...notRequired.grounding,
+      status: "required"
+    }
+  };
+  assert.ok(validateIntegrationValue("assurance", forgedSkip).length > 0);
 });
 
 test("not_required grounding needs a rationale and cannot contain domain IDs", async (context) => {

@@ -34,7 +34,8 @@
         },
         "rationale": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "pattern": "\\S"
         }
       },
       "additionalProperties": false
@@ -115,13 +116,77 @@
         "required": ["preparation"]
       },
       "then": {
+        "allOf": [
+          { "$ref": "#/$defs/requiredGroundingPair" }
+        ],
         "properties": {
           "preparation": {
             "properties": {
               "accepted_ids": { "minItems": 1 }
             }
+          },
+          "policy": {
+            "properties": {
+              "outcome": { "enum": ["pass", "warn"] }
+            }
           }
         }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "preparation": {
+            "properties": {
+              "state": { "const": "not_required" }
+            },
+            "required": ["state"]
+          }
+        },
+        "required": ["preparation"]
+      },
+      "then": {
+        "allOf": [
+          { "$ref": "#/$defs/notRequiredGroundingPair" }
+        ],
+        "properties": {
+          "preparation": {
+            "properties": {
+              "accepted_ids": { "maxItems": 0 },
+              "candidate_ids": { "maxItems": 0 }
+            }
+          },
+          "policy": {
+            "properties": {
+              "outcome": { "enum": ["pass", "warn"] }
+            }
+          },
+          "grounding_pack": {
+            "properties": {
+              "read_first": { "maxItems": 0 },
+              "candidate_boundaries": { "maxItems": 0 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "preparation": {
+            "properties": {
+              "state": { "const": "incomplete" }
+            },
+            "required": ["state"]
+          }
+        },
+        "required": ["preparation"]
+      },
+      "then": {
+        "oneOf": [
+          { "$ref": "#/$defs/requiredGroundingPair" },
+          { "$ref": "#/$defs/unclassifiedGroundingPair" }
+        ]
       }
     },
     {
@@ -184,6 +249,105 @@
     }
   ],
   "$defs": {
+    "requiredGroundingPair": {
+      "$ref": "#/$defs/groundingPairRequired"
+    },
+    "notRequiredGroundingPair": {
+      "$ref": "#/$defs/groundingPairNotRequired"
+    },
+    "unclassifiedGroundingPair": {
+      "$ref": "#/$defs/groundingPairUnclassified"
+    },
+    "groundingPairRequired": {
+      "properties": {
+        "grounding": {
+          "properties": {
+            "status": { "const": "required" }
+          },
+          "required": ["status"]
+        },
+        "grounding_request": {
+          "$ref": "#/$defs/requiredRequest"
+        },
+        "grounding_pack": {
+          "properties": {
+            "grounding_request": { "$ref": "#/$defs/requiredRequest" }
+          }
+        }
+      }
+    },
+    "groundingPairNotRequired": {
+      "properties": {
+        "grounding": {
+          "properties": {
+            "status": { "const": "not_required" }
+          },
+          "required": ["status", "rationale"]
+        },
+        "grounding_request": {
+          "$ref": "#/$defs/notRequiredRequest"
+        },
+        "grounding_pack": {
+          "properties": {
+            "grounding_request": { "$ref": "#/$defs/notRequiredRequest" }
+          }
+        }
+      }
+    },
+    "groundingPairUnclassified": {
+      "properties": {
+        "grounding": {
+          "properties": {
+            "status": { "const": "unclassified" }
+          },
+          "required": ["status"]
+        },
+        "grounding_request": {
+          "$ref": "#/$defs/unclassifiedRequest"
+        },
+        "grounding_pack": {
+          "properties": {
+            "grounding_request": { "$ref": "#/$defs/unclassifiedRequest" }
+          }
+        }
+      }
+    },
+    "requiredRequest": {
+      "type": "object",
+      "properties": {
+        "grounding": {
+          "properties": {
+            "status": { "const": "required" }
+          },
+          "required": ["status"]
+        }
+      },
+      "required": ["grounding"]
+    },
+    "notRequiredRequest": {
+      "type": "object",
+      "properties": {
+        "grounding": {
+          "properties": {
+            "status": { "const": "not_required" }
+          },
+          "required": ["status", "rationale"]
+        }
+      },
+      "required": ["grounding"]
+    },
+    "unclassifiedRequest": {
+      "type": "object",
+      "properties": {
+        "grounding": {
+          "properties": {
+            "status": { "const": "unclassified" }
+          },
+          "required": ["status"]
+        }
+      },
+      "required": ["grounding"]
+    },
     "idArray": {
       "type": "array",
       "items": {

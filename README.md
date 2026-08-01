@@ -133,6 +133,8 @@ broken references, integration ambiguity, and accepted/Candidate trust boundary
 violations fail in both modes. Run `opendomain init` before adopting Assurance
 in an existing project. The result reports observed evidence; it does not prove
 Agent comprehension or independently attest a historical repository state.
+The Result Schema binds `prepared` to `required`, `not_required` to an explicit
+evidence-free skip, and `incomplete` to `required` or `unclassified`.
 
 Repository-local Integration Profiles can normalize explicit structured intent
 and OpenDomain IDs from non-OpenSpec sources. Profiles do not scan prose, infer
