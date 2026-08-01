@@ -143,6 +143,9 @@ live in `grounding_pack.grounding_request`; evidence IDs, types, and paths live
 in `grounding_pack.read_first` and `grounding_pack.candidate_boundaries`. IDs
 cannot appear in both evidence collections, and the Result carries no divergent
 request, classification, or evidence summary.
+Each Candidate boundary uses the Candidate ID, lifecycle status, and confidence
+contract, and its `target_id` must identify accepted `read_first` evidence in
+that same Pack.
 
 Repository-local Integration Profiles can normalize explicit structured intent
 and OpenDomain IDs from non-OpenSpec sources. Profiles do not scan prose, infer

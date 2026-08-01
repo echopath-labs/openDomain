@@ -295,6 +295,8 @@ boundaries 中。`preparation` 只报告状态，Grounding Request 与 classific
 `grounding_pack.read_first` 与 `grounding_pack.candidate_boundaries`。同一个 ID
 不能同时出现在两个 evidence 集合中，Assurance Result 不再携带可能相互矛盾的
 request、classification 或 evidence 摘要。
+每个 Candidate boundary 都必须符合 Candidate ID、生命周期状态与 confidence
+约束，且 `target_id` 必须指向同一 Pack 中的 accepted `read_first` evidence。
 
 存量项目应先运行 `opendomain init`。初始化后即使还没有 accepted knowledge，
 `required` 加空引用也会被识别为 `domain_model_gap`；完全缺少 OpenDomain workspace

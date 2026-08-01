@@ -159,11 +159,34 @@ function validateAssurancePackSemantics(pack) {
   issues.push(...duplicateIdIssues(pack?.read_first, "read_first"));
   issues.push(...duplicateIdIssues(pack?.candidate_boundaries, "candidate_boundaries"));
   issues.push(...crossCollectionIdIssues(pack?.read_first, pack?.candidate_boundaries));
+  issues.push(...candidateTargetIssues(pack?.read_first, pack?.candidate_boundaries));
   if (request?.grounding?.status === "not_required") {
     issues.push(...unexpectedSkipEvidenceIssues(pack?.read_first, "read_first"));
     issues.push(...unexpectedSkipEvidenceIssues(pack?.candidate_boundaries, "candidate_boundaries"));
   }
   return issues;
+}
+
+function candidateTargetIssues(readFirst, candidateBoundaries) {
+  if (!Array.isArray(readFirst) || !Array.isArray(candidateBoundaries)) {
+    return [];
+  }
+
+  const acceptedIds = new Set(
+    readFirst
+      .map((item) => item?.id)
+      .filter((id) => typeof id === "string")
+  );
+  return candidateBoundaries.flatMap((item, index) => (
+    typeof item?.target_id === "string" && !acceptedIds.has(item.target_id)
+      ? [{
+          severity: "error",
+          field: `candidate_boundaries[${index}].target_id`,
+          problem: `Candidate target '${item.target_id}' is not present in accepted read_first evidence.`,
+          fix: "Remove the unrelated Candidate or include it only when its accepted target is in the Grounding Pack."
+        }]
+      : []
+  ));
 }
 
 function crossCollectionIdIssues(readFirst, candidateBoundaries) {

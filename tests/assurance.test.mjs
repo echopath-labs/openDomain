@@ -168,17 +168,19 @@ test("external packs reject duplicate evidence IDs with conflicting types", () =
 
 test("external packs reject IDs shared by accepted and Candidate evidence", () => {
   const result = evaluateGroundingPack(externalGroundingPack({
+    affectedConcepts: ["candidate-0001-shared"],
     readFirst: [{
-      id: "sales.order",
+      id: "candidate-0001-shared",
       type: "domain_concept",
       status: "accepted",
-      file: "opendomain/concepts/sales.order.md"
+      file: "opendomain/concepts/candidate-0001-shared.md"
     }],
     candidateBoundaries: [{
-      id: "sales.order",
+      id: "candidate-0001-shared",
       status: "proposed",
-      target_id: "sales.order",
-      file: "opendomain/candidates/sales.order.md"
+      target_id: "candidate-0001-shared",
+      confidence: "high",
+      file: "opendomain/candidates/candidate-0001-shared.md"
     }]
   }));
 
@@ -189,6 +191,70 @@ test("external packs reject IDs shared by accepted and Candidate evidence", () =
     && item.field === "candidate_boundaries[0].id"
   )));
   assert.deepEqual(validateIntegrationValue("assurance", result), []);
+});
+
+test("external Candidate boundaries must target current accepted evidence", () => {
+  const result = evaluateGroundingPack(externalGroundingPack({
+    readFirst: [{
+      id: "sales.order",
+      type: "domain_concept",
+      status: "accepted",
+      file: "opendomain/concepts/sales.order.md"
+    }],
+    candidateBoundaries: [{
+      id: "candidate-0002-unrelated",
+      status: "proposed",
+      target_id: "sales.customer",
+      confidence: "medium",
+      file: "opendomain/candidates/candidate-0002-unrelated.md"
+    }]
+  }));
+
+  assert.equal(result.preparation.state, "invalid");
+  assert.equal(result.policy.outcome, "fail");
+  assert.ok(result.findings.some((item) => (
+    item.code === "invalid_grounding_pack"
+    && item.field === "candidate_boundaries[0].target_id"
+  )));
+  assert.deepEqual(validateIntegrationValue("assurance", result), []);
+});
+
+test("external Candidate boundaries enforce Candidate metadata", () => {
+  const candidate = {
+    id: "candidate-0003-order",
+    status: "proposed",
+    target_id: "sales.order",
+    confidence: "medium",
+    file: "opendomain/candidates/candidate-0003-order.md"
+  };
+  const invalidCandidates = [
+    { ...candidate, id: "sales.order" },
+    { ...candidate, status: "accepted" },
+    { ...candidate, confidence: "certain" },
+    {
+      id: candidate.id,
+      status: candidate.status,
+      target_id: candidate.target_id,
+      file: candidate.file
+    }
+  ];
+
+  for (const candidateBoundary of invalidCandidates) {
+    const result = evaluateGroundingPack(externalGroundingPack({
+      readFirst: [{
+        id: "sales.order",
+        type: "domain_concept",
+        status: "accepted",
+        file: "opendomain/concepts/sales.order.md"
+      }],
+      candidateBoundaries: [candidateBoundary]
+    }));
+
+    assert.equal(result.preparation.state, "invalid");
+    assert.equal(result.policy.outcome, "fail");
+    assert.ok(result.findings.some((item) => item.code === "invalid_grounding_pack"));
+    assert.deepEqual(validateIntegrationValue("assurance", result), []);
+  }
 });
 
 test("external Candidates cannot masquerade as accepted read-first evidence", () => {

@@ -66,12 +66,17 @@
     },
     "candidateBoundary": {
       "type": "object",
-      "required": ["id", "status", "target_id", "file"],
+      "required": ["id", "status", "target_id", "confidence", "file"],
       "properties": {
-        "id": { "type": "string", "minLength": 1, "pattern": "\\S" },
-        "status": { "type": "string", "minLength": 1 },
+        "id": {
+          "type": "string",
+          "pattern": "^candidate-[0-9]{4}(-[a-z0-9]+)*$"
+        },
+        "status": {
+          "enum": ["proposed", "rejected", "superseded", "deprecated"]
+        },
         "target_id": { "type": "string", "minLength": 1, "pattern": "\\S" },
-        "confidence": { "type": "string" },
+        "confidence": { "enum": ["low", "medium", "high"] },
         "file": { "type": "string", "minLength": 1, "pattern": "\\S" }
       },
       "additionalProperties": true
