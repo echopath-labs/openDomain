@@ -1,4 +1,5 @@
 import { collectAffectedIds } from "./grounding-request.mjs";
+import { validateIntegrationValue } from "./integration-schema-validator.mjs";
 import {
   emptyGroundingPack,
   prepareGroundingPack
@@ -16,10 +17,11 @@ export async function assureGrounding(inputPath, options = {}) {
   return evaluateGroundingPack(pack, { mode });
 }
 
-export function evaluateGroundingPack(pack, options = {}) {
+export function evaluateGroundingPack(inputPack, options = {}) {
   const mode = options.mode ?? "advisory";
   assertPolicyMode(mode);
 
+  const pack = normalizeGroundingPack(inputPack);
   const request = pack.grounding_request;
   const grounding = normalizeGrounding(request, pack);
   const findings = [
@@ -28,26 +30,11 @@ export function evaluateGroundingPack(pack, options = {}) {
     ...grounding.findings
   ];
   const affectedIds = request ? collectAffectedIds(request.affects_domain) : [];
-  const contradictorySkip = (
-    grounding.status === "not_required"
-    && affectedIds.length > 0
-  );
   let state = "invalid";
-
-  if (contradictorySkip) {
-    findings.push(finding({
-      code: "grounding_decision_contradiction",
-      severity: "error",
-      file: request.source.path,
-      field: affectedIds[0].field,
-      problem: "Grounding is marked not_required but affects_domain contains OpenDomain IDs.",
-      fix: "Remove the IDs or change grounding.status to required or unclassified."
-    }));
-  }
 
   if (pack.errors.length === 0 && grounding.status !== null) {
     if (grounding.status === "not_required") {
-      if (!contradictorySkip && !grounding.rationale) {
+      if (!grounding.rationale) {
         findings.push(finding({
           code: "grounding_rationale_required",
           severity: "error",
@@ -56,7 +43,7 @@ export function evaluateGroundingPack(pack, options = {}) {
           problem: "Grounding marked not_required must include a non-empty rationale.",
           fix: "Explain why this Source Unit does not require domain grounding."
         }));
-      } else if (!contradictorySkip) {
+      } else {
         state = "not_required";
       }
     } else if (grounding.status === "required") {
@@ -70,9 +57,21 @@ export function evaluateGroundingPack(pack, options = {}) {
           fix: "Investigate the domain and propose Domain Candidates before enforcing this request."
         }));
       } else {
-        state = "prepared";
+        const unresolved = unresolvedAffectedIds(affectedIds, pack.read_first);
+        if (unresolved.length > 0) {
+          findings.push(finding({
+            code: "unresolved_grounding_evidence",
+            severity: "error",
+            file: request.source.path,
+            field: unresolved[0].field,
+            problem: `Grounding is required, but accepted evidence was not resolved for: ${unresolved.map((item) => item.id).join(", ")}.`,
+            fix: "Rebuild the Grounding Pack and ensure every declared affects_domain ID resolves to accepted OpenDomain knowledge."
+          }));
+        } else {
+          state = "prepared";
+        }
       }
-    } else {
+    } else if (grounding.status === "unclassified") {
       state = "incomplete";
       findings.push(incompleteFinding(mode, {
         code: "grounding_unclassified",
@@ -80,6 +79,15 @@ export function evaluateGroundingPack(pack, options = {}) {
         field: "grounding.status",
         problem: "The Grounding Request has not been classified as required or not_required.",
         fix: "Have Codex assess the domain impact and record an explicit grounding decision for human review."
+      }));
+    } else {
+      findings.push(finding({
+        code: "invalid_grounding_decision",
+        severity: "error",
+        file: request.source.path,
+        field: "grounding.status",
+        problem: "Grounding Request contains an unsupported grounding status.",
+        fix: "Use required, not_required, or unclassified."
       }));
     }
   }
@@ -102,8 +110,8 @@ export function evaluateGroundingPack(pack, options = {}) {
     },
     preparation: {
       state,
-      accepted_ids: pack.read_first.map((item) => item.id),
-      candidate_ids: pack.candidate_boundaries.map((item) => item.id)
+      accepted_ids: uniqueIds(pack.read_first),
+      candidate_ids: uniqueIds(pack.candidate_boundaries)
     },
     policy: {
       mode,
@@ -112,6 +120,65 @@ export function evaluateGroundingPack(pack, options = {}) {
     findings: normalizedFindings,
     grounding_pack: pack
   };
+}
+
+function normalizeGroundingPack(pack) {
+  const issues = validateIntegrationValue("pack", pack);
+  if (issues.length === 0) {
+    return pack;
+  }
+
+  const request = pack?.grounding_request;
+  const affectedIds = collectAffectedIds(request?.affects_domain);
+  const contradictorySkip = (
+    request?.grounding?.status === "not_required"
+    && affectedIds.length > 0
+  );
+  const input = request?.source?.path ?? pack?.feature?.file ?? "<input>";
+  const errors = issues.map((item) => finding({
+    ...item,
+    code: packSchemaFindingCode(item.field, contradictorySkip),
+    file: input,
+    field: normalizePackIssueField(item.field)
+  }));
+
+  return emptyGroundingPack({ input, errors });
+}
+
+function packSchemaFindingCode(field, contradictorySkip) {
+  if (contradictorySkip && field.includes("affects_domain")) {
+    return "grounding_decision_contradiction";
+  }
+  if (field === "grounding_request.grounding" || field.startsWith("grounding_request.grounding.")) {
+    return "invalid_grounding_decision";
+  }
+  return "invalid_grounding_pack";
+}
+
+function normalizePackIssueField(field) {
+  return field.startsWith("grounding_request.")
+    ? field.slice("grounding_request.".length)
+    : field;
+}
+
+function unresolvedAffectedIds(affectedIds, readFirst) {
+  const resolvedIds = new Set(
+    readFirst
+      .filter((item) => item?.status === "accepted")
+      .map((item) => item.id)
+  );
+  const seen = new Set();
+  return affectedIds.filter((item) => {
+    if (seen.has(item.id)) {
+      return false;
+    }
+    seen.add(item.id);
+    return !resolvedIds.has(item.id);
+  });
+}
+
+function uniqueIds(items) {
+  return [...new Set(items.map((item) => item.id))];
 }
 
 export function invalidAssuranceResult(errors, options = {}) {

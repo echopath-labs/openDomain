@@ -57,6 +57,58 @@ test("invalid preparation cannot pass even when an upstream pack omitted diagnos
   assert.ok(validateIntegrationValue("assurance", inconsistent).length > 0);
 });
 
+test("externally constructed packs require accepted evidence for every affected ID", () => {
+  const missingEvidence = evaluateGroundingPack(externalGroundingPack());
+
+  assert.equal(missingEvidence.preparation.state, "invalid");
+  assert.equal(missingEvidence.policy.outcome, "fail");
+  assert.deepEqual(missingEvidence.preparation.accepted_ids, []);
+  assert.ok(missingEvidence.findings.some((item) => (
+    item.code === "unresolved_grounding_evidence"
+    && item.problem.includes("sales.order")
+  )));
+  assert.deepEqual(validateIntegrationValue("assurance", missingEvidence), []);
+
+  const resolvedEvidence = evaluateGroundingPack(externalGroundingPack({
+    readFirst: [{
+      id: "sales.order",
+      type: "domain_concept",
+      name: "Order",
+      status: "accepted",
+      file: "opendomain/concepts/sales.order.md",
+      context: "sales"
+    }]
+  }));
+
+  assert.equal(resolvedEvidence.preparation.state, "prepared");
+  assert.equal(resolvedEvidence.policy.outcome, "pass");
+  assert.deepEqual(resolvedEvidence.preparation.accepted_ids, ["sales.order"]);
+  assert.deepEqual(validateIntegrationValue("assurance", resolvedEvidence), []);
+
+  const inconsistent = {
+    ...resolvedEvidence,
+    preparation: {
+      ...resolvedEvidence.preparation,
+      accepted_ids: []
+    }
+  };
+  assert.ok(validateIntegrationValue("assurance", inconsistent).length > 0);
+});
+
+test("externally constructed packs reject missing and unsupported grounding statuses", () => {
+  for (const status of [undefined, "sometimes"]) {
+    const result = evaluateGroundingPack(externalGroundingPack({ status }));
+
+    assert.equal(result.grounding.status, null);
+    assert.equal(result.preparation.state, "invalid");
+    assert.equal(result.policy.outcome, "fail");
+    assert.equal(result.grounding_request, null);
+    assert.equal(result.grounding_pack.grounding_request, null);
+    assert.ok(result.findings.some((item) => item.code === "invalid_grounding_decision"));
+    assert.deepEqual(validateIntegrationValue("assurance", result), []);
+  }
+});
+
 test("not_required grounding needs a rationale and cannot contain domain IDs", async (context) => {
   const project = await createProject(context);
   await writeFeature(project, {
@@ -346,6 +398,46 @@ ${grounding}affects_domain:
 
 # Assurance test
 `, "utf8");
+}
+
+function externalGroundingPack(options = {}) {
+  const pack = emptyGroundingPack({
+    input: "feature.md",
+    errors: []
+  });
+  const grounding = {};
+  if (options.status !== undefined) {
+    grounding.status = options.status;
+  } else if (!("status" in options)) {
+    grounding.status = "required";
+  }
+
+  pack.feature = {
+    id: "spec.external-pack",
+    name: "External pack",
+    file: "feature.md"
+  };
+  pack.grounding_request = {
+    protocol_version: "1.0",
+    source: {
+      type: "openspec",
+      path: "feature.md"
+    },
+    intent: {
+      id: "spec.external-pack",
+      name: "External pack",
+      status: "proposed"
+    },
+    grounding,
+    affects_domain: {
+      concepts: ["sales.order"],
+      rules: [],
+      lifecycles: [],
+      events: []
+    }
+  };
+  pack.read_first = options.readFirst ?? [];
+  return pack;
 }
 
 function memoryStream() {

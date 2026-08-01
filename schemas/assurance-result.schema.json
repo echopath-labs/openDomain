@@ -101,6 +101,28 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "preparation": {
+            "properties": {
+              "state": { "const": "prepared" }
+            },
+            "required": ["state"]
+          }
+        },
+        "required": ["preparation"]
+      },
+      "then": {
+        "properties": {
+          "preparation": {
+            "properties": {
+              "accepted_ids": { "minItems": 1 }
+            }
+          }
+        }
+      }
     }
   ],
   "$defs": {

@@ -9,6 +9,8 @@
   schema.
 - Reject contradictory `not_required` domain references before Grounding Pack
   preparation can resolve or expose accepted evidence.
+- Fail closed when an externally supplied Grounding Pack is schema-invalid or
+  lacks accepted evidence for any declared affected ID.
 - Keep maintainer OpenSpec and narrative development records outside the public
   repository and npm package; README and JSON Schemas remain the public usage
   and contract entrypoints.
