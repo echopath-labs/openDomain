@@ -295,6 +295,10 @@ npm run opendomain -- prepare --profile <profile-id> <structured-file-or-bundle>
 ID，不扫描正文、不推断 ID，不执行脚本，也不创建或提升 Candidate。Profile 和
 Sidecar Declaration 的正式机器契约位于 `schemas/`。
 
+Profile v1 尚不支持 grounding decision mapping，因此受信 Request Builder 会将
+请求归一化为 `unclassified`。当前应使用 advisory Assurance，或改用能够携带显式
+decision 的 integration；在契约扩展前，它不会通过 enforced Assurance。
+
 `assure` 与 `prepare` 的 grounding evidence 会告诉 Codex：
 
 - `Accepted grounding evidence` / `Read first`：先读哪些 accepted source files；

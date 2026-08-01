@@ -74,6 +74,9 @@ export async function buildProfileGroundingRequest(entry, sourceUnit, options = 
       source_unit: publicSourceUnit(sourceUnit)
     },
     intent,
+    grounding: {
+      status: "unclassified"
+    },
     affects_domain: referenceResult.affectsDomain
   };
 
@@ -92,7 +95,14 @@ export async function buildProfileGroundingRequest(entry, sourceUnit, options = 
   return {
     request,
     errors: [],
-    warnings: []
+    warnings: [issue({
+      code: "legacy_grounding_status_missing",
+      severity: "warning",
+      file: sourceUnit.root_path,
+      field: "grounding.status",
+      problem: "Integration Profile v1 has no grounding decision mapping; it was normalized to 'unclassified'.",
+      fix: "Use advisory Assurance for Profile v1, or use an integration that carries an explicit grounding decision before enforced implementation."
+    })]
   };
 }
 
@@ -302,6 +312,7 @@ function emptyAffectsDomain() {
 
 function issue(fields) {
   return {
+    ...(fields.code ? { code: fields.code } : {}),
     severity: fields.severity ?? "error",
     file: fields.file,
     field: fields.field ?? "$",

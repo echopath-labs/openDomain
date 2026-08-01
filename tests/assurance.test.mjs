@@ -96,8 +96,12 @@ test("externally constructed packs require accepted evidence for every affected 
 });
 
 test("externally constructed packs reject missing and unsupported grounding statuses", () => {
-  for (const status of [undefined, "sometimes"]) {
-    const result = evaluateGroundingPack(externalGroundingPack({ status }));
+  for (const pack of [
+    externalGroundingPack({ status: undefined }),
+    externalGroundingPack({ status: "sometimes" }),
+    externalGroundingPack({ omitGrounding: true })
+  ]) {
+    const result = evaluateGroundingPack(pack);
 
     assert.equal(result.grounding.status, null);
     assert.equal(result.preparation.state, "invalid");
@@ -107,6 +111,20 @@ test("externally constructed packs reject missing and unsupported grounding stat
     assert.ok(result.findings.some((item) => item.code === "invalid_grounding_decision"));
     assert.deepEqual(validateIntegrationValue("assurance", result), []);
   }
+});
+
+test("malformed external pack paths cannot invalidate Assurance diagnostics", () => {
+  const result = evaluateGroundingPack(externalGroundingPack({
+    status: "sometimes",
+    sourcePath: { untrusted: true },
+    featureFile: { untrusted: true }
+  }));
+
+  assert.equal(result.preparation.state, "invalid");
+  assert.equal(result.policy.outcome, "fail");
+  assert.ok(result.findings.length > 0);
+  assert.ok(result.findings.every((item) => item.file === "<input>"));
+  assert.deepEqual(validateIntegrationValue("assurance", result), []);
 });
 
 test("not_required grounding needs a rationale and cannot contain domain IDs", async (context) => {
@@ -415,13 +433,13 @@ function externalGroundingPack(options = {}) {
   pack.feature = {
     id: "spec.external-pack",
     name: "External pack",
-    file: "feature.md"
+    file: options.featureFile ?? "feature.md"
   };
   pack.grounding_request = {
     protocol_version: "1.0",
     source: {
       type: "openspec",
-      path: "feature.md"
+      path: options.sourcePath ?? "feature.md"
     },
     intent: {
       id: "spec.external-pack",
@@ -436,6 +454,9 @@ function externalGroundingPack(options = {}) {
       events: []
     }
   };
+  if (options.omitGrounding) {
+    delete pack.grounding_request.grounding;
+  }
   pack.read_first = options.readFirst ?? [];
   return pack;
 }

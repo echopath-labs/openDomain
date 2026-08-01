@@ -123,7 +123,10 @@ export function evaluateGroundingPack(inputPack, options = {}) {
 }
 
 function normalizeGroundingPack(pack) {
-  const issues = validateIntegrationValue("pack", pack);
+  const issues = [
+    ...validateIntegrationValue("pack", pack),
+    ...validateAssurancePackSemantics(pack)
+  ];
   if (issues.length === 0) {
     return pack;
   }
@@ -134,7 +137,7 @@ function normalizeGroundingPack(pack) {
     request?.grounding?.status === "not_required"
     && affectedIds.length > 0
   );
-  const input = request?.source?.path ?? pack?.feature?.file ?? "<input>";
+  const input = safeInputPath(request?.source?.path, pack?.feature?.file);
   const errors = issues.map((item) => finding({
     ...item,
     code: packSchemaFindingCode(item.field, contradictorySkip),
@@ -143,6 +146,29 @@ function normalizeGroundingPack(pack) {
   }));
 
   return emptyGroundingPack({ input, errors });
+}
+
+function validateAssurancePackSemantics(pack) {
+  const request = pack?.grounding_request;
+  if (
+    !request
+    || typeof request !== "object"
+    || Array.isArray(request)
+    || Object.hasOwn(request, "grounding")
+  ) {
+    return [];
+  }
+
+  return [{
+    severity: "error",
+    field: "grounding_request.grounding",
+    problem: "Field 'grounding_request.grounding' is required for Assurance evaluation.",
+    fix: "Normalize legacy source input before evaluation or declare an explicit grounding status."
+  }];
+}
+
+function safeInputPath(...values) {
+  return values.find((value) => typeof value === "string") ?? "<input>";
 }
 
 function packSchemaFindingCode(field, contradictorySkip) {

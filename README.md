@@ -130,6 +130,9 @@ Repository-local Integration Profiles can normalize explicit structured intent
 and OpenDomain IDs from non-OpenSpec sources. Profiles do not scan prose, infer
 IDs, execute code, create Candidates, or promote accepted knowledge. The
 machine-readable contracts are published under `schemas/`.
+Profile v1 has no grounding-decision mapping, so its trusted Request Builder
+normalizes requests to `unclassified`; use advisory Assurance, or an integration
+with an explicit decision, until that contract is extended.
 
 ## Project Status
 
