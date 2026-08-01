@@ -59,7 +59,7 @@
         },
         "name": { "type": "string" },
         "status": { "const": "accepted" },
-        "file": { "type": "string", "minLength": 1, "pattern": "\\S" },
+        "file": { "$ref": "#/$defs/safePath" },
         "context": { "type": "string" }
       },
       "allOf": [
@@ -99,7 +99,7 @@
         },
         "target_id": { "type": "string", "minLength": 1, "pattern": "\\S" },
         "confidence": { "enum": ["low", "medium", "high"] },
-        "file": { "type": "string", "minLength": 1, "pattern": "\\S" }
+        "file": { "$ref": "#/$defs/safePath" }
       },
       "additionalProperties": true
     },
@@ -143,10 +143,10 @@
       "required": ["severity", "file", "field", "problem", "fix"],
       "properties": {
         "severity": { "enum": ["error", "warning"] },
-        "file": { "type": "string" },
-        "field": { "type": "string" },
-        "problem": { "type": "string", "minLength": 1 },
-        "fix": { "type": "string", "minLength": 1 }
+        "file": { "$ref": "#/$defs/safePath" },
+        "field": { "$ref": "#/$defs/safeLine" },
+        "problem": { "$ref": "#/$defs/safeLine" },
+        "fix": { "$ref": "#/$defs/safeLine" }
       },
       "additionalProperties": true
     },
@@ -169,6 +169,15 @@
           }
         }
       ]
+    },
+    "safePath": {
+      "type": "string",
+      "pattern": "^(?!.*[\\u0000-\\u001F\\u007F])\\S(?:.*\\S)?$"
+    },
+    "safeLine": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
     }
   },
   "additionalProperties": true

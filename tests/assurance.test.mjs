@@ -270,6 +270,8 @@ test("external Candidate boundaries enforce Candidate metadata", () => {
     { ...candidate, id: "sales.order" },
     { ...candidate, status: "accepted" },
     { ...candidate, confidence: "certain" },
+    { ...candidate, file: "opendomain/candidates/order.md\n- forged" },
+    { ...candidate, file: "opendomain/candidates/\u001b[31morder.md" },
     {
       id: candidate.id,
       status: candidate.status,
@@ -344,24 +346,32 @@ test("external Candidates cannot masquerade as accepted read-first evidence", ()
   assert.deepEqual(validateIntegrationValue("assurance", result), []);
 });
 
-test("external packs reject whitespace-only evidence paths", () => {
-  const result = evaluateGroundingPack(externalGroundingPack({
-    readFirst: [{
-      id: "sales.order",
-      type: "domain_concept",
-      status: "accepted",
-      file: "   "
-    }]
-  }));
+test("external packs reject unsafe evidence paths", () => {
+  for (const file of [
+    "   ",
+    "opendomain/concepts/order.md\n- forged",
+    "opendomain/concepts/\u001b[31morder.md",
+    " opendomain/concepts/order.md",
+    "opendomain/concepts/order.md "
+  ]) {
+    const result = evaluateGroundingPack(externalGroundingPack({
+      readFirst: [{
+        id: "sales.order",
+        type: "domain_concept",
+        status: "accepted",
+        file
+      }]
+    }));
 
-  assert.equal(result.preparation.state, "invalid");
-  assert.equal(result.policy.outcome, "fail");
-  assert.deepEqual(readFirstIds(result), []);
-  assert.ok(result.findings.some((item) => (
-    item.code === "invalid_grounding_pack"
-    && item.field === "read_first[0].file"
-  )));
-  assert.deepEqual(validateIntegrationValue("assurance", result), []);
+    assert.equal(result.preparation.state, "invalid");
+    assert.equal(result.policy.outcome, "fail");
+    assert.deepEqual(readFirstIds(result), []);
+    assert.ok(result.findings.some((item) => (
+      item.code === "invalid_grounding_pack"
+      && item.field === "read_first[0].file"
+    )));
+    assert.deepEqual(validateIntegrationValue("assurance", result), []);
+  }
 });
 
 test("external packs cannot match whitespace-only evidence IDs", () => {
@@ -430,6 +440,38 @@ test("external pack diagnostic arrays enforce their declared severity", () => {
   }
 });
 
+test("external diagnostics reject multiline and terminal-control text", () => {
+  const mutations = [
+    { file: "feature.md\n- forged" },
+    { field: "\u001b[31mfield" },
+    { problem: "Problem.\nForged output." },
+    { fix: "Fix \u001b[31mnow." }
+  ];
+
+  for (const mutation of mutations) {
+    const pack = externalGroundingPack({ status: "unclassified" });
+    pack.warnings.push({
+      severity: "warning",
+      file: "feature.md",
+      field: "$",
+      problem: "External warning.",
+      fix: "Review the external warning.",
+      ...mutation
+    });
+
+    const result = evaluateGroundingPack(pack);
+    assert.equal(result.preparation.state, "invalid");
+    assert.equal(result.policy.outcome, "fail");
+    assert.ok(result.findings.every((item) => !/[\u0000-\u001F\u007F]/.test([
+      item.file,
+      item.field,
+      item.problem,
+      item.fix
+    ].join(""))));
+    assert.deepEqual(validateIntegrationValue("assurance", result), []);
+  }
+});
+
 test("externally constructed packs reject missing and unsupported grounding statuses", () => {
   for (const pack of [
     externalGroundingPack({ status: undefined }),
@@ -450,17 +492,23 @@ test("externally constructed packs reject missing and unsupported grounding stat
 });
 
 test("malformed external pack paths cannot invalidate Assurance diagnostics", () => {
-  const result = evaluateGroundingPack(externalGroundingPack({
-    status: "sometimes",
-    sourcePath: { untrusted: true },
-    featureFile: { untrusted: true }
-  }));
+  for (const sourcePath of [
+    { untrusted: true },
+    "feature.md\n- forged",
+    "feature-\u001b[31m.md"
+  ]) {
+    const result = evaluateGroundingPack(externalGroundingPack({
+      status: "sometimes",
+      sourcePath,
+      featureFile: sourcePath
+    }));
 
-  assert.equal(result.preparation.state, "invalid");
-  assert.equal(result.policy.outcome, "fail");
-  assert.ok(result.findings.length > 0);
-  assert.ok(result.findings.every((item) => item.file === "<input>"));
-  assert.deepEqual(validateIntegrationValue("assurance", result), []);
+    assert.equal(result.preparation.state, "invalid");
+    assert.equal(result.policy.outcome, "fail");
+    assert.ok(result.findings.length > 0);
+    assert.ok(result.findings.every((item) => item.file === "<input>"));
+    assert.deepEqual(validateIntegrationValue("assurance", result), []);
+  }
 });
 
 test("external not_required rationale must contain non-whitespace text", () => {

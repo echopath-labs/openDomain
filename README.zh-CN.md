@@ -298,7 +298,8 @@ workspace 重新运行 `opendomain assure`。
 使用的 canonical dotted ID 格式；Grounding Pack evidence ID 也会按声明类型校验。
 `read_first` 只允许 bounded context、concept、rule、lifecycle 与 event，且每个
 evidence path 都必须包含非空白字符；`domain_candidate` 必须留在 Candidate
-boundaries 中。`preparation` 只报告状态，Grounding Request 与 classification
+boundaries 中。Assurance 输出的 path 必须是无首尾空白、换行或终端控制字符的
+单行值，外部 diagnostic 文本也遵循相同控制字符边界。`preparation` 只报告状态，Grounding Request 与 classification
 只存在于 `grounding_pack.grounding_request`，evidence ID、类型和路径只存在于
 `grounding_pack.read_first` 与 `grounding_pack.candidate_boundaries`。同一个 ID
 不能同时出现在两个 evidence 集合中，Assurance Result 不再携带可能相互矛盾的

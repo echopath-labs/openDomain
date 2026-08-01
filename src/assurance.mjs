@@ -9,6 +9,7 @@ export const ASSURANCE_VERSION = "1.0";
 
 const POLICY_MODES = new Set(["advisory", "enforced"]);
 const FINDING_CODE_PATTERN = /^[a-z][a-z0-9_]*$/;
+const SAFE_INLINE_PATH_PATTERN = /^(?!.*[\u0000-\u001F\u007F])\S(?:.*\S)?$/;
 
 export async function assureGrounding(inputPath, options = {}) {
   const mode = options.mode ?? "advisory";
@@ -257,7 +258,9 @@ function duplicateIdIssues(items, field) {
 }
 
 function safeInputPath(...values) {
-  return values.find((value) => typeof value === "string") ?? "<input>";
+  return values.find((value) => (
+    typeof value === "string" && SAFE_INLINE_PATH_PATTERN.test(value)
+  )) ?? "<input>";
 }
 
 function packSchemaFindingCode(field, contradictorySkip) {

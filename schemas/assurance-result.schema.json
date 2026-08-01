@@ -320,21 +320,28 @@
           "enum": ["error", "warning"]
         },
         "file": {
-          "type": "string"
+          "$ref": "#/$defs/safePath"
         },
         "field": {
-          "type": "string"
+          "$ref": "#/$defs/safeLine"
         },
         "problem": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/safeLine"
         },
         "fix": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/safeLine"
         }
       },
       "additionalProperties": false
+    },
+    "safePath": {
+      "type": "string",
+      "pattern": "^(?!.*[\\u0000-\\u001F\\u007F])\\S(?:.*\\S)?$"
+    },
+    "safeLine": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
     }
   },
   "additionalProperties": false

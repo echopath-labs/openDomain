@@ -147,6 +147,9 @@ validated against the grammar for their declared type.
 `read_first` accepts only bounded contexts, concepts, rules, lifecycles, and
 events, and every evidence path must contain non-whitespace text;
 `domain_candidate` entries remain confined to Candidate boundaries.
+Paths rendered by Assurance are normalized single-line values without leading
+or trailing whitespace or terminal control characters. External diagnostic text
+uses the same control-character boundary.
 `preparation` reports only its state. The Grounding Request and classification
 live in `grounding_pack.grounding_request`; evidence IDs, types, and paths live
 in `grounding_pack.read_first` and `grounding_pack.candidate_boundaries`. IDs

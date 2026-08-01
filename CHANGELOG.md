@@ -38,6 +38,8 @@
   for accepted evidence, and preserve each Candidate review status in text output.
 - Validate declared evidence before applying `unclassified` policy so unresolved
   or mistyped affected IDs fail in both advisory and enforced modes.
+- Reject leading/trailing whitespace, line breaks, and terminal control
+  characters in Pack, Request, and Assurance text fields rendered by the CLI.
 - Keep maintainer OpenSpec and narrative development records outside the public
   repository and npm package; README and JSON Schemas remain the public usage
   and contract entrypoints.
