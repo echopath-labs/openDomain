@@ -35,11 +35,11 @@
     },
     "errors": {
       "type": "array",
-      "items": { "$ref": "#/$defs/diagnostic" }
+      "items": { "$ref": "#/$defs/errorDiagnostic" }
     },
     "warnings": {
       "type": "array",
-      "items": { "$ref": "#/$defs/diagnostic" }
+      "items": { "$ref": "#/$defs/warningDiagnostic" }
     }
   },
   "$defs": {
@@ -47,7 +47,7 @@
       "type": "object",
       "required": ["id", "type", "status", "file"],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "minLength": 1, "pattern": "\\S" },
         "type": { "type": "string", "minLength": 1 },
         "name": { "type": "string" },
         "status": { "const": "accepted" },
@@ -60,9 +60,9 @@
       "type": "object",
       "required": ["id", "status", "target_id", "file"],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "minLength": 1, "pattern": "\\S" },
         "status": { "type": "string", "minLength": 1 },
-        "target_id": { "type": "string", "minLength": 1 },
+        "target_id": { "type": "string", "minLength": 1, "pattern": "\\S" },
         "confidence": { "type": "string" },
         "file": { "type": "string", "minLength": 1 }
       },
@@ -114,6 +114,26 @@
         "fix": { "type": "string", "minLength": 1 }
       },
       "additionalProperties": true
+    },
+    "errorDiagnostic": {
+      "allOf": [
+        { "$ref": "#/$defs/diagnostic" },
+        {
+          "properties": {
+            "severity": { "const": "error" }
+          }
+        }
+      ]
+    },
+    "warningDiagnostic": {
+      "allOf": [
+        { "$ref": "#/$defs/diagnostic" },
+        {
+          "properties": {
+            "severity": { "const": "warning" }
+          }
+        }
+      ]
     }
   },
   "additionalProperties": true

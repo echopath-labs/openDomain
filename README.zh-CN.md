@@ -270,7 +270,9 @@ Grounding Requirement 有三个显式状态：
 
 每个 affected ID 还必须与声明类别一致：`concepts` 对应 `domain_concept`，
 `rules` 对应 `business_rule`，`lifecycles` 对应 `lifecycle`，`events` 对应
-`domain_event`。
+`domain_event`，并且 ID 必须包含非空白文本。当 `opendomain validate` 的目标中
+包含 `feature_spec` 时，它会应用与 `prepare`、`assure` 相同的 grounding decision
+规则。
 
 Assurance 将状态判断、准备结果和执行策略分开报告：
 

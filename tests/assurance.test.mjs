@@ -118,6 +118,44 @@ test("external accepted evidence must match the affected domain category", () =>
   assert.deepEqual(validateIntegrationValue("assurance", result), []);
 });
 
+test("external packs cannot match whitespace-only evidence IDs", () => {
+  const result = evaluateGroundingPack(externalGroundingPack({
+    affectedConcepts: ["   "],
+    readFirst: [{
+      id: "   ",
+      type: "domain_concept",
+      status: "accepted",
+      file: "opendomain/concepts/blank.md"
+    }]
+  }));
+
+  assert.equal(result.preparation.state, "invalid");
+  assert.equal(result.policy.outcome, "fail");
+  assert.ok(result.findings.some((item) => item.code === "invalid_grounding_pack"));
+  assert.deepEqual(validateIntegrationValue("assurance", result), []);
+});
+
+test("external pack diagnostic arrays enforce their declared severity", () => {
+  for (const [collection, severity] of [
+    ["errors", "warning"],
+    ["warnings", "error"]
+  ]) {
+    const pack = externalGroundingPack({ status: "unclassified" });
+    pack[collection].push({
+      severity,
+      file: "feature.md",
+      field: "$",
+      problem: "Diagnostic is in the wrong collection.",
+      fix: "Move it to the matching diagnostic collection."
+    });
+
+    const result = evaluateGroundingPack(pack);
+    assert.equal(result.preparation.state, "invalid");
+    assert.equal(result.policy.outcome, "fail");
+    assert.deepEqual(validateIntegrationValue("assurance", result), []);
+  }
+});
+
 test("externally constructed packs reject missing and unsupported grounding statuses", () => {
   for (const pack of [
     externalGroundingPack({ status: undefined }),

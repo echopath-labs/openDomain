@@ -21,7 +21,7 @@
       "type": "object",
       "required": ["id", "name", "status"],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "minLength": 1, "pattern": "\\S" },
         "name": { "type": "string", "minLength": 1 },
         "status": { "type": "string", "minLength": 1 }
       },
@@ -97,7 +97,7 @@
   "$defs": {
     "idArray": {
       "type": "array",
-      "items": { "type": "string", "minLength": 1 },
+      "items": { "type": "string", "minLength": 1, "pattern": "\\S" },
       "uniqueItems": true
     }
   },

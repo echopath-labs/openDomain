@@ -17,6 +17,8 @@
   and enforce incomplete-state policy outcomes in the public Result Schema.
 - Reject affected IDs whose accepted evidence type does not match the declared
   concepts, rules, lifecycles, or events category.
+- Reject whitespace-only integration IDs, constrain Pack diagnostic severities,
+  and share Grounding Request decision rules with repository validation.
 - Keep maintainer OpenSpec and narrative development records outside the public
   repository and npm package; README and JSON Schemas remain the public usage
   and contract entrypoints.

@@ -1,6 +1,7 @@
 import path from "node:path";
 import { AFFECTS_DOMAIN_TYPES } from "./domain-reference-types.mjs";
 import { parseMarkdownFile, FrontMatterError } from "./frontmatter.mjs";
+import { validateGroundingDecision } from "./grounding-decision.mjs";
 import { resolveWorkspaceSources } from "./workspace-resolver.mjs";
 import {
   createDomainSchemaRegistry,
@@ -487,6 +488,14 @@ function validateFeatureSpec(document, domainById, result) {
     return;
   }
 
+  const groundingDecision = validateGroundingDecision(frontmatter, document.file);
+  for (const error of groundingDecision.errors) {
+    addIssue(result.errors, error);
+  }
+  for (const warning of groundingDecision.warnings) {
+    addIssue(result.warnings, warning);
+  }
+
   const affectsDomain = frontmatter.affects_domain;
   if (!affectsDomain || typeof affectsDomain !== "object") {
     addIssue(result.errors, {
@@ -579,6 +588,7 @@ function valueKind(value) {
 
 function addIssue(target, issue) {
   target.push({
+    ...(issue.code ? { code: issue.code } : {}),
     severity: issue.severity ?? "error",
     file: issue.file,
     field: issue.field,

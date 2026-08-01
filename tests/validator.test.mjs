@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import test from "node:test";
 import { validatePath } from "../src/validator.mjs";
 
@@ -61,6 +64,46 @@ test("broken affects_domain references fail", async () => {
   const result = await validatePath("tests/fixtures/invalid/broken-affects-domain", { cwd: process.cwd() });
 
   assert.ok(result.errors.some((issue) => issue.problem.includes("Broken affects_domain reference 'sales.missing-rule'")));
+});
+
+test("repository validation applies Grounding Request decision rules", async (context) => {
+  const project = await mkdtemp(path.join(os.tmpdir(), "opendomain-grounding-validation-"));
+  context.after(() => rm(project, { recursive: true, force: true }));
+
+  for (const testCase of [
+    {
+      grounding: "grounding:\n  status: sometimes",
+      concepts: "[]",
+      code: "invalid_grounding_decision"
+    },
+    {
+      grounding: "grounding:\n  status: not_required",
+      concepts: "[]",
+      code: "grounding_rationale_required"
+    },
+    {
+      grounding: "grounding:\n  status: not_required\n  rationale: No domain impact.",
+      concepts: "[sales.order]",
+      code: "grounding_decision_contradiction"
+    }
+  ]) {
+    await writeFile(path.join(project, "feature.md"), `---
+type: feature_spec
+id: spec.invalid-grounding
+name: Invalid grounding
+status: proposed
+${testCase.grounding}
+affects_domain:
+  concepts: ${testCase.concepts}
+  rules: []
+  lifecycles: []
+  events: []
+---
+`, "utf8");
+
+    const result = await validatePath("feature.md", { cwd: project });
+    assert.ok(result.errors.some((issue) => issue.code === testCase.code));
+  }
 });
 
 test("stale candidates warn without failing validation", async () => {

@@ -48,6 +48,11 @@ test("Domain Declaration schema requires strict non-empty domain scope", () => {
   extra.intent = { id: "spec.invalid" };
   const extraIssues = validateIntegrationValue("declaration", extra);
   assert.ok(extraIssues.some((issue) => issue.field === "intent"));
+
+  const blank = structuredClone(valid);
+  blank.affects_domain.concepts = ["   "];
+  const blankIssues = validateIntegrationValue("declaration", blank);
+  assert.ok(blankIssues.some((issue) => issue.field === "affects_domain.concepts[0]"));
 });
 
 test("Grounding Request schema remains compatible with optional Profile metadata", () => {
@@ -75,6 +80,27 @@ test("Grounding Request schema remains compatible with optional Profile metadata
   });
 
   assert.deepEqual(issues, []);
+
+  const blank = {
+    protocol_version: "1.0",
+    source: {
+      type: "structured-feature",
+      path: "features/add-x.yaml"
+    },
+    intent: {
+      id: "feature.add-x",
+      name: "Add X",
+      status: "proposed"
+    },
+    affects_domain: {
+      concepts: ["   "],
+      rules: [],
+      lifecycles: [],
+      events: []
+    }
+  };
+  const blankIssues = validateIntegrationValue("request", blank);
+  assert.ok(blankIssues.some((issue) => issue.field === "affects_domain.concepts[0]"));
 });
 
 test("Grounding Request schema accepts explicit decisions and requires skip rationale", () => {

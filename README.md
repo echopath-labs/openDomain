@@ -113,7 +113,9 @@ ID. Empty IDs under `required` represent an incomplete `domain_model_gap`;
 empty IDs never imply `not_required`.
 Every affected ID must also match its declared category: `concepts` resolve to
 `domain_concept`, `rules` to `business_rule`, `lifecycles` to `lifecycle`, and
-`events` to `domain_event`.
+`events` to `domain_event`. IDs must contain non-whitespace text. When a
+`feature_spec` is included in an `opendomain validate` target, validation applies
+the same grounding-decision rules used by `prepare` and `assure`.
 
 Run the read-only preflight locally or in CI:
 
