@@ -177,6 +177,7 @@ npm run opendomain -- validate
 
 ```bash
 npm run opendomain -- validate examples/erp
+(cd examples/erp && node ../../bin/opendomain.mjs assure openspec/changes/order-cancellation/spec.md)
 ```
 
 为一个 Feature 准备 Codex grounding：

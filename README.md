@@ -77,7 +77,7 @@ npm run opendomain -- help
 npm run opendomain -- init
 npm run opendomain -- validate
 npm run prepare:demo
-npm run opendomain -- assure examples/erp/openspec/changes/order-cancellation/spec.md
+(cd examples/erp && node ../../bin/opendomain.mjs assure openspec/changes/order-cancellation/spec.md)
 npm run opendomain -- integrations validate
 npm run opendomain -- integrations list
 npm run opendomain -- candidate list examples/erp
