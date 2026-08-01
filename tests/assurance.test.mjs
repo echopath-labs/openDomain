@@ -31,7 +31,7 @@ test("required grounding with accepted IDs is prepared and passes", async (conte
   });
 
   assert.equal(result.assurance_version, ASSURANCE_VERSION);
-  assert.equal(result.grounding.status, "required");
+  assert.equal(groundingStatus(result), "required");
   assert.equal(result.preparation.state, "prepared");
   assert.equal(result.policy.outcome, "pass");
   assert.ok(readFirstIds(result).includes("sales.order"));
@@ -94,6 +94,24 @@ test("externally constructed packs require accepted evidence for every affected 
     }
   };
   assert.ok(validateIntegrationValue("assurance", forgedSummary).length > 0);
+
+  const forgedRequest = {
+    ...resolvedEvidence,
+    grounding_request: externalGroundingPack({
+      affectedConcepts: ["sales.other"]
+    }).grounding_request
+  };
+  assert.ok(validateIntegrationValue("assurance", forgedRequest).length > 0);
+
+  const forgedClassification = {
+    ...resolvedEvidence,
+    grounding: {
+      status: "required"
+    }
+  };
+  assert.ok(validateIntegrationValue("assurance", forgedClassification).length > 0);
+  assert.equal(Object.hasOwn(resolvedEvidence, "grounding_request"), false);
+  assert.equal(Object.hasOwn(resolvedEvidence, "grounding"), false);
 });
 
 test("external accepted evidence must match the affected domain category", () => {
@@ -144,6 +162,31 @@ test("external packs reject duplicate evidence IDs with conflicting types", () =
   assert.ok(result.findings.some((item) => (
     item.code === "invalid_grounding_pack"
     && item.field === "read_first[1].id"
+  )));
+  assert.deepEqual(validateIntegrationValue("assurance", result), []);
+});
+
+test("external packs reject IDs shared by accepted and Candidate evidence", () => {
+  const result = evaluateGroundingPack(externalGroundingPack({
+    readFirst: [{
+      id: "sales.order",
+      type: "domain_concept",
+      status: "accepted",
+      file: "opendomain/concepts/sales.order.md"
+    }],
+    candidateBoundaries: [{
+      id: "sales.order",
+      status: "proposed",
+      target_id: "sales.order",
+      file: "opendomain/candidates/sales.order.md"
+    }]
+  }));
+
+  assert.equal(result.preparation.state, "invalid");
+  assert.equal(result.policy.outcome, "fail");
+  assert.ok(result.findings.some((item) => (
+    item.code === "invalid_grounding_pack"
+    && item.field === "candidate_boundaries[0].id"
   )));
   assert.deepEqual(validateIntegrationValue("assurance", result), []);
 });
@@ -239,10 +282,11 @@ test("externally constructed packs reject missing and unsupported grounding stat
   ]) {
     const result = evaluateGroundingPack(pack);
 
-    assert.equal(result.grounding.status, null);
+    assert.equal(groundingStatus(result), null);
     assert.equal(result.preparation.state, "invalid");
     assert.equal(result.policy.outcome, "fail");
-    assert.equal(result.grounding_request, null);
+    assert.equal(Object.hasOwn(result, "grounding_request"), false);
+    assert.equal(Object.hasOwn(result, "grounding"), false);
     assert.equal(result.grounding_pack.grounding_request, null);
     assert.ok(result.findings.some((item) => item.code === "invalid_grounding_decision"));
     assert.deepEqual(validateIntegrationValue("assurance", result), []);
@@ -376,9 +420,14 @@ test("Assurance Result schema binds preparation states to grounding statuses", (
 
   const forgedSkip = {
     ...notRequired,
-    grounding: {
-      ...notRequired.grounding,
-      status: "required"
+    grounding_pack: {
+      ...notRequired.grounding_pack,
+      grounding_request: {
+        ...notRequired.grounding_pack.grounding_request,
+        grounding: {
+          status: "required"
+        }
+      }
     }
   };
   assert.ok(validateIntegrationValue("assurance", forgedSkip).length > 0);
@@ -636,7 +685,7 @@ test("legacy input is unclassified while malformed decisions are invalid", async
     concepts: ["sales.order"]
   });
   const malformed = await assureGrounding("feature.md", { cwd: project });
-  assert.equal(malformed.grounding.status, null);
+  assert.equal(groundingStatus(malformed), null);
   assert.equal(malformed.preparation.state, "invalid");
   assert.equal(malformed.policy.outcome, "fail");
   assert.ok(malformed.findings.some((item) => item.code === "invalid_grounding_decision"));
@@ -729,7 +778,7 @@ test("Profile v1 remains readable but Assurance keeps it unclassified", async ()
     }
   );
 
-  assert.equal(advisory.grounding.status, "unclassified");
+  assert.equal(groundingStatus(advisory), "unclassified");
   assert.equal(advisory.preparation.state, "incomplete");
   assert.equal(advisory.policy.outcome, "warn");
   assert.ok(readFirstIds(advisory).includes("sales.order"));
@@ -748,6 +797,10 @@ async function createProject(context) {
 
 function readFirstIds(result) {
   return result.grounding_pack.read_first.map((item) => item.id);
+}
+
+function groundingStatus(result) {
+  return result.grounding_pack.grounding_request?.grounding?.status ?? null;
 }
 
 async function writeFeature(project, options) {
@@ -820,6 +873,7 @@ function externalGroundingPack(options = {}) {
     delete pack.grounding_request.grounding;
   }
   pack.read_first = options.readFirst ?? [];
+  pack.candidate_boundaries = options.candidateBoundaries ?? [];
   return pack;
 }
 

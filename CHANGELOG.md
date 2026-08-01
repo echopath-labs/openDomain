@@ -27,6 +27,8 @@
   masquerade as accepted grounding evidence.
 - Reject whitespace-only evidence paths and keep evidence IDs solely in the
   Grounding Pack instead of duplicating mutable summaries in Assurance Result.
+- Reject IDs shared across accepted and Candidate evidence, and keep the
+  Grounding Request and classification solely in the embedded Grounding Pack.
 - Keep maintainer OpenSpec and narrative development records outside the public
   repository and npm package; README and JSON Schemas remain the public usage
   and contract entrypoints.

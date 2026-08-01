@@ -290,9 +290,11 @@ Result Schema 会将 `prepared` 绑定到 `required`，将 `not_required` 绑定
 的显式跳过，并限制 `incomplete` 只能对应 `required` 或 `unclassified`。
 `read_first` 只允许 bounded context、concept、rule、lifecycle 与 event，且每个
 evidence path 都必须包含非空白字符；`domain_candidate` 必须留在 Candidate
-boundaries 中。`preparation` 只报告状态，evidence ID、类型和路径只存在于
-`grounding_pack.read_first` 与 `grounding_pack.candidate_boundaries`，从结构上避免
-Assurance Result 携带相互矛盾的 evidence 摘要。
+boundaries 中。`preparation` 只报告状态，Grounding Request 与 classification
+只存在于 `grounding_pack.grounding_request`，evidence ID、类型和路径只存在于
+`grounding_pack.read_first` 与 `grounding_pack.candidate_boundaries`。同一个 ID
+不能同时出现在两个 evidence 集合中，Assurance Result 不再携带可能相互矛盾的
+request、classification 或 evidence 摘要。
 
 存量项目应先运行 `opendomain init`。初始化后即使还没有 accepted knowledge，
 `required` 加空引用也会被识别为 `domain_model_gap`；完全缺少 OpenDomain workspace

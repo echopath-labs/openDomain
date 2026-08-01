@@ -101,11 +101,6 @@ export function evaluateGroundingPack(inputPack, options = {}) {
 
   return {
     assurance_version: ASSURANCE_VERSION,
-    grounding_request: request,
-    grounding: {
-      status: grounding.status,
-      ...(grounding.rationale ? { rationale: grounding.rationale } : {})
-    },
     preparation: {
       state
     },
@@ -163,11 +158,34 @@ function validateAssurancePackSemantics(pack) {
 
   issues.push(...duplicateIdIssues(pack?.read_first, "read_first"));
   issues.push(...duplicateIdIssues(pack?.candidate_boundaries, "candidate_boundaries"));
+  issues.push(...crossCollectionIdIssues(pack?.read_first, pack?.candidate_boundaries));
   if (request?.grounding?.status === "not_required") {
     issues.push(...unexpectedSkipEvidenceIssues(pack?.read_first, "read_first"));
     issues.push(...unexpectedSkipEvidenceIssues(pack?.candidate_boundaries, "candidate_boundaries"));
   }
   return issues;
+}
+
+function crossCollectionIdIssues(readFirst, candidateBoundaries) {
+  if (!Array.isArray(readFirst) || !Array.isArray(candidateBoundaries)) {
+    return [];
+  }
+
+  const acceptedIds = new Set(
+    readFirst
+      .map((item) => item?.id)
+      .filter((id) => typeof id === "string")
+  );
+  return candidateBoundaries.flatMap((item, index) => (
+    typeof item?.id === "string" && acceptedIds.has(item.id)
+      ? [{
+          severity: "error",
+          field: `candidate_boundaries[${index}].id`,
+          problem: `ID '${item.id}' cannot be both accepted evidence and a Candidate boundary.`,
+          fix: "Keep accepted knowledge in read_first and proposed knowledge under a distinct Candidate ID."
+        }]
+      : []
+  ));
 }
 
 function unexpectedSkipEvidenceIssues(items, field) {
@@ -277,7 +295,7 @@ export function formatAssuranceResult(result) {
     "Grounding Assurance",
     "",
     `Version: ${result.assurance_version}`,
-    `Grounding: ${result.grounding.status ?? "unavailable"}`,
+    `Grounding: ${result.grounding_pack.grounding_request?.grounding?.status ?? "unavailable"}`,
     `Preparation: ${result.preparation.state}`,
     `Policy: ${result.policy.mode} -> ${result.policy.outcome}`,
     "",

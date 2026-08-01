@@ -5,8 +5,6 @@
   "type": "object",
   "required": [
     "assurance_version",
-    "grounding_request",
-    "grounding",
     "preparation",
     "policy",
     "findings",
@@ -15,30 +13,6 @@
   "properties": {
     "assurance_version": {
       "const": "1.0"
-    },
-    "grounding_request": {
-      "oneOf": [
-        { "$ref": "grounding-request.schema.json" },
-        { "type": "null" }
-      ]
-    },
-    "grounding": {
-      "type": "object",
-      "required": ["status"],
-      "properties": {
-        "status": {
-          "oneOf": [
-            { "enum": ["required", "not_required", "unclassified"] },
-            { "type": "null" }
-          ]
-        },
-        "rationale": {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "\\S"
-        }
-      },
-      "additionalProperties": false
     },
     "preparation": {
       "type": "object",
@@ -248,15 +222,6 @@
     },
     "groundingPairRequired": {
       "properties": {
-        "grounding": {
-          "properties": {
-            "status": { "const": "required" }
-          },
-          "required": ["status"]
-        },
-        "grounding_request": {
-          "$ref": "#/$defs/requiredRequest"
-        },
         "grounding_pack": {
           "properties": {
             "grounding_request": { "$ref": "#/$defs/requiredRequest" }
@@ -266,15 +231,6 @@
     },
     "groundingPairNotRequired": {
       "properties": {
-        "grounding": {
-          "properties": {
-            "status": { "const": "not_required" }
-          },
-          "required": ["status", "rationale"]
-        },
-        "grounding_request": {
-          "$ref": "#/$defs/notRequiredRequest"
-        },
         "grounding_pack": {
           "properties": {
             "grounding_request": { "$ref": "#/$defs/notRequiredRequest" }
@@ -284,15 +240,6 @@
     },
     "groundingPairUnclassified": {
       "properties": {
-        "grounding": {
-          "properties": {
-            "status": { "const": "unclassified" }
-          },
-          "required": ["status"]
-        },
-        "grounding_request": {
-          "$ref": "#/$defs/unclassifiedRequest"
-        },
         "grounding_pack": {
           "properties": {
             "grounding_request": { "$ref": "#/$defs/unclassifiedRequest" }
