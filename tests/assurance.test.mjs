@@ -670,6 +670,29 @@ test("Assurance Result schema enforces policy outcomes for incomplete states", a
     };
     assert.ok(validateIntegrationValue("assurance", inconsistent).length > 0);
   }
+
+  const errorFinding = {
+    code: "forged_error",
+    severity: "error",
+    file: "feature.md",
+    field: "$",
+    problem: "A warning outcome cannot carry this error.",
+    fix: "Regenerate the Assurance Result."
+  };
+  const warnWithErrorFinding = {
+    ...advisory,
+    findings: [...advisory.findings, errorFinding]
+  };
+  assert.ok(validateIntegrationValue("assurance", warnWithErrorFinding).length > 0);
+
+  const warnWithPackError = {
+    ...advisory,
+    grounding_pack: {
+      ...advisory.grounding_pack,
+      errors: [errorFinding]
+    }
+  };
+  assert.ok(validateIntegrationValue("assurance", warnWithPackError).length > 0);
 });
 
 test("Assurance Result schema binds preparation states to grounding statuses", async (context) => {

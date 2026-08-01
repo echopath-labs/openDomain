@@ -45,6 +45,8 @@
   repository-relative paths without traversal or platform-specific roots.
 - Treat caller-supplied Grounding Packs as unverified input that cannot produce
   completed Assurance; regenerate from the current Source Unit and workspace.
+- Reject `warn` Results that contain error findings or Pack errors, matching the
+  runtime policy outcome.
 - Keep maintainer OpenSpec and narrative development records outside the public
   repository and npm package; README and JSON Schemas remain the public usage
   and contract entrypoints.

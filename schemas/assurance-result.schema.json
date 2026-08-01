@@ -233,6 +233,36 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "policy": {
+            "properties": {
+              "outcome": { "const": "warn" }
+            },
+            "required": ["outcome"]
+          }
+        },
+        "required": ["policy"]
+      },
+      "then": {
+        "properties": {
+          "findings": {
+            "items": {
+              "properties": {
+                "severity": { "const": "warning" }
+              },
+              "required": ["severity"]
+            }
+          },
+          "grounding_pack": {
+            "properties": {
+              "errors": { "maxItems": 0 }
+            }
+          }
+        }
+      }
     }
   ],
   "$defs": {

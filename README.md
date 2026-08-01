@@ -138,9 +138,10 @@ missing or mistyped evidence fails in both modes rather than becoming advisory.
 The Result Schema binds `prepared` to `required`, `not_required` to an explicit
 evidence-free skip, and `incomplete` to `required` or `unclassified`.
 It validates shape and expressible local invariants, including that `pass`
-contains no findings or Pack diagnostics. It does not re-evaluate semantic
-coverage in persisted or third-party JSON; CI must run `opendomain assure`
-against the current workspace.
+contains no findings or Pack diagnostics and that `warn` contains no error
+findings or Pack errors. It does not re-evaluate semantic coverage in persisted
+or third-party JSON; CI must run `opendomain assure` against the current
+workspace.
 Affected concepts, rules, lifecycles, and events use the same canonical dotted
 ID grammar as their OpenDomain source objects. Grounding Pack evidence IDs are
 validated against the grammar for their declared type.
