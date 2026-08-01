@@ -116,6 +116,9 @@ Every affected ID must also match its declared category: `concepts` resolve to
 `events` to `domain_event`. IDs must contain non-whitespace text. When a
 `feature_spec` is included in an `opendomain validate` target, validation applies
 the same grounding-decision rules used by `prepare` and `assure`.
+Unknown affected-domain categories are invalid. A source recognized as OpenSpec
+but failing validation does not fall through to a matching Profile, and external
+Grounding Packs cannot contain duplicate evidence or Candidate IDs.
 
 Run the read-only preflight locally or in CI:
 

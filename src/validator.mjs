@@ -1,5 +1,8 @@
 import path from "node:path";
-import { AFFECTS_DOMAIN_TYPES } from "./domain-reference-types.mjs";
+import {
+  AFFECTS_DOMAIN_TYPES,
+  validateAffectsDomainShape
+} from "./domain-reference-types.mjs";
 import { parseMarkdownFile, FrontMatterError } from "./frontmatter.mjs";
 import { validateGroundingDecision } from "./grounding-decision.mjs";
 import { resolveWorkspaceSources } from "./workspace-resolver.mjs";
@@ -497,13 +500,11 @@ function validateFeatureSpec(document, domainById, result) {
   }
 
   const affectsDomain = frontmatter.affects_domain;
-  if (!affectsDomain || typeof affectsDomain !== "object") {
-    addIssue(result.errors, {
-      file: document.file,
-      field: "affects_domain",
-      problem: "Feature spec must declare affected OpenDomain IDs.",
-      fix: "Add affects_domain.concepts, rules, lifecycles, or events."
-    });
+  const affectsDomainErrors = validateAffectsDomainShape(affectsDomain, document.file);
+  for (const error of affectsDomainErrors) {
+    addIssue(result.errors, error);
+  }
+  if (!affectsDomain || typeof affectsDomain !== "object" || Array.isArray(affectsDomain)) {
     return;
   }
 

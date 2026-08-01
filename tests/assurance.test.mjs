@@ -12,6 +12,7 @@ import { runCli } from "../src/cli.mjs";
 import { buildGroundingRequest } from "../src/grounding-request.mjs";
 import { validateIntegrationValue } from "../src/integration-schema-validator.mjs";
 import { emptyGroundingPack, prepareGroundingPack } from "../src/prepare.mjs";
+import { validatePath } from "../src/validator.mjs";
 
 const ERP_ROOT = path.resolve("examples/erp");
 const TEST_NOW = new Date("2026-06-30T00:00:00Z");
@@ -114,6 +115,35 @@ test("external accepted evidence must match the affected domain category", () =>
   assert.ok(result.findings.some((item) => (
     item.code === "domain_reference_type_mismatch"
     && item.field === "affects_domain.rules[0]"
+  )));
+  assert.deepEqual(validateIntegrationValue("assurance", result), []);
+});
+
+test("external packs reject duplicate evidence IDs with conflicting types", () => {
+  const result = evaluateGroundingPack(externalGroundingPack({
+    affectedConcepts: ["sales.order"],
+    affectedRules: ["sales.order"],
+    readFirst: [
+      {
+        id: "sales.order",
+        type: "domain_concept",
+        status: "accepted",
+        file: "opendomain/concepts/sales.order.md"
+      },
+      {
+        id: "sales.order",
+        type: "business_rule",
+        status: "accepted",
+        file: "opendomain/rules/fake-sales.order.md"
+      }
+    ]
+  }));
+
+  assert.equal(result.preparation.state, "invalid");
+  assert.equal(result.policy.outcome, "fail");
+  assert.ok(result.findings.some((item) => (
+    item.code === "invalid_grounding_pack"
+    && item.field === "read_first[1].id"
   )));
   assert.deepEqual(validateIntegrationValue("assurance", result), []);
 });
@@ -314,6 +344,79 @@ test("prepared workspace evidence must match the affected domain category", asyn
   assert.equal(result.policy.outcome, "fail");
   assert.ok(result.findings.some((item) => item.code === "domain_reference_type_mismatch"));
   assert.deepEqual(validateIntegrationValue("assurance", result), []);
+});
+
+test("unknown affected-domain categories fail across validation entrypoints", async (context) => {
+  const project = await createProject(context);
+  await writeFile(path.join(project, "feature.md"), `---
+type: feature_spec
+id: spec.unknown-category
+name: Unknown category
+status: proposed
+grounding:
+  status: not_required
+  rationale: This malformed declaration must not be ignored.
+affects_domain:
+  concepts: []
+  rules: []
+  lifecycles: []
+  events: []
+  rule:
+    - sales.order
+---
+`, "utf8");
+
+  const request = await buildGroundingRequest("feature.md", { cwd: project });
+  const validation = await validatePath("feature.md", { cwd: project });
+  const result = await assureGrounding("feature.md", { cwd: project });
+
+  assert.ok(request.errors.some((item) => item.code === "invalid_affects_domain"));
+  assert.ok(validation.errors.some((item) => item.code === "invalid_affects_domain"));
+  assert.equal(result.preparation.state, "invalid");
+  assert.equal(result.policy.outcome, "fail");
+  assert.ok(result.findings.some((item) => item.code === "invalid_affects_domain"));
+});
+
+test("recognized malformed OpenSpec cannot fall through to a matching Profile", async (context) => {
+  const project = await createProject(context);
+  await writeFile(
+    path.join(project, "opendomain/integrations/profiles/markdown-feature.yaml"),
+    `schema_version: "1.0"
+id: markdown-feature
+source_type: feature-spec
+source_unit:
+  kind: file
+  match:
+    paths:
+      - feature.md
+intent:
+  id:
+    from: primary.id
+  name:
+    from: primary.name
+  status:
+    from: primary.status
+references:
+  mode: native
+  affects_domain:
+    concepts:
+      from: primary.affects_domain.concepts
+`,
+    "utf8"
+  );
+  await writeFeature(project, {
+    status: "sometimes",
+    concepts: ["sales.order"]
+  });
+
+  const request = await buildGroundingRequest("feature.md", { cwd: project });
+  const result = await assureGrounding("feature.md", { cwd: project });
+
+  assert.equal(request.request, null);
+  assert.ok(request.errors.some((item) => item.code === "invalid_grounding_decision"));
+  assert.equal(result.preparation.state, "invalid");
+  assert.equal(result.policy.outcome, "fail");
+  assert.ok(result.findings.some((item) => item.code === "invalid_grounding_decision"));
 });
 
 test("unclassified partial grounding stays incomplete under both policies", async (context) => {

@@ -148,21 +148,48 @@ function normalizeGroundingPack(pack) {
 
 function validateAssurancePackSemantics(pack) {
   const request = pack?.grounding_request;
+  const issues = [];
   if (
-    !request
-    || typeof request !== "object"
-    || Array.isArray(request)
-    || Object.hasOwn(request, "grounding")
+    request
+    && typeof request === "object"
+    && !Array.isArray(request)
+    && !Object.hasOwn(request, "grounding")
   ) {
+    issues.push({
+      severity: "error",
+      field: "grounding_request.grounding",
+      problem: "Field 'grounding_request.grounding' is required for Assurance evaluation.",
+      fix: "Normalize legacy source input before evaluation or declare an explicit grounding status."
+    });
+  }
+
+  issues.push(...duplicateIdIssues(pack?.read_first, "read_first"));
+  issues.push(...duplicateIdIssues(pack?.candidate_boundaries, "candidate_boundaries"));
+  return issues;
+}
+
+function duplicateIdIssues(items, field) {
+  if (!Array.isArray(items)) {
     return [];
   }
 
-  return [{
-    severity: "error",
-    field: "grounding_request.grounding",
-    problem: "Field 'grounding_request.grounding' is required for Assurance evaluation.",
-    fix: "Normalize legacy source input before evaluation or declare an explicit grounding status."
-  }];
+  const seen = new Set();
+  const issues = [];
+  items.forEach((item, index) => {
+    if (typeof item?.id !== "string" || !seen.has(item.id)) {
+      if (typeof item?.id === "string") {
+        seen.add(item.id);
+      }
+      return;
+    }
+    issues.push({
+      severity: "error",
+      field: `${field}[${index}].id`,
+      problem: `Duplicate ${field} id '${item.id}' is not allowed.`,
+      fix: `Keep exactly one ${field} entry for each stable id.`
+    });
+  });
+  return issues;
 }
 
 function safeInputPath(...values) {

@@ -274,6 +274,10 @@ Grounding Requirement 有三个显式状态：
 包含 `feature_spec` 时，它会应用与 `prepare`、`assure` 相同的 grounding decision
 规则。
 
+未知 affected-domain 类别属于非法输入。一个已经被识别为 OpenSpec、但校验失败的
+来源不会回退成匹配的 Profile；外部 Grounding Pack 也不能包含重复的 evidence 或
+Candidate ID。
+
 Assurance 将状态判断、准备结果和执行策略分开报告：
 
 | 准备结果 | advisory | enforced |

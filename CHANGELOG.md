@@ -19,6 +19,8 @@
   concepts, rules, lifecycles, or events category.
 - Reject whitespace-only integration IDs, constrain Pack diagnostic severities,
   and share Grounding Request decision rules with repository validation.
+- Preserve recognized OpenSpec errors during auto-selection, reject unknown
+  affected-domain categories, and reject duplicate Pack evidence IDs.
 - Keep maintainer OpenSpec and narrative development records outside the public
   repository and npm package; README and JSON Schemas remain the public usage
   and contract entrypoints.
