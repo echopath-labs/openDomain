@@ -17,14 +17,23 @@ export async function assureGrounding(inputPath, options = {}) {
   assertPolicyMode(mode);
 
   const pack = await prepareGroundingPack(inputPath, options);
-  return evaluateGroundingPack(pack, { mode });
+  return evaluateGeneratedGroundingPack(pack, { mode });
 }
 
+// Pack JSON can describe closure, but only fresh preparation can establish its provenance.
 export function evaluateGroundingPack(inputPack, options = {}) {
+  return evaluatePack(inputPack, options, { generated: false });
+}
+
+function evaluateGeneratedGroundingPack(inputPack, options = {}) {
+  return evaluatePack(inputPack, options, { generated: true });
+}
+
+function evaluatePack(inputPack, options, provenance) {
   const mode = options.mode ?? "advisory";
   assertPolicyMode(mode);
 
-  const pack = normalizeGroundingPack(inputPack);
+  const pack = normalizeGroundingPack(inputPack, provenance);
   const request = pack.grounding_request;
   const grounding = normalizeGrounding(request, pack);
   const findings = [
@@ -124,11 +133,20 @@ export function evaluateGroundingPack(inputPack, options = {}) {
   };
 }
 
-function normalizeGroundingPack(pack) {
+function normalizeGroundingPack(pack, provenance) {
   const issues = [
     ...validateIntegrationValue("pack", pack),
     ...validateAssurancePackSemantics(pack)
   ];
+  if (!provenance.generated) {
+    issues.push({
+      code: "unverified_grounding_pack",
+      severity: "error",
+      field: "$",
+      problem: "A caller-supplied Grounding Pack cannot establish current accepted grounding evidence.",
+      fix: "Run opendomain assure against the Source Unit and current OpenDomain workspace."
+    });
+  }
   if (issues.length === 0) {
     return pack;
   }
@@ -142,7 +160,7 @@ function normalizeGroundingPack(pack) {
   const input = safeInputPath(request?.source?.path, pack?.feature?.file);
   const errors = issues.map((item) => finding({
     ...item,
-    code: packSchemaFindingCode(item.field, contradictorySkip),
+    code: item.code ?? packSchemaFindingCode(item.field, contradictorySkip),
     file: input,
     field: normalizePackIssueField(item.field)
   }));
@@ -174,6 +192,17 @@ function validateAssurancePackSemantics(pack) {
   if (request?.grounding?.status === "not_required") {
     issues.push(...unexpectedSkipEvidenceIssues(pack?.read_first, "read_first"));
     issues.push(...unexpectedSkipEvidenceIssues(pack?.candidate_boundaries, "candidate_boundaries"));
+  }
+  if (
+    pack?.errors?.length === 0
+    && Array.isArray(pack?.read_first)
+    && ["required", "unclassified"].includes(request?.grounding?.status)
+  ) {
+    const affectedIds = collectAffectedIds(request?.affects_domain);
+    issues.push(...affectedEvidenceIssues(affectedIds, pack?.read_first ?? []).map((item) => ({
+      ...item,
+      severity: "error"
+    })));
   }
   return issues;
 }
@@ -317,7 +346,7 @@ function affectedEvidenceIssues(affectedIds, readFirst) {
 export function invalidAssuranceResult(errors, options = {}) {
   const mode = options.mode ?? "advisory";
   assertPolicyMode(mode);
-  return evaluateGroundingPack(emptyGroundingPack({
+  return evaluateGeneratedGroundingPack(emptyGroundingPack({
     input: options.input,
     errors: errors.map((item) => ({
       ...item,

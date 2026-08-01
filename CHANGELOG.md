@@ -41,6 +41,10 @@
 - Reject leading/trailing whitespace, line breaks, and terminal control
   characters in Pack paths and diagnostic text, and escape schema-derived field
   names before rendering Assurance text.
+- Require accepted and Candidate evidence paths to be normalized,
+  repository-relative paths without traversal or platform-specific roots.
+- Treat caller-supplied Grounding Packs as unverified input that cannot produce
+  completed Assurance; regenerate from the current Source Unit and workspace.
 - Keep maintainer OpenSpec and narrative development records outside the public
   repository and npm package; README and JSON Schemas remain the public usage
   and contract entrypoints.

@@ -59,7 +59,7 @@
         },
         "name": { "type": "string" },
         "status": { "const": "accepted" },
-        "file": { "$ref": "#/$defs/safePath" },
+        "file": { "$ref": "#/$defs/repositoryPath" },
         "context": { "type": "string" }
       },
       "allOf": [
@@ -99,7 +99,7 @@
         },
         "target_id": { "type": "string", "minLength": 1, "pattern": "\\S" },
         "confidence": { "enum": ["low", "medium", "high"] },
-        "file": { "$ref": "#/$defs/safePath" }
+        "file": { "$ref": "#/$defs/repositoryPath" }
       },
       "additionalProperties": true
     },
@@ -173,6 +173,10 @@
     "safePath": {
       "type": "string",
       "pattern": "^(?!.*[\\u0000-\\u001F\\u007F])\\S(?:.*\\S)?$"
+    },
+    "repositoryPath": {
+      "type": "string",
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!\\.{1,2}(?:/|$))(?!.*(?:/\\.{1,2}(?:/|$)|//))(?!.*[\\u0000-\\u001F\\u007F])(?!.*[/]$)\\S(?:.*\\S)?$"
     },
     "safeLine": {
       "type": "string",

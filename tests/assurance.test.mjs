@@ -7,7 +7,8 @@ import {
   assureGrounding,
   ASSURANCE_VERSION,
   evaluateGroundingPack,
-  formatAssuranceResult
+  formatAssuranceResult,
+  invalidAssuranceResult
 } from "../src/assurance.mjs";
 import { runCli } from "../src/cli.mjs";
 import { buildGroundingRequest } from "../src/grounding-request.mjs";
@@ -37,6 +38,56 @@ test("required grounding with accepted IDs is prepared and passes", async (conte
   assert.equal(result.policy.outcome, "pass");
   assert.ok(readFirstIds(result).includes("sales.order"));
   assert.deepEqual(validateIntegrationValue("assurance", result), []);
+
+  const forgedSummary = {
+    ...result,
+    preparation: {
+      ...result.preparation,
+      accepted_ids: ["sales.fake"]
+    }
+  };
+  assert.ok(validateIntegrationValue("assurance", forgedSummary).length > 0);
+
+  const forgedRequest = {
+    ...result,
+    grounding_request: externalGroundingPack({
+      affectedConcepts: ["sales.other"]
+    }).grounding_request
+  };
+  assert.ok(validateIntegrationValue("assurance", forgedRequest).length > 0);
+
+  const forgedClassification = {
+    ...result,
+    grounding: {
+      status: "required"
+    }
+  };
+  assert.ok(validateIntegrationValue("assurance", forgedClassification).length > 0);
+  assert.equal(Object.hasOwn(result, "grounding_request"), false);
+  assert.equal(Object.hasOwn(result, "grounding"), false);
+
+  const errorFinding = {
+    code: "forged_error",
+    severity: "error",
+    file: "feature.md",
+    field: "$",
+    problem: "A pass result cannot contain this error.",
+    fix: "Regenerate the Assurance Result."
+  };
+  const passWithError = {
+    ...result,
+    findings: [errorFinding]
+  };
+  assert.ok(validateIntegrationValue("assurance", passWithError).length > 0);
+
+  const passWithPackError = {
+    ...result,
+    grounding_pack: {
+      ...result.grounding_pack,
+      errors: [errorFinding]
+    }
+  };
+  assert.ok(validateIntegrationValue("assurance", passWithPackError).length > 0);
 });
 
 test("invalid preparation cannot pass even when an upstream pack omitted diagnostics", () => {
@@ -59,7 +110,7 @@ test("invalid preparation cannot pass even when an upstream pack omitted diagnos
   assert.ok(validateIntegrationValue("assurance", inconsistent).length > 0);
 });
 
-test("externally constructed packs require accepted evidence for every affected ID", () => {
+test("caller-supplied packs cannot establish accepted grounding evidence", () => {
   const missingEvidence = evaluateGroundingPack(externalGroundingPack());
 
   assert.equal(missingEvidence.preparation.state, "invalid");
@@ -97,60 +148,23 @@ test("externally constructed packs require accepted evidence for every affected 
     }]
   }));
 
-  assert.equal(resolvedEvidence.preparation.state, "prepared");
-  assert.equal(resolvedEvidence.policy.outcome, "pass");
-  assert.deepEqual(readFirstIds(resolvedEvidence), ["sales.order"]);
+  assert.equal(resolvedEvidence.preparation.state, "invalid");
+  assert.equal(resolvedEvidence.policy.outcome, "fail");
+  assert.deepEqual(readFirstIds(resolvedEvidence), []);
+  assert.ok(resolvedEvidence.findings.some((item) => (
+    item.code === "unverified_grounding_pack"
+  )));
   assert.deepEqual(validateIntegrationValue("assurance", resolvedEvidence), []);
 
-  const forgedSummary = {
-    ...resolvedEvidence,
-    preparation: {
-      ...resolvedEvidence.preparation,
-      accepted_ids: ["sales.fake"]
-    }
-  };
-  assert.ok(validateIntegrationValue("assurance", forgedSummary).length > 0);
-
-  const forgedRequest = {
-    ...resolvedEvidence,
-    grounding_request: externalGroundingPack({
-      affectedConcepts: ["sales.other"]
-    }).grounding_request
-  };
-  assert.ok(validateIntegrationValue("assurance", forgedRequest).length > 0);
-
-  const forgedClassification = {
-    ...resolvedEvidence,
-    grounding: {
-      status: "required"
-    }
-  };
-  assert.ok(validateIntegrationValue("assurance", forgedClassification).length > 0);
-  assert.equal(Object.hasOwn(resolvedEvidence, "grounding_request"), false);
-  assert.equal(Object.hasOwn(resolvedEvidence, "grounding"), false);
-
-  const errorFinding = {
-    code: "forged_error",
-    severity: "error",
-    file: "feature.md",
-    field: "$",
-    problem: "A pass result cannot contain this error.",
-    fix: "Regenerate the Assurance Result."
-  };
-  const passWithError = {
-    ...resolvedEvidence,
-    findings: [errorFinding]
-  };
-  assert.ok(validateIntegrationValue("assurance", passWithError).length > 0);
-
-  const passWithPackError = {
-    ...resolvedEvidence,
-    grounding_pack: {
-      ...resolvedEvidence.grounding_pack,
-      errors: [errorFinding]
-    }
-  };
-  assert.ok(validateIntegrationValue("assurance", passWithPackError).length > 0);
+  const skip = evaluateGroundingPack(externalGroundingPack({
+    status: "not_required",
+    rationale: "No domain semantics are affected.",
+    affectedConcepts: []
+  }));
+  assert.equal(skip.preparation.state, "invalid");
+  assert.equal(skip.policy.outcome, "fail");
+  assert.ok(skip.findings.some((item) => item.code === "unverified_grounding_pack"));
+  assert.deepEqual(validateIntegrationValue("assurance", skip), []);
 });
 
 test("external accepted evidence must match the affected domain category", () => {
@@ -272,6 +286,10 @@ test("external Candidate boundaries enforce Candidate metadata", () => {
     { ...candidate, confidence: "certain" },
     { ...candidate, file: "opendomain/candidates/order.md\n- forged" },
     { ...candidate, file: "opendomain/candidates/\u001b[31morder.md" },
+    { ...candidate, file: "/etc/passwd" },
+    { ...candidate, file: "../../secrets" },
+    { ...candidate, file: "opendomain/../secrets" },
+    { ...candidate, file: "C:\\secrets\\candidate.md" },
     {
       id: candidate.id,
       status: candidate.status,
@@ -298,22 +316,37 @@ test("external Candidate boundaries enforce Candidate metadata", () => {
   }
 });
 
-test("Assurance text preserves final Candidate review status", () => {
-  const result = evaluateGroundingPack(externalGroundingPack({
-    readFirst: [{
-      id: "sales.order",
-      type: "domain_concept",
-      status: "accepted",
-      file: "opendomain/concepts/sales.order.md"
-    }],
-    candidateBoundaries: [{
-      id: "candidate-0004-rejected-order",
-      status: "rejected",
-      target_id: "sales.order",
-      confidence: "high",
-      file: "opendomain/candidates/candidate-0004-rejected-order.md"
-    }]
-  }));
+test("Assurance text preserves final Candidate review status", async (context) => {
+  const project = await createProject(context);
+  const reviewExit = await runCli([
+    "candidate",
+    "review",
+    "candidate-0001-order-lifecycle",
+    "--decision",
+    "rejected",
+    "--reviewed-by",
+    "Assurance test",
+    "--reviewed-at",
+    "2026-06-30",
+    "--reason",
+    "The proposed lifecycle state is not supported by accepted evidence.",
+    "opendomain"
+  ], {
+    cwd: project,
+    stdout: memoryStream(),
+    stderr: memoryStream()
+  });
+  assert.equal(reviewExit, 0);
+
+  await writeFeature(project, {
+    status: "required",
+    rationale: "The feature changes accepted order behavior.",
+    concepts: ["sales.order"]
+  });
+  const result = await assureGrounding("feature.md", {
+    cwd: project,
+    now: TEST_NOW
+  });
 
   assert.equal(result.preparation.state, "prepared");
   const output = formatAssuranceResult(result);
@@ -352,7 +385,15 @@ test("external packs reject unsafe evidence paths", () => {
     "opendomain/concepts/order.md\n- forged",
     "opendomain/concepts/\u001b[31morder.md",
     " opendomain/concepts/order.md",
-    "opendomain/concepts/order.md "
+    "opendomain/concepts/order.md ",
+    "/etc/passwd",
+    "../../secrets",
+    "opendomain/../secrets",
+    "./opendomain/concepts/order.md",
+    "opendomain//concepts/order.md",
+    "opendomain/concepts/order.md/",
+    "C:\\secrets\\order.md",
+    "\\\\server\\share\\order.md"
   ]) {
     const result = evaluateGroundingPack(externalGroundingPack({
       readFirst: [{
@@ -438,6 +479,19 @@ test("external pack diagnostic arrays enforce their declared severity", () => {
     assert.equal(result.policy.outcome, "fail");
     assert.deepEqual(validateIntegrationValue("assurance", result), []);
   }
+});
+
+test("malformed external evidence collections fail closed", () => {
+  const pack = externalGroundingPack();
+  pack.read_first = { forged: true };
+
+  const result = evaluateGroundingPack(pack);
+
+  assert.equal(result.preparation.state, "invalid");
+  assert.equal(result.policy.outcome, "fail");
+  assert.ok(result.findings.some((item) => item.code === "invalid_grounding_pack"));
+  assert.deepEqual(readFirstIds(result), []);
+  assert.deepEqual(validateIntegrationValue("assurance", result), []);
 });
 
 test("external diagnostics reject multiline and terminal-control text", () => {
@@ -567,53 +621,39 @@ test("external not_required packs cannot carry grounding evidence", () => {
   assert.deepEqual(validateIntegrationValue("assurance", result), []);
 });
 
-test("external diagnostic codes are sanitized before Assurance output", () => {
-  const pack = externalGroundingPack({
-    status: "unclassified",
-    readFirst: [{
-      id: "sales.order",
-      type: "domain_concept",
-      status: "accepted",
-      file: "opendomain/concepts/sales.order.md"
-    }]
-  });
-  pack.warnings.push({
+test("diagnostic codes are sanitized before Assurance output", () => {
+  const result = invalidAssuranceResult([{
     code: "INVALID-CODE",
-    severity: "warning",
+    severity: "error",
     file: "feature.md",
     field: "$",
-    problem: "External warning.",
-    fix: "Review the external warning."
-  });
+    problem: "Preparation failed.",
+    fix: "Review the input."
+  }], { input: "feature.md" });
 
-  const result = evaluateGroundingPack(pack);
-
-  assert.equal(result.preparation.state, "incomplete");
-  assert.equal(result.policy.outcome, "warn");
-  assert.ok(result.findings.some((item) => item.code === "grounding_preparation_warning"));
+  assert.equal(result.preparation.state, "invalid");
+  assert.equal(result.policy.outcome, "fail");
+  assert.ok(result.findings.some((item) => item.code === "grounding_preparation_failed"));
   assert.ok(result.findings.every((item) => item.code !== "INVALID-CODE"));
   assert.deepEqual(validateIntegrationValue("assurance", result), []);
 });
 
-test("Assurance Result schema enforces policy outcomes for incomplete states", () => {
-  const advisory = evaluateGroundingPack(externalGroundingPack({
+test("Assurance Result schema enforces policy outcomes for incomplete states", async (context) => {
+  const project = await createProject(context);
+  await writeFeature(project, {
     status: "unclassified",
-    readFirst: [{
-      id: "sales.order",
-      type: "domain_concept",
-      status: "accepted",
-      file: "opendomain/concepts/sales.order.md"
-    }]
-  }));
-  const enforced = evaluateGroundingPack(externalGroundingPack({
-    status: "unclassified",
-    readFirst: [{
-      id: "sales.order",
-      type: "domain_concept",
-      status: "accepted",
-      file: "opendomain/concepts/sales.order.md"
-    }]
-  }), { mode: "enforced" });
+    concepts: ["sales.order"]
+  });
+  const advisory = await assureGrounding("feature.md", {
+    cwd: project,
+    mode: "advisory",
+    now: TEST_NOW
+  });
+  const enforced = await assureGrounding("feature.md", {
+    cwd: project,
+    mode: "enforced",
+    now: TEST_NOW
+  });
 
   assert.equal(advisory.policy.outcome, "warn");
   assert.equal(enforced.policy.outcome, "fail");
@@ -632,18 +672,18 @@ test("Assurance Result schema enforces policy outcomes for incomplete states", (
   }
 });
 
-test("Assurance Result schema binds preparation states to grounding statuses", () => {
-  const incomplete = evaluateGroundingPack(externalGroundingPack({
+test("Assurance Result schema binds preparation states to grounding statuses", async (context) => {
+  const project = await createProject(context);
+  await writeFeature(project, {
     status: "unclassified",
-    readFirst: [{
-      id: "sales.order",
-      type: "domain_concept",
-      status: "accepted",
-      file: "opendomain/concepts/sales.order.md"
-    }]
-  }));
+    concepts: ["sales.order"]
+  });
+  const incomplete = await assureGrounding("feature.md", {
+    cwd: project,
+    now: TEST_NOW
+  });
   assert.equal(incomplete.preparation.state, "incomplete");
-  assert.deepEqual(readFirstIds(incomplete), ["sales.order"]);
+  assert.ok(readFirstIds(incomplete).includes("sales.order"));
 
   const forgedPrepared = {
     ...incomplete,
@@ -658,11 +698,14 @@ test("Assurance Result schema binds preparation states to grounding statuses", (
   };
   assert.ok(validateIntegrationValue("assurance", forgedPrepared).length > 0);
 
-  const notRequired = evaluateGroundingPack(externalGroundingPack({
+  await writeFeature(project, {
     status: "not_required",
-    rationale: "No domain semantics are affected.",
-    affectedConcepts: []
-  }));
+    rationale: "No domain semantics are affected."
+  });
+  const notRequired = await assureGrounding("feature.md", {
+    cwd: project,
+    now: TEST_NOW
+  });
   assert.equal(notRequired.preparation.state, "not_required");
   assert.deepEqual(validateIntegrationValue("assurance", notRequired), []);
 

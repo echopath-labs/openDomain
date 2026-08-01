@@ -148,9 +148,15 @@ validated against the grammar for their declared type.
 events, and every evidence path must contain non-whitespace text;
 `domain_candidate` entries remain confined to Candidate boundaries.
 Paths rendered by Assurance are normalized single-line values without leading
-or trailing whitespace or terminal control characters. External diagnostic text
-uses the same control-character boundary, and schema-derived finding text
-escapes unsafe property-name controls before terminal output.
+or trailing whitespace or terminal control characters. Evidence and Candidate
+paths must also be normalized repository-relative paths without absolute roots,
+backslashes, or `.` / `..` traversal segments. External diagnostic text uses the
+same control-character boundary, and schema-derived finding text escapes unsafe
+property-name controls before terminal output.
+Caller-supplied or persisted Grounding Packs cannot establish completed
+Assurance, even when their shape is valid. Run `opendomain assure` against the
+current Source Unit and workspace so accepted evidence and Semantic Closure are
+regenerated from validated OpenDomain sources.
 `preparation` reports only its state. The Grounding Request and classification
 live in `grounding_pack.grounding_request`; evidence IDs, types, and paths live
 in `grounding_pack.read_first` and `grounding_pack.candidate_boundaries`. IDs
