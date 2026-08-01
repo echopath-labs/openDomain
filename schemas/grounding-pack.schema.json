@@ -48,7 +48,15 @@
       "required": ["id", "type", "status", "file"],
       "properties": {
         "id": { "type": "string", "minLength": 1, "pattern": "\\S" },
-        "type": { "type": "string", "minLength": 1 },
+        "type": {
+          "enum": [
+            "bounded_context",
+            "domain_concept",
+            "business_rule",
+            "lifecycle",
+            "domain_event"
+          ]
+        },
         "name": { "type": "string" },
         "status": { "const": "accepted" },
         "file": { "type": "string", "minLength": 1 },

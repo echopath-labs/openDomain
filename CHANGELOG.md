@@ -23,6 +23,8 @@
   affected-domain categories, and reject duplicate Pack evidence IDs.
 - Bind Assurance preparation states to compatible grounding statuses and reject
   `not_required` Packs that carry grounding evidence.
+- Restrict `read_first` to accepted semantic-closure types so Candidates cannot
+  masquerade as accepted grounding evidence.
 - Keep maintainer OpenSpec and narrative development records outside the public
   repository and npm package; README and JSON Schemas remain the public usage
   and contract entrypoints.

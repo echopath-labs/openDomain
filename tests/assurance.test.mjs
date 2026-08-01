@@ -148,6 +148,31 @@ test("external packs reject duplicate evidence IDs with conflicting types", () =
   assert.deepEqual(validateIntegrationValue("assurance", result), []);
 });
 
+test("external Candidates cannot masquerade as accepted read-first evidence", () => {
+  const result = evaluateGroundingPack(externalGroundingPack({
+    readFirst: [
+      {
+        id: "sales.order",
+        type: "domain_concept",
+        status: "accepted",
+        file: "opendomain/concepts/sales.order.md"
+      },
+      {
+        id: "candidate-0001-order-lifecycle",
+        type: "domain_candidate",
+        status: "accepted",
+        file: "opendomain/candidates/candidate-0001-order-lifecycle.md"
+      }
+    ]
+  }));
+
+  assert.equal(result.preparation.state, "invalid");
+  assert.equal(result.policy.outcome, "fail");
+  assert.deepEqual(result.preparation.accepted_ids, []);
+  assert.ok(result.findings.some((item) => item.code === "invalid_grounding_pack"));
+  assert.deepEqual(validateIntegrationValue("assurance", result), []);
+});
+
 test("external packs cannot match whitespace-only evidence IDs", () => {
   const result = evaluateGroundingPack(externalGroundingPack({
     affectedConcepts: ["   "],
