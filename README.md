@@ -133,6 +133,8 @@ broken references, integration ambiguity, and accepted/Candidate trust boundary
 violations fail in both modes. Run `opendomain init` before adopting Assurance
 in an existing project. The result reports observed evidence; it does not prove
 Agent comprehension or independently attest a historical repository state.
+An `unclassified` request still validates every affected ID it already declares;
+missing or mistyped evidence fails in both modes rather than becoming advisory.
 The Result Schema binds `prepared` to `required`, `not_required` to an explicit
 evidence-free skip, and `incomplete` to `required` or `unclassified`.
 It validates shape and expressible local invariants, including that `pass`

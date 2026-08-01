@@ -286,6 +286,9 @@ Assurance 将状态判断、准备结果和执行策略分开报告：
 | `unclassified` / `domain_model_gap` | `warn`，exit 0 | `fail`，exit 1 |
 | 格式错误、矛盾或断裂引用 | `fail`，exit 1 | `fail`，exit 1 |
 
+`unclassified` Request 仍会校验所有已经声明的 affected ID；缺失 evidence 或类型
+不匹配属于 malformed Pack，在 advisory 与 enforced 下都会 fail。
+
 Result Schema 会将 `prepared` 绑定到 `required`，将 `not_required` 绑定到无 evidence
 的显式跳过，并限制 `incomplete` 只能对应 `required` 或 `unclassified`。
 它只校验结构与可表达的局部不变量，包括 `pass` 不得携带 finding 或 Pack

@@ -36,6 +36,8 @@
   validation of persisted or third-party JSON.
 - Enforce canonical dotted IDs for affected domain objects and type-specific IDs
   for accepted evidence, and preserve each Candidate review status in text output.
+- Validate declared evidence before applying `unclassified` policy so unresolved
+  or mistyped affected IDs fail in both advisory and enforced modes.
 - Keep maintainer OpenSpec and narrative development records outside the public
   repository and npm package; README and JSON Schemas remain the public usage
   and contract entrypoints.

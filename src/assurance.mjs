@@ -70,14 +70,23 @@ export function evaluateGroundingPack(inputPack, options = {}) {
         }
       }
     } else if (grounding.status === "unclassified") {
-      state = "incomplete";
-      findings.push(incompleteFinding(mode, {
-        code: "grounding_unclassified",
-        file: request.source.path,
-        field: "grounding.status",
-        problem: "The Grounding Request has not been classified as required or not_required.",
-        fix: "Have Codex assess the domain impact and record an explicit grounding decision for human review."
-      }));
+      const evidenceIssues = affectedEvidenceIssues(affectedIds, pack.read_first);
+      if (evidenceIssues.length > 0) {
+        findings.push(...evidenceIssues.map((item) => finding({
+          ...item,
+          severity: "error",
+          file: request.source.path
+        })));
+      } else {
+        state = "incomplete";
+        findings.push(incompleteFinding(mode, {
+          code: "grounding_unclassified",
+          file: request.source.path,
+          field: "grounding.status",
+          problem: "The Grounding Request has not been classified as required or not_required.",
+          fix: "Have Codex assess the domain impact and record an explicit grounding decision for human review."
+        }));
+      }
     } else {
       findings.push(finding({
         code: "invalid_grounding_decision",

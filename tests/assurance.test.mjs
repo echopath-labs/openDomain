@@ -496,7 +496,15 @@ test("external not_required packs cannot carry grounding evidence", () => {
 });
 
 test("external diagnostic codes are sanitized before Assurance output", () => {
-  const pack = externalGroundingPack({ status: "unclassified" });
+  const pack = externalGroundingPack({
+    status: "unclassified",
+    readFirst: [{
+      id: "sales.order",
+      type: "domain_concept",
+      status: "accepted",
+      file: "opendomain/concepts/sales.order.md"
+    }]
+  });
   pack.warnings.push({
     code: "INVALID-CODE",
     severity: "warning",
@@ -517,10 +525,22 @@ test("external diagnostic codes are sanitized before Assurance output", () => {
 
 test("Assurance Result schema enforces policy outcomes for incomplete states", () => {
   const advisory = evaluateGroundingPack(externalGroundingPack({
-    status: "unclassified"
+    status: "unclassified",
+    readFirst: [{
+      id: "sales.order",
+      type: "domain_concept",
+      status: "accepted",
+      file: "opendomain/concepts/sales.order.md"
+    }]
   }));
   const enforced = evaluateGroundingPack(externalGroundingPack({
-    status: "unclassified"
+    status: "unclassified",
+    readFirst: [{
+      id: "sales.order",
+      type: "domain_concept",
+      status: "accepted",
+      file: "opendomain/concepts/sales.order.md"
+    }]
   }), { mode: "enforced" });
 
   assert.equal(advisory.policy.outcome, "warn");
@@ -758,6 +778,36 @@ test("unclassified partial grounding stays incomplete under both policies", asyn
     enforced.findings.find((item) => item.code === "grounding_unclassified")?.severity,
     "error"
   );
+});
+
+test("unclassified external packs fail on unresolved or mistyped affected evidence", () => {
+  const packs = [
+    externalGroundingPack({
+      status: "unclassified"
+    }),
+    externalGroundingPack({
+      status: "unclassified",
+      readFirst: [{
+        id: "sales.order",
+        type: "business_rule",
+        status: "accepted",
+        file: "opendomain/rules/sales.order.md"
+      }]
+    })
+  ];
+
+  for (const pack of packs) {
+    for (const mode of ["advisory", "enforced"]) {
+      const result = evaluateGroundingPack(pack, { mode });
+      assert.equal(result.preparation.state, "invalid");
+      assert.equal(result.policy.outcome, "fail");
+      assert.ok(result.findings.some((item) => (
+        item.code === "unresolved_grounding_evidence"
+        || item.code === "domain_reference_type_mismatch"
+      )));
+      assert.deepEqual(validateIntegrationValue("assurance", result), []);
+    }
+  }
 });
 
 test("required grounding without IDs exposes a brownfield domain model gap", async (context) => {
