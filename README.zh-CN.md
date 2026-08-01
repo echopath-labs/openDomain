@@ -288,6 +288,9 @@ Assurance 将状态判断、准备结果和执行策略分开报告：
 
 Result Schema 会将 `prepared` 绑定到 `required`，将 `not_required` 绑定到无 evidence
 的显式跳过，并限制 `incomplete` 只能对应 `required` 或 `unclassified`。
+它只校验结构与可表达的局部不变量，包括 `pass` 不得携带 finding 或 Pack
+diagnostic；它不会重新验证持久化或第三方 JSON 的语义覆盖。CI 必须针对当前
+workspace 重新运行 `opendomain assure`。
 `read_first` 只允许 bounded context、concept、rule、lifecycle 与 event，且每个
 evidence path 都必须包含非空白字符；`domain_candidate` 必须留在 Candidate
 boundaries 中。`preparation` 只报告状态，Grounding Request 与 classification

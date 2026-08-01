@@ -2,6 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://opendomain.dev/schemas/assurance-result.schema.json",
   "title": "OpenDomain Grounding Assurance Result v1",
+  "$comment": "This schema validates result shape and expressible local invariants. Semantic evidence coverage must be regenerated with opendomain assure; schema validation alone does not attest an untrusted or persisted result.",
   "type": "object",
   "required": [
     "assurance_version",
@@ -205,6 +206,30 @@
               "outcome": { "const": "fail" }
             },
             "required": ["outcome"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "policy": {
+            "properties": {
+              "outcome": { "const": "pass" }
+            },
+            "required": ["outcome"]
+          }
+        },
+        "required": ["policy"]
+      },
+      "then": {
+        "properties": {
+          "findings": { "maxItems": 0 },
+          "grounding_pack": {
+            "properties": {
+              "errors": { "maxItems": 0 },
+              "warnings": { "maxItems": 0 }
+            }
           }
         }
       }

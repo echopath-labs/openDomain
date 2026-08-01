@@ -70,6 +70,21 @@ test("externally constructed packs require accepted evidence for every affected 
   )));
   assert.deepEqual(validateIntegrationValue("assurance", missingEvidence), []);
 
+  const unrelatedEvidence = evaluateGroundingPack(externalGroundingPack({
+    readFirst: [{
+      id: "sales.customer",
+      type: "domain_concept",
+      status: "accepted",
+      file: "opendomain/concepts/sales.customer.md"
+    }]
+  }));
+  assert.equal(unrelatedEvidence.preparation.state, "invalid");
+  assert.equal(unrelatedEvidence.policy.outcome, "fail");
+  assert.ok(unrelatedEvidence.findings.some((item) => (
+    item.code === "unresolved_grounding_evidence"
+    && item.problem.includes("sales.order")
+  )));
+
   const resolvedEvidence = evaluateGroundingPack(externalGroundingPack({
     readFirst: [{
       id: "sales.order",
@@ -112,6 +127,29 @@ test("externally constructed packs require accepted evidence for every affected 
   assert.ok(validateIntegrationValue("assurance", forgedClassification).length > 0);
   assert.equal(Object.hasOwn(resolvedEvidence, "grounding_request"), false);
   assert.equal(Object.hasOwn(resolvedEvidence, "grounding"), false);
+
+  const errorFinding = {
+    code: "forged_error",
+    severity: "error",
+    file: "feature.md",
+    field: "$",
+    problem: "A pass result cannot contain this error.",
+    fix: "Regenerate the Assurance Result."
+  };
+  const passWithError = {
+    ...resolvedEvidence,
+    findings: [errorFinding]
+  };
+  assert.ok(validateIntegrationValue("assurance", passWithError).length > 0);
+
+  const passWithPackError = {
+    ...resolvedEvidence,
+    grounding_pack: {
+      ...resolvedEvidence.grounding_pack,
+      errors: [errorFinding]
+    }
+  };
+  assert.ok(validateIntegrationValue("assurance", passWithPackError).length > 0);
 });
 
 test("external accepted evidence must match the affected domain category", () => {

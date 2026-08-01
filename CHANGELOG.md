@@ -31,6 +31,9 @@
   Grounding Request and classification solely in the embedded Grounding Pack.
 - Require Candidate boundaries to use the Candidate ID, status, and confidence
   contract and to target accepted evidence in the same Grounding Pack.
+- Reject `pass` Results that carry findings or Pack diagnostics, and clarify
+  that semantic coverage requires a fresh Assurance run rather than Schema-only
+  validation of persisted or third-party JSON.
 - Keep maintainer OpenSpec and narrative development records outside the public
   repository and npm package; README and JSON Schemas remain the public usage
   and contract entrypoints.

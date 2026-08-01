@@ -135,6 +135,10 @@ in an existing project. The result reports observed evidence; it does not prove
 Agent comprehension or independently attest a historical repository state.
 The Result Schema binds `prepared` to `required`, `not_required` to an explicit
 evidence-free skip, and `incomplete` to `required` or `unclassified`.
+It validates shape and expressible local invariants, including that `pass`
+contains no findings or Pack diagnostics. It does not re-evaluate semantic
+coverage in persisted or third-party JSON; CI must run `opendomain assure`
+against the current workspace.
 `read_first` accepts only bounded contexts, concepts, rules, lifecycles, and
 events, and every evidence path must contain non-whitespace text;
 `domain_candidate` entries remain confined to Candidate boundaries.
