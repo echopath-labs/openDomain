@@ -85,6 +85,11 @@ test("repository validation applies Grounding Request decision rules", async (co
       grounding: "grounding:\n  status: not_required\n  rationale: No domain impact.",
       concepts: "[sales.order]",
       code: "grounding_decision_contradiction"
+    },
+    {
+      grounding: "grounding:\n  status: required",
+      concepts: "[x]",
+      code: "invalid_affects_domain"
     }
   ]) {
     await writeFile(path.join(project, "feature.md"), `---
@@ -136,14 +141,14 @@ test("schema-invalid accepted Rule is excluded from the validated corpus", async
 
   assert.deepEqual(
     result.errors.map((issue) => issue.field),
-    ["applies_to", "id", "name", "review.reviewed_at", "rule_type", "severity"]
+    ["applies_to", "name", "review.reviewed_at", "rule_type", "severity"]
   );
   assert.ok(result.errors.every((issue) => (
     issue.file.endsWith("invalid-rule.md")
     && issue.problem.includes("rule.schema.json")
     && issue.fix.includes("schemas/rule.schema.json")
   )));
-  assert.equal(result.documents.some((document) => document.id === "BAD"), false);
+  assert.equal(result.documents.some((document) => document.id === "sales.invalid-rule"), false);
   assert.equal(result.documents.some((document) => document.id === "sales"), true);
 });
 

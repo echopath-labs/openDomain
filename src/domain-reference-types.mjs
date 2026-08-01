@@ -5,6 +5,8 @@ export const AFFECTS_DOMAIN_TYPES = Object.freeze({
   events: "domain_event"
 });
 
+export const DOMAIN_OBJECT_ID_PATTERN = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_-]*)+$/;
+
 export const AFFECTS_DOMAIN_FIELDS = Object.freeze(
   Object.keys(AFFECTS_DOMAIN_TYPES)
 );
@@ -45,12 +47,12 @@ export function validateAffectsDomainShape(value, file) {
       continue;
     }
     for (const [index, id] of (ids ?? []).entries()) {
-      if (typeof id !== "string" || !id.trim()) {
+      if (typeof id !== "string" || !DOMAIN_OBJECT_ID_PATTERN.test(id)) {
         errors.push(issue({
           file,
           field: `affects_domain.${field}[${index}]`,
-          problem: "Affected OpenDomain ID must be a non-empty string.",
-          fix: "Use a stable OpenDomain ID or remove the invalid list item."
+          problem: "Affected OpenDomain ID must use the canonical dotted format.",
+          fix: "Use an ID such as 'sales.order' or remove the invalid list item."
         }));
       }
     }

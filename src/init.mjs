@@ -321,8 +321,9 @@ opendomain assure <feature-spec-or-dir>
 \`\`\`
 
 Read files listed under \`Accepted grounding evidence\`. Treat files listed
-under \`Candidate boundaries\` as proposed knowledge, not accepted truth. A
-warning permits advisory progress but does not mean grounding is complete.
+under \`Candidate boundaries\` according to their review status, never as
+accepted truth. A warning permits advisory progress but does not mean grounding
+is complete.
 
 Boundaries:
 

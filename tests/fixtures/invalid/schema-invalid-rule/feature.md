@@ -5,7 +5,7 @@ name: Schema-invalid Rule grounding fixture
 status: proposed
 affects_domain:
   rules:
-    - BAD
+    - sales.invalid-rule
 ---
 
 # Schema-invalid Rule Grounding Fixture

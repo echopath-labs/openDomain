@@ -64,8 +64,7 @@
       "uniqueItems": true,
       "items": {
         "type": "string",
-        "minLength": 1,
-        "pattern": "\\S"
+        "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_-]*)+$"
       }
     }
   },

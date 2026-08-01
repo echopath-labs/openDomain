@@ -6,7 +6,8 @@ import test from "node:test";
 import {
   assureGrounding,
   ASSURANCE_VERSION,
-  evaluateGroundingPack
+  evaluateGroundingPack,
+  formatAssuranceResult
 } from "../src/assurance.mjs";
 import { runCli } from "../src/cli.mjs";
 import { buildGroundingRequest } from "../src/grounding-request.mjs";
@@ -295,6 +296,29 @@ test("external Candidate boundaries enforce Candidate metadata", () => {
   }
 });
 
+test("Assurance text preserves final Candidate review status", () => {
+  const result = evaluateGroundingPack(externalGroundingPack({
+    readFirst: [{
+      id: "sales.order",
+      type: "domain_concept",
+      status: "accepted",
+      file: "opendomain/concepts/sales.order.md"
+    }],
+    candidateBoundaries: [{
+      id: "candidate-0004-rejected-order",
+      status: "rejected",
+      target_id: "sales.order",
+      confidence: "high",
+      file: "opendomain/candidates/candidate-0004-rejected-order.md"
+    }]
+  }));
+
+  assert.equal(result.preparation.state, "prepared");
+  const output = formatAssuranceResult(result);
+  assert.match(output, /rejected Candidate; not accepted knowledge/);
+  assert.doesNotMatch(output, /\(proposed knowledge\)/);
+});
+
 test("external Candidates cannot masquerade as accepted read-first evidence", () => {
   const result = evaluateGroundingPack(externalGroundingPack({
     readFirst: [
@@ -355,6 +379,34 @@ test("external packs cannot match whitespace-only evidence IDs", () => {
   assert.equal(result.policy.outcome, "fail");
   assert.ok(result.findings.some((item) => item.code === "invalid_grounding_pack"));
   assert.deepEqual(validateIntegrationValue("assurance", result), []);
+});
+
+test("external packs reject non-canonical affected and evidence IDs", () => {
+  for (const pack of [
+    externalGroundingPack({
+      affectedConcepts: ["x"],
+      readFirst: [{
+        id: "x",
+        type: "domain_concept",
+        status: "accepted",
+        file: "opendomain/concepts/x.md"
+      }]
+    }),
+    externalGroundingPack({
+      readFirst: [{
+        id: "x",
+        type: "domain_concept",
+        status: "accepted",
+        file: "opendomain/concepts/x.md"
+      }]
+    })
+  ]) {
+    const result = evaluateGroundingPack(pack);
+    assert.equal(result.preparation.state, "invalid");
+    assert.equal(result.policy.outcome, "fail");
+    assert.ok(result.findings.some((item) => item.code === "invalid_grounding_pack"));
+    assert.deepEqual(validateIntegrationValue("assurance", result), []);
+  }
 });
 
 test("external pack diagnostic arrays enforce their declared severity", () => {

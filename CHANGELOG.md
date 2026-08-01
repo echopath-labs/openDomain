@@ -34,6 +34,8 @@
 - Reject `pass` Results that carry findings or Pack diagnostics, and clarify
   that semantic coverage requires a fresh Assurance run rather than Schema-only
   validation of persisted or third-party JSON.
+- Enforce canonical dotted IDs for affected domain objects and type-specific IDs
+  for accepted evidence, and preserve each Candidate review status in text output.
 - Keep maintainer OpenSpec and narrative development records outside the public
   repository and npm package; README and JSON Schemas remain the public usage
   and contract entrypoints.

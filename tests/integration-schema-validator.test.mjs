@@ -53,10 +53,15 @@ test("Domain Declaration schema requires strict non-empty domain scope", () => {
   blank.affects_domain.concepts = ["   "];
   const blankIssues = validateIntegrationValue("declaration", blank);
   assert.ok(blankIssues.some((issue) => issue.field === "affects_domain.concepts[0]"));
+
+  const nonCanonical = structuredClone(valid);
+  nonCanonical.affects_domain.concepts = ["x"];
+  const nonCanonicalIssues = validateIntegrationValue("declaration", nonCanonical);
+  assert.ok(nonCanonicalIssues.some((issue) => issue.field === "affects_domain.concepts[0]"));
 });
 
 test("Grounding Request schema remains compatible with optional Profile metadata", () => {
-  const issues = validateIntegrationValue("request", {
+  const request = {
     protocol_version: "1.0",
     source: {
       type: "structured-feature",
@@ -77,7 +82,8 @@ test("Grounding Request schema remains compatible with optional Profile metadata
       id: "structured-feature",
       kind: "profile"
     }
-  });
+  };
+  const issues = validateIntegrationValue("request", request);
 
   assert.deepEqual(issues, []);
 
@@ -101,6 +107,11 @@ test("Grounding Request schema remains compatible with optional Profile metadata
   };
   const blankIssues = validateIntegrationValue("request", blank);
   assert.ok(blankIssues.some((issue) => issue.field === "affects_domain.concepts[0]"));
+
+  const nonCanonical = structuredClone(request);
+  nonCanonical.affects_domain.concepts = ["x"];
+  const nonCanonicalIssues = validateIntegrationValue("request", nonCanonical);
+  assert.ok(nonCanonicalIssues.some((issue) => issue.field === "affects_domain.concepts[0]"));
 });
 
 test("Grounding Request schema accepts explicit decisions and requires skip rationale", () => {

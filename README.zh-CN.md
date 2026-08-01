@@ -291,6 +291,8 @@ Result Schema 会将 `prepared` 绑定到 `required`，将 `not_required` 绑定
 它只校验结构与可表达的局部不变量，包括 `pass` 不得携带 finding 或 Pack
 diagnostic；它不会重新验证持久化或第三方 JSON 的语义覆盖。CI 必须针对当前
 workspace 重新运行 `opendomain assure`。
+受影响的 concept、rule、lifecycle 与 event ID 必须符合其 OpenDomain source object
+使用的 canonical dotted ID 格式；Grounding Pack evidence ID 也会按声明类型校验。
 `read_first` 只允许 bounded context、concept、rule、lifecycle 与 event，且每个
 evidence path 都必须包含非空白字符；`domain_candidate` 必须留在 Candidate
 boundaries 中。`preparation` 只报告状态，Grounding Request 与 classification
@@ -300,6 +302,8 @@ boundaries 中。`preparation` 只报告状态，Grounding Request 与 classific
 request、classification 或 evidence 摘要。
 每个 Candidate boundary 都必须符合 Candidate ID、生命周期状态与 confidence
 约束，且 `target_id` 必须指向同一 Pack 中的 accepted `read_first` evidence。
+Assurance 文本输出会保留该 review status，包括最终的 `rejected`、`superseded`
+或 `deprecated` 决定。
 
 存量项目应先运行 `opendomain init`。初始化后即使还没有 accepted knowledge，
 `required` 加空引用也会被识别为 `domain_model_gap`；完全缺少 OpenDomain workspace
@@ -327,7 +331,7 @@ decision 的 integration；在契约扩展前，它不会通过 enforced Assuran
 `assure` 与 `prepare` 的 grounding evidence 会告诉 Codex：
 
 - `Accepted grounding evidence` / `Read first`：先读哪些 accepted source files；
-- `Candidate boundaries`：哪些内容只是 proposed，不能当真；
+- `Candidate boundaries`：显示各 Candidate 的 review status，均不能当作 accepted truth；
 - `Avoided semantic errors`：实现时要避免哪些业务语义错误。
 
 ### 4. 不确定知识先写 Candidate

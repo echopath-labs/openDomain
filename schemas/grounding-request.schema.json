@@ -97,8 +97,12 @@
   "$defs": {
     "idArray": {
       "type": "array",
-      "items": { "type": "string", "minLength": 1, "pattern": "\\S" },
+      "items": { "$ref": "#/$defs/domainObjectId" },
       "uniqueItems": true
+    },
+    "domainObjectId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_-]*)+$"
     }
   },
   "additionalProperties": true

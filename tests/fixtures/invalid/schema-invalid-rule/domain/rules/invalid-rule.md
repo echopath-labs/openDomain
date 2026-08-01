@@ -1,6 +1,6 @@
 ---
 type: business_rule
-id: BAD
+id: sales.invalid-rule
 name: 123
 context: sales
 status: accepted

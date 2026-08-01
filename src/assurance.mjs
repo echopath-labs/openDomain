@@ -338,7 +338,7 @@ export function formatAssuranceResult(result) {
     lines.push("- None");
   } else {
     for (const item of result.grounding_pack.candidate_boundaries) {
-      lines.push(`- ${item.id} -> ${item.file} (proposed knowledge)`);
+      lines.push(`- ${item.id} -> ${item.file} (${item.status} Candidate; not accepted knowledge)`);
     }
   }
 

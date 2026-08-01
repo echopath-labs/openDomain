@@ -60,10 +60,10 @@ test("schema-invalid accepted knowledge cannot enter Grounding Pack read_first",
 
   assert.ok(pack.errors.some((issue) => (
     issue.file.endsWith("invalid-rule.md")
-    && issue.field === "id"
+    && issue.field === "severity"
     && issue.problem.includes("rule.schema.json")
   )));
-  assert.equal(pack.read_first.some((item) => item.id === "BAD"), false);
+  assert.equal(pack.read_first.some((item) => item.id === "sales.invalid-rule"), false);
   assert.deepEqual(pack.read_first, []);
 });
 

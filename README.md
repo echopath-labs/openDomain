@@ -139,6 +139,9 @@ It validates shape and expressible local invariants, including that `pass`
 contains no findings or Pack diagnostics. It does not re-evaluate semantic
 coverage in persisted or third-party JSON; CI must run `opendomain assure`
 against the current workspace.
+Affected concepts, rules, lifecycles, and events use the same canonical dotted
+ID grammar as their OpenDomain source objects. Grounding Pack evidence IDs are
+validated against the grammar for their declared type.
 `read_first` accepts only bounded contexts, concepts, rules, lifecycles, and
 events, and every evidence path must contain non-whitespace text;
 `domain_candidate` entries remain confined to Candidate boundaries.
@@ -149,7 +152,8 @@ cannot appear in both evidence collections, and the Result carries no divergent
 request, classification, or evidence summary.
 Each Candidate boundary uses the Candidate ID, lifecycle status, and confidence
 contract, and its `target_id` must identify accepted `read_first` evidence in
-that same Pack.
+that same Pack. Human-readable Assurance output preserves that review status,
+including final `rejected`, `superseded`, or `deprecated` decisions.
 
 Repository-local Integration Profiles can normalize explicit structured intent
 and OpenDomain IDs from non-OpenSpec sources. Profiles do not scan prose, infer

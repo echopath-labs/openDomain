@@ -80,9 +80,9 @@ test("validate command reports deterministic runtime schema diagnostics", async 
   assert.equal(exitCode, 1);
   assert.deepEqual(
     payload.errors.map((issue) => issue.field),
-    ["applies_to", "id", "name", "review.reviewed_at", "rule_type", "severity"]
+    ["applies_to", "name", "review.reviewed_at", "rule_type", "severity"]
   );
-  assert.equal(payload.documents.some((document) => document.id === "BAD"), false);
+  assert.equal(payload.documents.some((document) => document.id === "sales.invalid-rule"), false);
 });
 
 test("order cancellation demo explains the avoided semantic error", async () => {

@@ -163,7 +163,7 @@ export function formatGroundingPack(pack) {
 
   lines.push("", "Final response reminder:");
   lines.push("- Include 'Domain Grounding Used' with the accepted IDs read.");
-  lines.push("- Report Candidate files as proposed knowledge, not accepted truth.");
+  lines.push("- Preserve each Candidate review status and never report it as accepted truth.");
 
   return `${lines.join("\n")}\n`;
 }
