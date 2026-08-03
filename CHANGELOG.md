@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.7 - 2026-08-03
+
 - Add explicit `required`, `not_required`, and `unclassified` Grounding Request
   decisions while preserving Grounding Protocol `1.0` compatibility.
 - Add read-only `opendomain assure` with advisory and enforced policy modes,
