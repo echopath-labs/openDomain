@@ -15,20 +15,33 @@ export async function inspectManagedFilePath(cwd, relativeFile) {
       parentSegments.slice(0, index + 1).join("/")
     );
     if (inspection.issue) {
-      return { projectRoot, file: path.join(projectRoot, ...segments), issue: inspection.issue };
+      return {
+        projectRoot,
+        file: path.join(projectRoot, ...segments),
+        exists: inspection.exists,
+        issue: inspection.issue
+      };
     }
     if (!inspection.exists) {
-      return { projectRoot, file: path.join(projectRoot, ...segments), issue: null };
+      return {
+        projectRoot,
+        file: path.join(projectRoot, ...segments),
+        exists: false,
+        issue: null
+      };
     }
   }
 
   const file = path.join(projectRoot, ...segments);
+  let exists = false;
   try {
     const fileStat = await lstat(file);
+    exists = true;
     if (fileStat.isSymbolicLink()) {
       return {
         projectRoot,
         file,
+        exists,
         issue: managedPathIssue(relativeFile, `Managed Agent file '${relativeFile}' is a symbolic link.`)
       };
     }
@@ -36,6 +49,7 @@ export async function inspectManagedFilePath(cwd, relativeFile) {
       return {
         projectRoot,
         file,
+        exists,
         issue: managedPathIssue(relativeFile, `Managed Agent file '${relativeFile}' is not a regular file.`)
       };
     }
@@ -44,12 +58,13 @@ export async function inspectManagedFilePath(cwd, relativeFile) {
       return {
         projectRoot,
         file,
+        exists,
         issue: managedPathIssue(relativeFile, `Managed Agent file cannot be inspected: ${error.message}`)
       };
     }
   }
 
-  return { projectRoot, file, issue: null };
+  return { projectRoot, file, exists, issue: null };
 }
 
 export async function ensureManagedFileParent(projectRoot, relativeFile) {

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   access,
+  chmod,
   lstat,
   mkdir,
   mkdtemp,
@@ -119,6 +120,83 @@ test("init rejects a non-file AGENTS path with structured diagnostics", async ()
       && issue.problem.includes("not a regular file")
     )));
     await assert.rejects(access(path.join(cwd, "opendomain")), { code: "ENOENT" });
+  });
+});
+
+test("integration commands reject a non-file workspace configuration with JSON diagnostics", async () => {
+  await withTempProject(async (cwd) => {
+    assert.equal(await runCli(["init", "--tools", "codex"], {
+      cwd,
+      stdout: memoryStream(),
+      stderr: memoryStream()
+    }), 0);
+    const config = path.join(cwd, "opendomain/config.yaml");
+    const agents = path.join(cwd, "AGENTS.md");
+    const agentsBefore = await readFile(agents, "utf8");
+    await rm(config);
+    await mkdir(config);
+
+    for (const args of [
+      ["init", "--tools", "codex", "--json"],
+      ["update", "--json"],
+      ["doctor", "--json"]
+    ]) {
+      const stdout = memoryStream();
+      const exitCode = await runCli(args, {
+        cwd,
+        stdout,
+        stderr: memoryStream()
+      });
+      const payload = JSON.parse(stdout.toString());
+
+      assert.equal(exitCode, 1);
+      assert.ok(payload.errors.some((issue) => (
+        issue.file === "opendomain/config.yaml"
+        && issue.problem.includes("not a regular file")
+      )));
+      assert.equal(await readFile(agents, "utf8"), agentsBefore);
+    }
+  });
+});
+
+test("integration commands report an unreadable generated Skill", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("POSIX file permissions are required for this regression test.");
+    return;
+  }
+
+  await withTempProject(async (cwd) => {
+    assert.equal(await runCli(["init", "--tools", "codex"], {
+      cwd,
+      stdout: memoryStream(),
+      stderr: memoryStream()
+    }), 0);
+    const skill = path.join(cwd, ".codex/skills/opendomain-explore/SKILL.md");
+    await chmod(skill, 0o000);
+
+    try {
+      for (const args of [
+        ["init", "--tools", "codex", "--json"],
+        ["update", "--json"],
+        ["doctor", "--json"]
+      ]) {
+        const stdout = memoryStream();
+        const exitCode = await runCli(args, {
+          cwd,
+          stdout,
+          stderr: memoryStream()
+        });
+        const payload = JSON.parse(stdout.toString());
+
+        assert.equal(exitCode, 1);
+        assert.ok(payload.errors.some((issue) => (
+          issue.file.endsWith("opendomain-explore/SKILL.md")
+          && issue.problem.includes("cannot be read")
+        )));
+      }
+    } finally {
+      await chmod(skill, 0o600);
+    }
   });
 });
 

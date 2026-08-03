@@ -1,4 +1,4 @@
-import { access, readFile } from "node:fs/promises";
+import { lstat, readFile } from "node:fs/promises";
 import path from "node:path";
 import {
   AGENT_ADAPTER_VERSION,
@@ -10,12 +10,37 @@ import { validateIntegrationValue } from "./integration-schema-validator.mjs";
 
 export async function planWorkspaceConfig(cwd, requestedTools) {
   const file = path.join(cwd, "opendomain/config.yaml");
-  const exists = await fileExists(file);
+  let exists = false;
   let current = "";
   let currentConfig = null;
 
+  try {
+    const fileStat = await lstat(file);
+    exists = true;
+    if (fileStat.isSymbolicLink()) {
+      return invalidConfigFilePlan(file, "Workspace configuration must not be a symbolic link.");
+    }
+    if (!fileStat.isFile()) {
+      return invalidConfigFilePlan(file, "Workspace configuration is not a regular file.");
+    }
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      return invalidConfigFilePlan(
+        file,
+        `Workspace configuration cannot be inspected: ${error.message}`
+      );
+    }
+  }
+
   if (exists) {
-    current = await readFile(file, "utf8");
+    try {
+      current = await readFile(file, "utf8");
+    } catch (error) {
+      return invalidConfigFilePlan(
+        file,
+        `Workspace configuration cannot be read: ${error.message}`
+      );
+    }
     try {
       currentConfig = parseYamlMapping(current, "opendomain/config.yaml", {
         label: "Workspace configuration"
@@ -96,11 +121,12 @@ function invalidPlan(file, errors) {
   };
 }
 
-async function fileExists(file) {
-  try {
-    await access(file);
-    return true;
-  } catch {
-    return false;
-  }
+function invalidConfigFilePlan(file, problem) {
+  return invalidPlan(file, [{
+    severity: "error",
+    file: "opendomain/config.yaml",
+    field: "$",
+    problem,
+    fix: "Replace the workspace configuration path with a readable regular file before retrying."
+  }]);
 }

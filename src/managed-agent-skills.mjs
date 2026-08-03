@@ -1,4 +1,4 @@
-import { access, readFile, unlink } from "node:fs/promises";
+import { readFile, unlink } from "node:fs/promises";
 import {
   agentSkillResources,
   allAgentSkillResources
@@ -25,7 +25,7 @@ export async function planAgentSkills(cwd, tools) {
       continue;
     }
     const file = managedPath.file;
-    if (!await fileExists(file)) {
+    if (!managedPath.exists) {
       if (desired) {
         plans.push({
           ...resource,
@@ -37,7 +37,13 @@ export async function planAgentSkills(cwd, tools) {
       continue;
     }
 
-    const current = await readFile(file, "utf8");
+    let current;
+    try {
+      current = await readFile(file, "utf8");
+    } catch (error) {
+      errors.push(unreadableIssue(resource.path, error));
+      continue;
+    }
     let parsed;
     try {
       parsed = parseMarkdown(current, resource.path);
@@ -102,11 +108,12 @@ function ownershipIssue(file) {
   };
 }
 
-async function fileExists(file) {
-  try {
-    await access(file);
-    return true;
-  } catch {
-    return false;
-  }
+function unreadableIssue(file, error) {
+  return {
+    severity: "error",
+    file,
+    field: "$",
+    problem: `Managed Agent file '${file}' cannot be read: ${error.message}`,
+    fix: "Restore read access to the managed Agent file before retrying."
+  };
 }
