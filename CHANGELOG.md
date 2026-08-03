@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.8 - 2026-08-03
+
 - Add Node SEA standalone CLI builds for macOS arm64/x64, Linux x64, and
   Windows x64 so projects can initialize OpenDomain without installing Node.js
   or adding package metadata.
