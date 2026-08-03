@@ -1,17 +1,25 @@
-import { access, mkdir, readFile } from "node:fs/promises";
-import path from "node:path";
+import { access, readFile } from "node:fs/promises";
 import { agentSkillResources } from "./agent-resources.mjs";
 import { atomicWriteUtf8 } from "./atomic-write.mjs";
 import { parseMarkdown } from "./frontmatter.mjs";
+import {
+  ensureManagedFileParent,
+  inspectManagedFilePath
+} from "./managed-path.mjs";
 
 export async function planAgentSkills(cwd, tools) {
   const plans = [];
   const errors = [];
 
   for (const resource of agentSkillResources(tools)) {
-    const file = path.join(cwd, resource.path);
+    const managedPath = await inspectManagedFilePath(cwd, resource.path);
+    if (managedPath.issue) {
+      errors.push(managedPath.issue);
+      continue;
+    }
+    const file = managedPath.file;
     if (!await fileExists(file)) {
-      plans.push({ ...resource, file, action: "create" });
+      plans.push({ ...resource, file, projectRoot: managedPath.projectRoot, action: "create" });
       continue;
     }
 
@@ -32,6 +40,7 @@ export async function planAgentSkills(cwd, tools) {
     plans.push({
       ...resource,
       file,
+      projectRoot: managedPath.projectRoot,
       action: current === resource.content ? "skip" : "update"
     });
   }
@@ -46,7 +55,7 @@ export async function applyAgentSkills(planResult, result) {
       continue;
     }
 
-    await mkdir(path.dirname(plan.file), { recursive: true });
+    await ensureManagedFileParent(plan.projectRoot, plan.path);
     await atomicWriteUtf8(plan.file, plan.content);
 
     if (plan.action === "create") {

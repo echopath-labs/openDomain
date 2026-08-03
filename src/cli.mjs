@@ -324,9 +324,8 @@ function parseInitArgs(args) {
       continue;
     }
     if (arg === "--example") {
-      parsed.example = args[index + 1];
-      index += 1;
-      if (!parsed.example) {
+      const value = args[index + 1];
+      if (!value || value.startsWith("--")) {
         parsed.errors.push({
           severity: "error",
           file: "<input>",
@@ -334,13 +333,15 @@ function parseInitArgs(args) {
           problem: "Missing example name.",
           fix: "Use --example erp."
         });
+      } else {
+        parsed.example = value;
+        index += 1;
       }
       continue;
     }
     if (arg === "--tools") {
       const value = args[index + 1];
-      index += 1;
-      if (!value) {
+      if (!value || value.startsWith("--")) {
         parsed.errors.push({
           severity: "error",
           file: "<input>",
@@ -349,6 +350,7 @@ function parseInitArgs(args) {
           fix: "Use --tools codex or omit --tools."
         });
       } else if (value !== "codex") {
+        index += 1;
         parsed.errors.push({
           severity: "error",
           file: "<input>",
@@ -357,6 +359,7 @@ function parseInitArgs(args) {
           fix: "Use --tools codex or omit --tools."
         });
       } else {
+        index += 1;
         parsed.tools = [value];
       }
       continue;

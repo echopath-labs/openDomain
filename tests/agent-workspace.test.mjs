@@ -5,6 +5,7 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  readdir,
   rm,
   symlink,
   writeFile
@@ -125,6 +126,39 @@ test("managed writes do not follow a pre-existing temporary-file symlink", async
     assert.equal(await readFile(victim, "utf8"), victimContent);
     assert.equal((await lstat(path.join(cwd, "AGENTS.md"))).isSymbolicLink(), false);
   });
+});
+
+test("init rejects a symlinked generated Skill parent before workspace mutation", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("Windows symlink creation requires privileges unavailable in standard CI.");
+    return;
+  }
+
+  const external = await mkdtemp(path.join(os.tmpdir(), "opendomain-external-skills-"));
+  try {
+    await withTempProject(async (cwd) => {
+      await symlink(external, path.join(cwd, ".codex"));
+      const stdout = memoryStream();
+
+      const exitCode = await runCli(["init", "--tools", "codex", "--json"], {
+        cwd,
+        stdout,
+        stderr: memoryStream()
+      });
+      const payload = JSON.parse(stdout.toString());
+
+      assert.equal(exitCode, 1);
+      assert.ok(payload.errors.some((issue) => (
+        issue.file.includes(".codex/skills/")
+        && issue.problem.includes("symbolic link")
+      )));
+      assert.deepEqual(await readdir(external), []);
+      await assert.rejects(access(path.join(cwd, "opendomain")), { code: "ENOENT" });
+      await assert.rejects(access(path.join(cwd, "AGENTS.md")), { code: "ENOENT" });
+    });
+  } finally {
+    await rm(external, { recursive: true, force: true });
+  }
 });
 
 test("init --tools codex upgrades an existing unconfigured workspace", async () => {
@@ -390,6 +424,26 @@ test("doctor refuses a workspace created by a newer adapter contract", async () 
       && issue.fix.includes("newer OpenDomain CLI")
     )));
     assert.equal(await readFile(agents, "utf8"), agentsBefore);
+  });
+});
+
+test("missing --tools value preserves a trailing --json flag", async () => {
+  await withTempProject(async (cwd) => {
+    const stdout = memoryStream();
+
+    const exitCode = await runCli(["init", "--tools", "--json"], {
+      cwd,
+      stdout,
+      stderr: memoryStream()
+    });
+    const payload = JSON.parse(stdout.toString());
+
+    assert.equal(exitCode, 1);
+    assert.ok(payload.errors.some((issue) => (
+      issue.field === "tools"
+      && issue.problem === "Missing Agent tool selection."
+    )));
+    await assert.rejects(access(path.join(cwd, "opendomain")), { code: "ENOENT" });
   });
 });
 
