@@ -265,6 +265,53 @@ test("managed writes do not follow a pre-existing temporary-file symlink", async
   });
 });
 
+test("update preserves modes when replacing existing managed files", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("POSIX file modes are required for this regression test.");
+    return;
+  }
+
+  await withTempProject(async (cwd) => {
+    assert.equal(await runCli(["init", "--tools", "codex"], {
+      cwd,
+      stdout: memoryStream(),
+      stderr: memoryStream()
+    }), 0);
+
+    const config = path.join(cwd, "opendomain/config.yaml");
+    const agents = path.join(cwd, "AGENTS.md");
+    const skill = path.join(cwd, ".codex/skills/opendomain-model/SKILL.md");
+    await writeFile(
+      config,
+      `agent_integration:\n  tools: [codex]\n  adapter_version: "1"\nschema_version: "1"\n`,
+      "utf8"
+    );
+    await writeFile(
+      agents,
+      (await readFile(agents, "utf8")).replace(
+        "This repository uses OpenDomain",
+        "STALE managed block uses OpenDomain"
+      ),
+      "utf8"
+    );
+    await writeFile(skill, `${await readFile(skill, "utf8")}\nSTALE GENERATED CONTENT\n`, "utf8");
+    await chmod(config, 0o600);
+    await chmod(agents, 0o640);
+    await chmod(skill, 0o604);
+
+    assert.equal(await runCli(["update"], {
+      cwd,
+      stdout: memoryStream(),
+      stderr: memoryStream()
+    }), 0);
+    assert.equal((await lstat(config)).mode & 0o7777, 0o600);
+    assert.equal((await lstat(agents)).mode & 0o7777, 0o640);
+    assert.equal((await lstat(skill)).mode & 0o7777, 0o604);
+    assert.doesNotMatch(await readFile(agents, "utf8"), /STALE managed block/);
+    assert.doesNotMatch(await readFile(skill, "utf8"), /STALE GENERATED CONTENT/);
+  });
+});
+
 test("init rejects a symlinked generated Skill parent before workspace mutation", async (t) => {
   if (process.platform === "win32") {
     t.skip("Windows symlink creation requires privileges unavailable in standard CI.");
