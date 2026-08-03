@@ -103,6 +103,8 @@ OpenDomain 适合：
   index、update、doctor、demo；
 - 不要求宿主 `package.json` 的 Agent bootstrap，以及受管 Codex Skills 与
   `AGENTS.md` 指令区块；
+- 不要求预装 Node.js、也不向宿主项目引入 package metadata 的 macOS、Linux 和
+  Windows 独立 CLI 二进制；
 - OpenSpec `affects_domain` grounding；
 - 显式 `required` / `not_required` / `unclassified` Grounding Request；
 - 面向 Codex 与 CI 的 advisory / enforced Grounding Assurance；
@@ -132,7 +134,52 @@ OpenDomain 当前不做：
 
 ## 30 秒开始
 
-OpenDomain 的 npm 包名是 `@echopath-labs/opendomain`，CLI 命令是 `opendomain`。
+### 独立二进制（推荐）
+
+从 [GitHub Releases](https://github.com/echopath-labs/openDomain/releases) 下载同一
+版本的目标平台文件和 `SHA256SUMS.txt`：
+
+| 平台 | 最低系统要求 | Release 文件 |
+| --- | --- | --- |
+| macOS Apple silicon | macOS 13.5 | `opendomain-v<version>-darwin-arm64` |
+| macOS Intel | macOS 13.5 | `opendomain-v<version>-darwin-x64` |
+| Linux x64 | kernel 4.18、glibc 2.28、libstdc++ 6.0.25（`GLIBCXX_3.4.25`） | `opendomain-v<version>-linux-x64` |
+| Windows x64 | Windows 10 或 Server 2016 | `opendomain-v<version>-windows-x64.exe` |
+
+独立二进制内嵌官方 Node.js 24.18.0 运行时，因此继承其操作系统要求。首批矩阵不
+支持 Alpine/musl。详见
+[Node.js 24 平台要求](https://github.com/nodejs/node/blob/v24.18.0/BUILDING.md#platform-list)。
+
+运行前先核对文件 SHA-256 是否与 `SHA256SUMS.txt` 中对应行一致。macOS 可使用
+`shasum -a 256 <asset>`，Linux 可使用 `sha256sum <asset>`，PowerShell 可使用
+`Get-FileHash <asset> -Algorithm SHA256`。
+
+macOS 或 Linux 用户需要添加执行权限并放入 `PATH`：
+
+```bash
+chmod +x opendomain-v<version>-<target>
+sudo install opendomain-v<version>-<target> /usr/local/bin/opendomain
+```
+
+Windows 用户可将文件改名为 `opendomain.exe`，再放入 `PATH` 中的目录。随后直接在
+项目中初始化，不需要 Node.js、`package.json` 或 npm scripts：
+
+```bash
+opendomain --version
+opendomain init --tools codex
+opendomain doctor
+opendomain validate
+```
+
+升级时下载新版本、重新校验 SHA-256，然后替换旧二进制。首批 macOS 产物只做
+ad-hoc signing，尚未 notarize；Windows 产物尚未做 Authenticode 签名。checksum
+可以发现文件变化，但不等价于发布者身份证明。Homebrew 将在后续独立阶段提供，
+当前还不是可用安装渠道。
+
+### npm（可选）
+
+已经维护 Node.js 工具环境的用户，也可以安装同一套 CLI。OpenDomain 的 npm 包名是
+`@echopath-labs/opendomain`，CLI 命令是 `opendomain`。
 
 全局安装 CLI：
 
@@ -143,7 +190,7 @@ opendomain doctor
 opendomain validate
 ```
 
-npm 在这里仅是 CLI 的全局分发渠道。OpenDomain 不会在宿主项目中创建或修改
+两种分发渠道运行相同 CLI。OpenDomain 不会在宿主项目中创建或修改
 `package.json`、lockfile、依赖声明或 npm scripts。`init --tools codex` 会创建
 canonical `opendomain/`、生成 `.codex/skills/opendomain-*`，并在 `AGENTS.md`
 中维护一个有明确边界的 OpenDomain 区块；区块之外的项目指令保持原样。
@@ -155,7 +202,9 @@ canonical `opendomain/`、生成 `.codex/skills/opendomain-*`，并在 `AGENTS.m
 如果 workspace config 后续取消选择某个 adapter，`doctor` 会报告残留的 generated
 Skills，`update` 只移除仍带 OpenDomain generation ownership metadata 的文件。
 
-也可以从源码运行。
+### 源码开发
+
+维护者也可以从源码运行。
 
 克隆仓库：
 
@@ -273,13 +322,13 @@ OpenSpec 描述这次变更，OpenDomain 描述长期语义。
 Codex 在实现非平凡 Feature 前默认执行只读 Assurance：
 
 ```bash
-npm run opendomain -- assure <feature-spec-or-dir>
-npm run opendomain -- assure <feature-spec-or-dir> --mode enforced --json
+opendomain assure <feature-spec-or-dir>
+opendomain assure <feature-spec-or-dir> --mode enforced --json
 ```
 
 `assure` 会复用 `prepare` 的解析和 Semantic Closure。只需要查看原始 Grounding
 Pack、而不需要策略判断时，可以单独运行
-`npm run opendomain -- prepare <feature-spec-or-dir>`。
+`opendomain prepare <feature-spec-or-dir>`。
 
 Grounding Requirement 有三个显式状态：
 
@@ -345,9 +394,9 @@ Assurance 文本输出会保留该 review status，包括最终的 `rejected`、
 `opendomain/integrations/profiles/` 中声明 repository-local Profile：
 
 ```bash
-npm run opendomain -- integrations validate
-npm run opendomain -- integrations list
-npm run opendomain -- prepare --profile <profile-id> <structured-file-or-bundle>
+opendomain integrations validate
+opendomain integrations list
+opendomain prepare --profile <profile-id> <structured-file-or-bundle>
 ```
 
 未显式选择时，只有一个 built-in adapter 或 Profile 匹配才会继续；多重匹配会
@@ -404,25 +453,25 @@ Candidate 不是 accepted truth。它只是待人类审查的提案。
 | 初始化 OpenDomain 与 Codex | `opendomain init --tools codex` |
 | 更新托管 Agent 适配 | `opendomain update` |
 | 检查 workspace 与 Agent 适配 | `opendomain doctor` |
-| 复制 ERP 示例 | `npm run opendomain -- init --example erp` |
-| 验证全部 OpenDomain 文件 | `npm run opendomain -- validate` |
-| 验证指定目录 | `npm run opendomain -- validate examples/erp` |
-| 输出 JSON 验证结果 | `npm run opendomain -- validate examples/erp --json` |
-| 为 Feature 准备 grounding | `npm run opendomain -- prepare <feature-spec-or-dir>` |
-| 执行 advisory Assurance | `npm run opendomain -- assure <source-unit>` |
-| 执行 enforced Assurance | `npm run opendomain -- assure <source-unit> --mode enforced --json` |
-| 显式使用 OpenSpec integration | `npm run opendomain -- prepare --integration openspec <feature-spec-or-dir>` |
-| 列出 integration | `npm run opendomain -- integrations list` |
-| 验证 Integration Profile | `npm run opendomain -- integrations validate` |
-| 显式使用本地 Profile | `npm run opendomain -- prepare --profile <profile-id> <source-unit>` |
-| 列出 Candidate | `npm run opendomain -- candidate list examples/erp` |
-| 查看 Candidate | `npm run opendomain -- candidate show <candidate-id> examples/erp` |
-| 记录 Candidate review | `npm run opendomain -- candidate review <candidate-id> --decision rejected --reviewed-by <name> --reason <text> examples/erp` |
-| 列出 ID | `npm run opendomain -- ids list examples/erp` |
-| 检查引用 | `npm run opendomain -- refs check examples/erp` |
-| 构建 index | `npm run opendomain -- index build examples/erp --out /tmp/erp-index.json` |
-| 查询 ID | `npm run opendomain -- index query sales.order --index /tmp/erp-index.json` |
-| 查询 context | `npm run opendomain -- index query --context sales --index /tmp/erp-index.json` |
+| 复制 ERP 示例 | `opendomain init --example erp` |
+| 验证全部 OpenDomain 文件 | `opendomain validate` |
+| 验证指定目录 | `opendomain validate examples/erp` |
+| 输出 JSON 验证结果 | `opendomain validate examples/erp --json` |
+| 为 Feature 准备 grounding | `opendomain prepare <feature-spec-or-dir>` |
+| 执行 advisory Assurance | `opendomain assure <source-unit>` |
+| 执行 enforced Assurance | `opendomain assure <source-unit> --mode enforced --json` |
+| 显式使用 OpenSpec integration | `opendomain prepare --integration openspec <feature-spec-or-dir>` |
+| 列出 integration | `opendomain integrations list` |
+| 验证 Integration Profile | `opendomain integrations validate` |
+| 显式使用本地 Profile | `opendomain prepare --profile <profile-id> <source-unit>` |
+| 列出 Candidate | `opendomain candidate list examples/erp` |
+| 查看 Candidate | `opendomain candidate show <candidate-id> examples/erp` |
+| 记录 Candidate review | `opendomain candidate review <candidate-id> --decision rejected --reviewed-by <name> --reason <text> examples/erp` |
+| 列出 ID | `opendomain ids list examples/erp` |
+| 检查引用 | `opendomain refs check examples/erp` |
+| 构建 index | `opendomain index build examples/erp --out /tmp/erp-index.json` |
+| 查询 ID | `opendomain index query sales.order --index /tmp/erp-index.json` |
+| 查询 context | `opendomain index query --context sales --index /tmp/erp-index.json` |
 | 运行 demo | `npm run demo` |
 | 运行测试 | `npm test` |
 

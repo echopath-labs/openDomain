@@ -59,6 +59,18 @@ try {
   await access(path.join(installedRoot, "schemas", "assurance-result.schema.json"));
   await access(path.join(installedRoot, "schemas", "workspace-config.schema.json"));
   await access(path.join(installedRoot, "scripts", "smoke-installed-package.mjs"));
+  for (const maintainerScript of [
+    "assemble-standalone-assets.mjs",
+    "build-standalone.mjs",
+    "lib/standalone-release.mjs",
+    "smoke-standalone.mjs",
+    "write-standalone-checksums.mjs"
+  ]) {
+    await assert.rejects(
+      access(path.join(installedRoot, "scripts", ...maintainerScript.split("/"))),
+      (error) => error?.code === "ENOENT"
+    );
+  }
 
   const init = await runJsonCli(cli, [
     "init",

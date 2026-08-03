@@ -52,7 +52,9 @@
     "validate": "node ./bin/opendomain.mjs validate",
     "prepare:demo": "cd examples/erp && node ../../bin/opendomain.mjs prepare openspec/changes/order-cancellation/spec.md",
     "demo": "node ./bin/opendomain.mjs demo order-cancellation",
+    "build:standalone": "node ./scripts/build-standalone.mjs",
     "smoke:package": "node ./scripts/smoke-installed-package.mjs",
+    "smoke:standalone": "node ./scripts/smoke-standalone.mjs",
     "prepublishOnly": "npm test && npm run opendomain -- validate"
   },
   "engines": {
@@ -63,5 +65,9 @@
     "ajv-formats": "^3.0.1",
     "minimatch": "^10.2.5",
     "yaml": "^2.9.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.1",
+    "postject": "1.0.0-alpha.6"
   }
 }

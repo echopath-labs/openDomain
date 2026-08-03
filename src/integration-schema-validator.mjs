@@ -2,8 +2,8 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
+import { readPackagedText } from "./packaged-resources.mjs";
 
-const DEFAULT_SCHEMA_DIRECTORY = new URL("../schemas/", import.meta.url);
 const SCHEMA_ID_PREFIX = "https://opendomain.dev/schemas/";
 
 const SCHEMA_DEFINITIONS = Object.freeze({
@@ -32,9 +32,9 @@ export function getDefaultIntegrationSchemaRegistry() {
 }
 
 export function createIntegrationSchemaRegistry(options = {}) {
-  const schemaDirectory = normalizeSchemaDirectory(
-    options.schemaDirectory ?? DEFAULT_SCHEMA_DIRECTORY
-  );
+  const schemaDirectory = options.schemaDirectory === undefined
+    ? null
+    : normalizeSchemaDirectory(options.schemaDirectory);
   const schemas = Object.entries(SCHEMA_DEFINITIONS).map(([kind, file]) => ({
     kind,
     file,
@@ -126,7 +126,9 @@ export function validateIntegrationValue(kind, value, registry = getDefaultInteg
 function readPackagedSchema(schemaDirectory, file) {
   let source;
   try {
-    source = readFileSync(new URL(file, schemaDirectory), "utf8");
+    source = schemaDirectory
+      ? readFileSync(new URL(file, schemaDirectory), "utf8")
+      : readPackagedText(`schemas/${file}`);
   } catch (error) {
     throw new IntegrationSchemaRegistryError(
       `Packaged schema '${file}' could not be read: ${error.message}`,
