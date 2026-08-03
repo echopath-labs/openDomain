@@ -1,5 +1,3 @@
-import { access } from "node:fs/promises";
-import path from "node:path";
 import { planAgentSkills } from "./managed-agent-skills.mjs";
 import { planManagedAgents } from "./managed-agents.mjs";
 import { inspectWorkspaceRoots } from "./workspace-resolver.mjs";
@@ -33,8 +31,8 @@ export async function doctorWorkspaceIntegration(options = {}) {
     return result;
   }
 
-  const configFile = path.join(cwd, "opendomain/config.yaml");
-  if (!await fileExists(configFile)) {
+  const configPlan = await planWorkspaceConfig(cwd);
+  if (configPlan.action === "create") {
     result.errors.push(failedIssue(
       "opendomain/config.yaml",
       "$",
@@ -43,8 +41,6 @@ export async function doctorWorkspaceIntegration(options = {}) {
     ));
     return result;
   }
-
-  const configPlan = await planWorkspaceConfig(cwd);
   if (configPlan.errors.length > 0) {
     result.errors.push(...configPlan.errors);
     return result;
@@ -106,13 +102,4 @@ function passCheck(id, file) {
 
 function failedIssue(file, field, problem, fix) {
   return { severity: "error", file, field, problem, fix };
-}
-
-async function fileExists(file) {
-  try {
-    await access(file);
-    return true;
-  } catch {
-    return false;
-  }
 }

@@ -1,5 +1,3 @@
-import { access } from "node:fs/promises";
-import path from "node:path";
 import { applyAgentSkills, planAgentSkills } from "./managed-agent-skills.mjs";
 import { applyManagedAgents, planManagedAgents } from "./managed-agents.mjs";
 import { inspectWorkspaceRoots } from "./workspace-resolver.mjs";
@@ -36,8 +34,8 @@ export async function updateWorkspaceIntegration(options = {}) {
     return result;
   }
 
-  const configFile = path.join(cwd, "opendomain/config.yaml");
-  if (!await fileExists(configFile)) {
+  const configPlan = await planWorkspaceConfig(cwd);
+  if (configPlan.action === "create") {
     result.errors.push({
       severity: "error",
       file: "opendomain/config.yaml",
@@ -47,8 +45,6 @@ export async function updateWorkspaceIntegration(options = {}) {
     });
     return result;
   }
-
-  const configPlan = await planWorkspaceConfig(cwd);
   if (configPlan.errors.length > 0) {
     result.errors.push(...configPlan.errors);
     return result;
@@ -71,13 +67,4 @@ export async function updateWorkspaceIntegration(options = {}) {
   await applyAgentSkills(skillPlans, result);
   result.next_steps.push("Run opendomain doctor to verify workspace and Agent integration readiness.");
   return result;
-}
-
-async function fileExists(file) {
-  try {
-    await access(file);
-    return true;
-  } catch {
-    return false;
-  }
 }
