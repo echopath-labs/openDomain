@@ -22,6 +22,9 @@ test("help explains canonical and legacy workspace resolution", async () => {
   assert.match(output, /--profile <id>/);
   assert.match(output, /opendomain assure/);
   assert.match(output, /--mode advisory\|enforced/);
+  assert.match(output, /opendomain init \[--tools codex\]/);
+  assert.match(output, /opendomain update/);
+  assert.match(output, /opendomain doctor/);
 });
 
 test("validate command returns JSON and zero exit code for valid ERP example", async () => {
@@ -112,7 +115,7 @@ test("init command creates a minimal valid OpenDomain structure", async () => {
     assert.match(output, /opendomain\/candidates\/candidate-0001-first-domain-model\.md/);
     assert.match(output, /opendomain\/integrations\/profiles\/README\.md/);
     await access("opendomain/integrations/profiles/README.md");
-    assert.match(await readFile("AGENTS.md", "utf8"), /opendomain assure <feature-spec-or-dir>/);
+    assert.match(await readFile("AGENTS.md", "utf8"), /opendomain assure <source-unit>/);
 
     const validateStdout = memoryStream();
     const validateExitCode = await runCli(["validate", "--json"], { stdout: validateStdout, stderr: memoryStream() });

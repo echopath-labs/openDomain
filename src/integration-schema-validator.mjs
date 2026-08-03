@@ -11,7 +11,8 @@ const SCHEMA_DEFINITIONS = Object.freeze({
   declaration: "domain-declaration.schema.json",
   request: "grounding-request.schema.json",
   pack: "grounding-pack.schema.json",
-  assurance: "assurance-result.schema.json"
+  assurance: "assurance-result.schema.json",
+  workspace: "workspace-config.schema.json"
 });
 
 let defaultRegistry;

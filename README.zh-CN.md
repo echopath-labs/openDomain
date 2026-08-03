@@ -100,7 +100,9 @@ OpenDomain 适合：
 - 安全 parser 和 Draft 2020-12 Runtime Schema 校验；
 - 在 Semantic Closure、index 和 grounding 前执行安全语料门禁；
 - CLI 命令：init、validate、ids list、refs check、prepare、assure、integrations、
-  index、demo；
+  index、update、doctor、demo；
+- 不要求宿主 `package.json` 的 Agent bootstrap，以及受管 Codex Skills 与
+  `AGENTS.md` 指令区块；
 - OpenSpec `affects_domain` grounding；
 - 显式 `required` / `not_required` / `unclassified` Grounding Request；
 - 面向 Codex 与 CI 的 advisory / enforced Grounding Assurance；
@@ -136,9 +138,22 @@ OpenDomain 的 npm 包名是 `@echopath-labs/opendomain`，CLI 命令是 `opendo
 
 ```bash
 npm install -g @echopath-labs/opendomain
-opendomain init
+opendomain init --tools codex
+opendomain doctor
 opendomain validate
 ```
+
+npm 在这里仅是 CLI 的全局分发渠道。OpenDomain 不会在宿主项目中创建或修改
+`package.json`、lockfile、依赖声明或 npm scripts。`init --tools codex` 会创建
+canonical `opendomain/`、生成 `.codex/skills/opendomain-*`，并在 `AGENTS.md`
+中维护一个有明确边界的 OpenDomain 区块；区块之外的项目指令保持原样。
+
+初始化后，用户可以直接要求 Codex 浏览或建模业务、审查 Candidate，或者实现一项
+变更。生成的 Skills 和托管指令负责选择 CLI 操作；直接命令主要保留给 CI、诊断和
+高级使用。
+
+如果 workspace config 后续取消选择某个 adapter，`doctor` 会报告残留的 generated
+Skills，`update` 只移除仍带 OpenDomain generation ownership metadata 的文件。
 
 也可以从源码运行。
 
@@ -159,6 +174,9 @@ npm run opendomain -- help
 
 ```bash
 npm run opendomain -- init
+npm run opendomain -- init --tools codex
+npm run opendomain -- update
+npm run opendomain -- doctor
 ```
 
 运行测试：
@@ -250,7 +268,9 @@ OpenSpec 描述这次变更，OpenDomain 描述长期语义。
 
 ### 3. Codex 先 grounding 再实现
 
-在实现非平凡 Feature 前，Codex 默认执行只读 Assurance：
+在执行 `opendomain init --tools codex` 后，repository-local Codex Skills 会分别处理
+只读领域探索、Candidate-first 建模和 Candidate 审查；`AGENTS.md` 托管区块要求
+Codex 在实现非平凡 Feature 前默认执行只读 Assurance：
 
 ```bash
 npm run opendomain -- assure <feature-spec-or-dir>
@@ -380,8 +400,10 @@ Candidate 不是 accepted truth。它只是待人类审查的提案。
 
 | 目标 | 命令 |
 | --- | --- |
-| 查看帮助 | `npm run opendomain -- help` |
-| 初始化 OpenDomain 目录 | `npm run opendomain -- init` |
+| 查看帮助 | `opendomain help` |
+| 初始化 OpenDomain 与 Codex | `opendomain init --tools codex` |
+| 更新托管 Agent 适配 | `opendomain update` |
+| 检查 workspace 与 Agent 适配 | `opendomain doctor` |
 | 复制 ERP 示例 | `npm run opendomain -- init --example erp` |
 | 验证全部 OpenDomain 文件 | `npm run opendomain -- validate` |
 | 验证指定目录 | `npm run opendomain -- validate examples/erp` |
