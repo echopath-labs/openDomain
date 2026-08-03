@@ -4,6 +4,7 @@ import {
   access,
   mkdtemp,
   mkdir,
+  readFile,
   rm,
   writeFile
 } from "node:fs/promises";
@@ -49,13 +50,31 @@ try {
     "opendomain"
   );
   const cli = path.join(installedRoot, "bin", "opendomain.mjs");
+  const hostPackageFile = path.join(consumer, "package.json");
+  const hostLockFile = path.join(consumer, "package-lock.json");
+  const hostPackageBefore = await readFile(hostPackageFile, "utf8");
+  const hostLockBefore = await readFile(hostLockFile, "utf8");
   await access(path.join(installedRoot, "schemas", "integration-profile.schema.json"));
   await access(path.join(installedRoot, "schemas", "domain-declaration.schema.json"));
   await access(path.join(installedRoot, "schemas", "assurance-result.schema.json"));
+  await access(path.join(installedRoot, "schemas", "workspace-config.schema.json"));
   await access(path.join(installedRoot, "scripts", "smoke-installed-package.mjs"));
 
-  const init = await runJsonCli(cli, ["init", "--example", "erp", "--json"], consumer);
+  const init = await runJsonCli(cli, [
+    "init",
+    "--tools",
+    "codex",
+    "--example",
+    "erp",
+    "--json"
+  ], consumer);
   assert.deepEqual(init.errors, []);
+  assert.equal(await readFile(hostPackageFile, "utf8"), hostPackageBefore);
+  assert.equal(await readFile(hostLockFile, "utf8"), hostLockBefore);
+  await access(path.join(consumer, ".codex", "skills", "opendomain-explore", "SKILL.md"));
+  const doctor = await runJsonCli(cli, ["doctor", "--json"], consumer);
+  assert.equal(doctor.status, "healthy");
+  assert.deepEqual(doctor.errors, []);
 
   const exampleRoot = path.join(consumer, "examples", "erp");
   const inspection = await runJsonCli(
@@ -102,6 +121,7 @@ try {
     `Installed-package smoke passed: ${packPayload[0].filename}, `
     + `${inspection.valid_profile_count} Profile, `
     + `${automatic.read_first.length} grounded sources, `
+    + `Agent integration ${doctor.status}, `
     + `Assurance ${assurance.policy.outcome}.\n`
   );
 } finally {

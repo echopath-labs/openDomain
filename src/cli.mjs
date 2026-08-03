@@ -10,6 +10,8 @@ import {
   invalidAssuranceResult
 } from "./assurance.mjs";
 import { initializeProject } from "./init.mjs";
+import { doctorWorkspaceIntegration } from "./doctor.mjs";
+import { updateWorkspaceIntegration } from "./update.mjs";
 import { listCandidates, reviewCandidate, showCandidate } from "./candidates.mjs";
 import { inspectIntegrations } from "./profile-registry.mjs";
 import {
@@ -53,6 +55,14 @@ export async function runCli(argv, options = {}) {
     return runInit([subcommand, ...rest].filter(Boolean), io);
   }
 
+  if (command === "update") {
+    return runUpdate([subcommand, ...rest].filter(Boolean), io);
+  }
+
+  if (command === "doctor") {
+    return runDoctor([subcommand, ...rest].filter(Boolean), io);
+  }
+
   if (command === "index" && subcommand === "build") {
     return runIndexBuild(rest, io);
   }
@@ -94,7 +104,9 @@ function printHelp(stream) {
   stream.write(`OpenDomain CLI
 
 Usage:
-  opendomain init [--example erp] [--json]
+  opendomain init [--tools codex] [--example erp] [--json]
+  opendomain update [--json]
+  opendomain doctor [--json]
   opendomain validate [path] [--json]
   opendomain prepare [--integration openspec | --profile <id>] <source-unit> [--json]
   opendomain assure [--integration openspec | --profile <id>] [--mode advisory|enforced] <source-unit> [--json]
@@ -133,7 +145,9 @@ async function runInit(args, io) {
     const result = {
       target: io.cwd,
       example: parsed.example ?? null,
+      tools: parsed.tools,
       created: [],
+      updated: [],
       skipped: [],
       warnings: [],
       errors: parsed.errors,
@@ -147,7 +161,11 @@ async function runInit(args, io) {
     return 1;
   }
 
-  const result = await initializeProject({ cwd: io.cwd, example: parsed.example });
+  const result = await initializeProject({
+    cwd: io.cwd,
+    example: parsed.example,
+    tools: parsed.tools
+  });
   if (parsed.json) {
     io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
   } else {
@@ -155,6 +173,72 @@ async function runInit(args, io) {
   }
 
   return result.errors.length > 0 ? 1 : 0;
+}
+
+async function runUpdate(args, io) {
+  const parsed = parseJsonOnlyArgs(args, "update");
+  const result = parsed.errors.length > 0
+    ? emptyWorkspaceIntegrationResult(io.cwd, parsed.errors)
+    : await updateWorkspaceIntegration({ cwd: io.cwd });
+
+  if (parsed.json) {
+    io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  } else {
+    printWorkspaceIntegrationResult("update", result, io.stdout);
+  }
+  return result.errors.length > 0 ? 1 : 0;
+}
+
+async function runDoctor(args, io) {
+  const parsed = parseJsonOnlyArgs(args, "doctor");
+  const result = parsed.errors.length > 0
+    ? {
+        status: "unhealthy",
+        target: io.cwd,
+        tools: [],
+        checks: [],
+        warnings: [],
+        errors: parsed.errors
+      }
+    : await doctorWorkspaceIntegration({ cwd: io.cwd });
+
+  if (parsed.json) {
+    io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  } else {
+    printDoctorResult(result, io.stdout);
+  }
+  return result.errors.length > 0 ? 1 : 0;
+}
+
+function parseJsonOnlyArgs(args, command) {
+  const parsed = { json: false, errors: [] };
+  for (const arg of args) {
+    if (arg === "--json") {
+      parsed.json = true;
+      continue;
+    }
+    parsed.errors.push({
+      severity: "error",
+      file: "<input>",
+      field: "$",
+      problem: `Unknown ${command} argument '${arg}'.`,
+      fix: `Run opendomain ${command} or opendomain ${command} --json.`
+    });
+  }
+  return parsed;
+}
+
+function emptyWorkspaceIntegrationResult(target, errors) {
+  return {
+    target,
+    tools: [],
+    created: [],
+    updated: [],
+    skipped: [],
+    warnings: [],
+    errors,
+    next_steps: []
+  };
 }
 
 async function runValidate(args, io) {
@@ -229,6 +313,7 @@ function parseInitArgs(args) {
   const parsed = {
     json: false,
     example: undefined,
+    tools: undefined,
     errors: []
   };
 
@@ -252,13 +337,37 @@ function parseInitArgs(args) {
       }
       continue;
     }
+    if (arg === "--tools") {
+      const value = args[index + 1];
+      index += 1;
+      if (!value) {
+        parsed.errors.push({
+          severity: "error",
+          file: "<input>",
+          field: "tools",
+          problem: "Missing Agent tool selection.",
+          fix: "Use --tools codex or omit --tools."
+        });
+      } else if (value !== "codex") {
+        parsed.errors.push({
+          severity: "error",
+          file: "<input>",
+          field: "tools",
+          problem: `Unsupported Agent tool '${value}'.`,
+          fix: "Use --tools codex or omit --tools."
+        });
+      } else {
+        parsed.tools = [value];
+      }
+      continue;
+    }
 
     parsed.errors.push({
       severity: "error",
       file: "<input>",
       field: "$",
       problem: `Unknown init argument '${arg}'.`,
-      fix: "Run opendomain init, opendomain init --example erp, or add --json."
+      fix: "Run opendomain init, use --tools codex, use --example erp, or add --json."
     });
   }
 
@@ -981,6 +1090,15 @@ function printInitResult(result, stream) {
     }
   }
 
+  stream.write("\nUpdated:\n");
+  if ((result.updated ?? []).length === 0) {
+    stream.write("- None\n");
+  } else {
+    for (const item of result.updated) {
+      stream.write(`- ${item.path}\n`);
+    }
+  }
+
   stream.write("\nNext steps:\n");
   for (const step of result.next_steps) {
     stream.write(`- ${step}\n`);
@@ -991,6 +1109,43 @@ function printInitResult(result, stream) {
     for (const warning of result.warnings) {
       stream.write(`- ${warning.file} ${warning.field}: ${warning.problem}\n`);
     }
+  }
+}
+
+function printWorkspaceIntegrationResult(command, result, stream) {
+  if (result.errors.length > 0) {
+    stream.write(`OpenDomain ${command} failed: ${result.errors.length} errors.\n`);
+    for (const issue of [...result.errors, ...(result.warnings ?? [])]) {
+      stream.write(`\n[${issue.severity}] ${issue.file}\n`);
+      stream.write(`  field: ${issue.field}\n`);
+      stream.write(`  problem: ${issue.problem}\n`);
+      stream.write(`  fix: ${issue.fix}\n`);
+    }
+    return;
+  }
+
+  stream.write(`OpenDomain ${command} completed.\n`);
+  for (const label of ["created", "updated", "skipped"]) {
+    const items = result[label] ?? [];
+    stream.write(`\n${label[0].toUpperCase()}${label.slice(1)}:\n`);
+    if (items.length === 0) {
+      stream.write("- None\n");
+    } else {
+      for (const item of items) {
+        stream.write(`- ${item.path}${item.reason ? ` (${item.reason})` : ""}\n`);
+      }
+    }
+  }
+}
+
+function printDoctorResult(result, stream) {
+  stream.write(`OpenDomain doctor: ${result.status}.\n`);
+  for (const check of result.checks) {
+    stream.write(`- [pass] ${check.file}\n`);
+  }
+  for (const issue of [...result.errors, ...result.warnings]) {
+    stream.write(`- [${issue.severity}] ${issue.file}: ${issue.problem}\n`);
+    stream.write(`  fix: ${issue.fix}\n`);
   }
 }
 

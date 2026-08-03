@@ -44,6 +44,8 @@ This workspace now includes the first MVP slices:
 - Safe-corpus gating before semantic closure, indexes, and grounding
 - CLI commands for project init, validation, ID listing, reference checks,
   grounding, indexing, and demo
+- Package-manager-neutral Agent bootstrap with managed Codex Skills,
+  repository instructions, updates, and diagnostics
 - OpenSpec `affects_domain` grounding
 - Explicit `required`, `not_required`, and `unclassified` grounding decisions
 - Advisory and enforced Grounding Assurance for Codex and CI
@@ -64,9 +66,22 @@ Install the CLI from npm:
 
 ```bash
 npm install -g @echopath-labs/opendomain
-opendomain init
+opendomain init --tools codex
+opendomain doctor
 opendomain validate
 ```
+
+The global npm installation is a CLI distribution channel. OpenDomain does not
+create or modify the host project's `package.json`, lockfile, dependency list,
+or npm scripts. `init --tools codex` adds the canonical `opendomain/` workspace,
+generated `.codex/skills/opendomain-*` adapters, and one managed OpenDomain
+block in `AGENTS.md`. Existing instructions outside that block remain owned by
+the project.
+
+After initialization, users can ask Codex to explore or model the domain,
+review a Candidate, or implement a change. The generated Skills and managed
+instructions select the appropriate CLI operations; direct commands remain
+available for CI and diagnostics.
 
 Or try it from a source checkout:
 
@@ -75,6 +90,9 @@ Common commands:
 ```bash
 npm run opendomain -- help
 npm run opendomain -- init
+npm run opendomain -- init --tools codex
+npm run opendomain -- update
+npm run opendomain -- doctor
 npm run opendomain -- validate
 npm run prepare:demo
 (cd examples/erp && node ../../bin/opendomain.mjs assure openspec/changes/order-cancellation/spec.md)

@@ -1,7 +1,10 @@
 import { access, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { applyAgentSkills, planAgentSkills } from "./managed-agent-skills.mjs";
+import { applyManagedAgents, planManagedAgents } from "./managed-agents.mjs";
 import { inspectWorkspaceRoots } from "./workspace-resolver.mjs";
+import { applyWorkspaceConfig, planWorkspaceConfig } from "./workspace-config.mjs";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -23,7 +26,9 @@ export async function initializeProject(options = {}) {
   const result = {
     target: cwd,
     example: options.example ?? null,
+    tools: options.tools ?? [],
     created: [],
+    updated: [],
     skipped: [],
     warnings: [],
     errors: [],
@@ -38,6 +43,23 @@ export async function initializeProject(options = {}) {
       problem: `Unsupported example '${options.example}'.`,
       fix: "Use --example erp or omit --example."
     });
+    return result;
+  }
+
+  const agentsPlan = await planManagedAgents(cwd);
+  if (agentsPlan.errors.length > 0) {
+    result.errors.push(...agentsPlan.errors);
+    return result;
+  }
+  const configPlan = await planWorkspaceConfig(cwd, options.tools);
+  if (configPlan.errors.length > 0) {
+    result.errors.push(...configPlan.errors);
+    return result;
+  }
+  result.tools = configPlan.tools;
+  const skillPlans = await planAgentSkills(cwd, result.tools);
+  if (skillPlans.errors.length > 0) {
+    result.errors.push(...skillPlans.errors);
     return result;
   }
 
@@ -77,7 +99,9 @@ export async function initializeProject(options = {}) {
     cwd,
     result
   );
-  await writeFileIfMissing(path.join(cwd, "AGENTS.md"), agentsTemplate(), cwd, result);
+  await applyWorkspaceConfig(configPlan, result);
+  await applyManagedAgents(agentsPlan, result);
+  await applyAgentSkills(skillPlans, result);
 
   if (options.example) {
     await copyExample(options.example, cwd, result);
@@ -306,30 +330,5 @@ lifecycle, or event is truly accepted domain knowledge.
 
 Confirm the business meaning, evidence, owner, and compatibility impact before
 promoting any content into accepted OpenDomain files.
-`;
-}
-
-function agentsTemplate() {
-  return `# Repository Agent Instructions
-
-This repository uses OpenDomain for long-lived domain semantics.
-
-Before implementing a non-trivial OpenSpec-style feature, run:
-
-\`\`\`bash
-opendomain assure <feature-spec-or-dir>
-\`\`\`
-
-Read files listed under \`Accepted grounding evidence\`. Treat files listed
-under \`Candidate boundaries\` according to their review status, never as
-accepted truth. A warning permits advisory progress but does not mean grounding
-is complete.
-
-Boundaries:
-
-- OpenDomain stores stable business semantics.
-- OpenSpec stores change intent, requirements, tasks, and acceptance criteria.
-- AI-inferred domain knowledge starts as a Domain Candidate.
-- Accepted domain knowledge requires evidence and human review.
 `;
 }

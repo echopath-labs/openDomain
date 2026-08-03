@@ -156,6 +156,40 @@ test("Grounding Request schema accepts explicit decisions and requires skip rati
   )));
 });
 
+test("Workspace configuration schema bounds Agent adapter selection", () => {
+  const valid = {
+    schema_version: "1",
+    agent_integration: {
+      adapter_version: "1",
+      tools: ["codex"]
+    }
+  };
+  assert.deepEqual(validateIntegrationValue("workspace", valid), []);
+
+  const futureAdapter = structuredClone(valid);
+  futureAdapter.agent_integration.adapter_version = "2";
+  assert.deepEqual(validateIntegrationValue("workspace", futureAdapter), []);
+
+  const unsupported = structuredClone(valid);
+  unsupported.agent_integration.tools = ["unknown-agent"];
+  assert.ok(validateIntegrationValue("workspace", unsupported).some((issue) => (
+    issue.field === "agent_integration.tools[0]"
+    && issue.problem.includes("workspace-config.schema.json")
+  )));
+
+  const extra = structuredClone(valid);
+  extra.package_manager = "npm";
+  assert.ok(validateIntegrationValue("workspace", extra).some((issue) => (
+    issue.field === "package_manager"
+  )));
+
+  const malformedVersion = structuredClone(valid);
+  malformedVersion.agent_integration.adapter_version = "v1";
+  assert.ok(validateIntegrationValue("workspace", malformedVersion).some((issue) => (
+    issue.field === "agent_integration.adapter_version"
+  )));
+});
+
 function nativeFileProfile() {
   return {
     schema_version: "1.0",

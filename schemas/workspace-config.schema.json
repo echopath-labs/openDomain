@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opendomain.dev/schemas/workspace-config.schema.json",
+  "title": "OpenDomain Workspace Integration Configuration v1",
+  "type": "object",
+  "required": ["schema_version", "agent_integration"],
+  "properties": {
+    "schema_version": {
+      "const": "1"
+    },
+    "agent_integration": {
+      "type": "object",
+      "required": ["adapter_version", "tools"],
+      "properties": {
+        "adapter_version": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        },
+        "tools": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": ["codex"]
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
