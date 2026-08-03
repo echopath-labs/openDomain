@@ -1,4 +1,4 @@
-import { access, readFile } from "node:fs/promises";
+import { lstat, readFile } from "node:fs/promises";
 import path from "node:path";
 import { managedAgentsTemplate } from "./agent-resources.mjs";
 import { atomicWriteUtf8 } from "./atomic-write.mjs";
@@ -8,8 +8,20 @@ export const AGENTS_END_MARKER = "<!-- opendomain:managed:end -->";
 
 export async function planManagedAgents(cwd) {
   const file = path.join(cwd, "AGENTS.md");
-  const exists = await fileExists(file);
-  const current = exists ? await readFile(file, "utf8") : "";
+  let exists = false;
+  let current = "";
+  try {
+    const fileStat = await lstat(file);
+    exists = true;
+    if (!fileStat.isFile()) {
+      return invalidFilePlan(file, "AGENTS.md is not a regular file.");
+    }
+    current = await readFile(file, "utf8");
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      return invalidFilePlan(file, `AGENTS.md cannot be inspected or read: ${error.message}`);
+    }
+  }
   const starts = markerIndexes(current, AGENTS_START_MARKER);
   const ends = markerIndexes(current, AGENTS_END_MARKER);
 
@@ -76,6 +88,22 @@ function invalidPlan(file) {
   };
 }
 
+function invalidFilePlan(file, problem) {
+  return {
+    file,
+    relativePath: "AGENTS.md",
+    action: "invalid",
+    content: null,
+    errors: [{
+      severity: "error",
+      file: "AGENTS.md",
+      field: "$",
+      problem,
+      fix: "Replace AGENTS.md with a readable regular file or remove the path before retrying."
+    }]
+  };
+}
+
 function markerIndexes(value, marker) {
   const indexes = [];
   let cursor = 0;
@@ -88,13 +116,4 @@ function markerIndexes(value, marker) {
     cursor = index + marker.length;
   }
   return indexes;
-}
-
-async function fileExists(file) {
-  try {
-    await access(file);
-    return true;
-  } catch {
-    return false;
-  }
 }

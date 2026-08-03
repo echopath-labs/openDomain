@@ -1,5 +1,8 @@
-import { access, readFile } from "node:fs/promises";
-import { agentSkillResources } from "./agent-resources.mjs";
+import { access, readFile, unlink } from "node:fs/promises";
+import {
+  agentSkillResources,
+  allAgentSkillResources
+} from "./agent-resources.mjs";
 import { atomicWriteUtf8 } from "./atomic-write.mjs";
 import { parseMarkdown } from "./frontmatter.mjs";
 import {
@@ -10,8 +13,12 @@ import {
 export async function planAgentSkills(cwd, tools) {
   const plans = [];
   const errors = [];
+  const desiredPaths = new Set(
+    agentSkillResources(tools).map((resource) => resource.path)
+  );
 
-  for (const resource of agentSkillResources(tools)) {
+  for (const resource of allAgentSkillResources()) {
+    const desired = desiredPaths.has(resource.path);
     const managedPath = await inspectManagedFilePath(cwd, resource.path);
     if (managedPath.issue) {
       errors.push(managedPath.issue);
@@ -19,7 +26,14 @@ export async function planAgentSkills(cwd, tools) {
     }
     const file = managedPath.file;
     if (!await fileExists(file)) {
-      plans.push({ ...resource, file, projectRoot: managedPath.projectRoot, action: "create" });
+      if (desired) {
+        plans.push({
+          ...resource,
+          file,
+          projectRoot: managedPath.projectRoot,
+          action: "create"
+        });
+      }
       continue;
     }
 
@@ -28,12 +42,16 @@ export async function planAgentSkills(cwd, tools) {
     try {
       parsed = parseMarkdown(current, resource.path);
     } catch {
-      errors.push(ownershipIssue(resource.path));
+      if (desired) {
+        errors.push(ownershipIssue(resource.path));
+      }
       continue;
     }
 
     if (parsed.frontmatter.metadata?.generatedBy !== "opendomain") {
-      errors.push(ownershipIssue(resource.path));
+      if (desired) {
+        errors.push(ownershipIssue(resource.path));
+      }
       continue;
     }
 
@@ -41,7 +59,9 @@ export async function planAgentSkills(cwd, tools) {
       ...resource,
       file,
       projectRoot: managedPath.projectRoot,
-      action: current === resource.content ? "skip" : "update"
+      action: desired
+        ? current === resource.content ? "skip" : "update"
+        : "remove"
     });
   }
 
@@ -50,6 +70,12 @@ export async function planAgentSkills(cwd, tools) {
 
 export async function applyAgentSkills(planResult, result) {
   for (const plan of planResult.plans) {
+    if (plan.action === "remove") {
+      await ensureManagedFileParent(plan.projectRoot, plan.path);
+      await unlink(plan.file);
+      result.removed.push({ path: plan.path, kind: "file" });
+      continue;
+    }
     if (plan.action === "skip") {
       result.skipped.push({ path: plan.path, reason: "managed content is current" });
       continue;

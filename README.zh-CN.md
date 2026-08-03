@@ -152,6 +152,9 @@ canonical `opendomain/`、生成 `.codex/skills/opendomain-*`，并在 `AGENTS.m
 变更。生成的 Skills 和托管指令负责选择 CLI 操作；直接命令主要保留给 CI、诊断和
 高级使用。
 
+如果 workspace config 后续取消选择某个 adapter，`doctor` 会报告残留的 generated
+Skills，`update` 只移除仍带 OpenDomain generation ownership metadata 的文件。
+
 也可以从源码运行。
 
 克隆仓库：

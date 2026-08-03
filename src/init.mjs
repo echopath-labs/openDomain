@@ -29,6 +29,7 @@ export async function initializeProject(options = {}) {
     tools: options.tools ?? [],
     created: [],
     updated: [],
+    removed: [],
     skipped: [],
     warnings: [],
     errors: [],

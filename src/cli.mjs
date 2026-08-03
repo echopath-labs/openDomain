@@ -148,6 +148,7 @@ async function runInit(args, io) {
       tools: parsed.tools,
       created: [],
       updated: [],
+      removed: [],
       skipped: [],
       warnings: [],
       errors: parsed.errors,
@@ -234,6 +235,7 @@ function emptyWorkspaceIntegrationResult(target, errors) {
     tools: [],
     created: [],
     updated: [],
+    removed: [],
     skipped: [],
     warnings: [],
     errors,
@@ -1102,6 +1104,15 @@ function printInitResult(result, stream) {
     }
   }
 
+  stream.write("\nRemoved:\n");
+  if ((result.removed ?? []).length === 0) {
+    stream.write("- None\n");
+  } else {
+    for (const item of result.removed) {
+      stream.write(`- ${item.path}\n`);
+    }
+  }
+
   stream.write("\nNext steps:\n");
   for (const step of result.next_steps) {
     stream.write(`- ${step}\n`);
@@ -1128,7 +1139,7 @@ function printWorkspaceIntegrationResult(command, result, stream) {
   }
 
   stream.write(`OpenDomain ${command} completed.\n`);
-  for (const label of ["created", "updated", "skipped"]) {
+  for (const label of ["created", "updated", "removed", "skipped"]) {
     const items = result[label] ?? [];
     stream.write(`\n${label[0].toUpperCase()}${label.slice(1)}:\n`);
     if (items.length === 0) {

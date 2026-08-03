@@ -83,6 +83,10 @@ review a Candidate, or implement a change. The generated Skills and managed
 instructions select the appropriate CLI operations; direct commands remain
 available for CI and diagnostics.
 
+If workspace configuration later deselects an adapter, `doctor` reports any
+remaining generated Skills and `update` removes only files that still carry
+OpenDomain generation ownership metadata.
+
 Or try it from a source checkout:
 
 Common commands:

@@ -101,6 +101,27 @@ test("init rejects malformed managed markers before mutating the project", async
   });
 });
 
+test("init rejects a non-file AGENTS path with structured diagnostics", async () => {
+  await withTempProject(async (cwd) => {
+    await mkdir(path.join(cwd, "AGENTS.md"));
+    const stdout = memoryStream();
+
+    const exitCode = await runCli(["init", "--tools", "codex", "--json"], {
+      cwd,
+      stdout,
+      stderr: memoryStream()
+    });
+    const payload = JSON.parse(stdout.toString());
+
+    assert.equal(exitCode, 1);
+    assert.ok(payload.errors.some((issue) => (
+      issue.file === "AGENTS.md"
+      && issue.problem.includes("not a regular file")
+    )));
+    await assert.rejects(access(path.join(cwd, "opendomain")), { code: "ENOENT" });
+  });
+});
+
 test("managed writes do not follow a pre-existing temporary-file symlink", async (t) => {
   if (process.platform === "win32") {
     t.skip("Windows symlink creation requires privileges unavailable in standard CI.");
@@ -245,6 +266,52 @@ test("update synchronizes only managed Agent resources", async () => {
     assert.doesNotMatch(updatedAgents, /STALE managed block/);
     assert.equal(await readFile(concept, "utf8"), conceptBefore);
     await assert.rejects(access(path.join(cwd, "package.json")), { code: "ENOENT" });
+  });
+});
+
+test("update removes generated Skills after Codex is explicitly deselected", async () => {
+  await withTempProject(async (cwd) => {
+    assert.equal(await runCli(["init", "--tools", "codex"], {
+      cwd,
+      stdout: memoryStream(),
+      stderr: memoryStream()
+    }), 0);
+    const config = path.join(cwd, "opendomain/config.yaml");
+    await writeFile(config, `schema_version: "1"\nagent_integration:\n  adapter_version: "1"\n  tools: []\n`, "utf8");
+    const skillFiles = ["opendomain-explore", "opendomain-model", "opendomain-review"]
+      .map((name) => path.join(cwd, `.codex/skills/${name}/SKILL.md`));
+    const doctorStdout = memoryStream();
+
+    assert.equal(await runCli(["doctor", "--json"], {
+      cwd,
+      stdout: doctorStdout,
+      stderr: memoryStream()
+    }), 1);
+    assert.ok(JSON.parse(doctorStdout.toString()).errors.some((issue) => (
+      issue.problem.includes("no longer selected")
+      && issue.fix === "Run opendomain update."
+    )));
+    await Promise.all(skillFiles.map((file) => access(file)));
+
+    const updateStdout = memoryStream();
+    assert.equal(await runCli(["update", "--json"], {
+      cwd,
+      stdout: updateStdout,
+      stderr: memoryStream()
+    }), 0);
+    const update = JSON.parse(updateStdout.toString());
+
+    assert.equal(update.removed.length, 3);
+    await Promise.all(skillFiles.map((file) => (
+      assert.rejects(access(file), { code: "ENOENT" })
+    )));
+    const finalDoctorStdout = memoryStream();
+    assert.equal(await runCli(["doctor", "--json"], {
+      cwd,
+      stdout: finalDoctorStdout,
+      stderr: memoryStream()
+    }), 0);
+    assert.equal(JSON.parse(finalDoctorStdout.toString()).status, "healthy");
   });
 });
 

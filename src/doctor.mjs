@@ -88,7 +88,9 @@ export async function doctorWorkspaceIntegration(options = {}) {
         "$",
         plan.action === "create"
           ? `Configured Agent Skill '${plan.path}' is missing.`
-          : `Configured Agent Skill '${plan.path}' is stale.`,
+          : plan.action === "remove"
+            ? `OpenDomain-generated Agent Skill '${plan.path}' is no longer selected.`
+            : `Configured Agent Skill '${plan.path}' is stale.`,
         "Run opendomain update."
       ));
     }

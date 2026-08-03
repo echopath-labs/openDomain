@@ -12,6 +12,7 @@ export async function updateWorkspaceIntegration(options = {}) {
     tools: [],
     created: [],
     updated: [],
+    removed: [],
     skipped: [],
     warnings: [],
     errors: [],

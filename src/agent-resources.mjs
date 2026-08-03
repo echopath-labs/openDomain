@@ -81,6 +81,10 @@ export function agentSkillResources(tools = []) {
     return [];
   }
 
+  return allAgentSkillResources();
+}
+
+export function allAgentSkillResources() {
   return CODEX_SKILLS.map((skill) => ({
     path: `.codex/skills/${skill.name}/SKILL.md`,
     content: `---
