@@ -1,12 +1,10 @@
-import { access, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { access, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { applyAgentSkills, planAgentSkills } from "./managed-agent-skills.mjs";
 import { applyManagedAgents, planManagedAgents } from "./managed-agents.mjs";
+import { listPackagedFiles, readPackagedText } from "./packaged-resources.mjs";
 import { inspectWorkspaceRoots } from "./workspace-resolver.mjs";
 import { applyWorkspaceConfig, planWorkspaceConfig } from "./workspace-config.mjs";
-
-const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const WORKSPACE_DIRECTORIES = [
   "opendomain",
@@ -119,10 +117,11 @@ export async function initializeProject(options = {}) {
 }
 
 async function copyExample(example, cwd, result) {
-  const source = path.join(packageRoot, "examples", example);
+  const sourcePrefix = `examples/${example}/`;
   const target = path.join(cwd, "examples", example);
+  const files = listPackagedFiles(sourcePrefix);
 
-  if (!await exists(source)) {
+  if (files.length === 0) {
     result.errors.push({
       severity: "error",
       file: `examples/${example}`,
@@ -133,26 +132,35 @@ async function copyExample(example, cwd, result) {
     return;
   }
 
-  await copyTree(source, target, cwd, result);
+  await ensureDirectory(target, cwd, result);
+  for (const relativeDirectory of packagedDirectories(files, sourcePrefix)) {
+    await ensureDirectory(
+      path.join(target, ...relativeDirectory.split("/")),
+      cwd,
+      result
+    );
+  }
+  for (const sourceFile of files) {
+    const relativeFile = sourceFile.slice(sourcePrefix.length);
+    await writeFileIfMissing(
+      path.join(target, ...relativeFile.split("/")),
+      readPackagedText(sourceFile),
+      cwd,
+      result
+    );
+  }
 }
 
-async function copyTree(source, target, cwd, result) {
-  const sourceStat = await stat(source);
-  if (sourceStat.isDirectory()) {
-    await ensureDirectory(target, cwd, result);
-    const entries = await readdir(source, { withFileTypes: true });
-    for (const entry of entries) {
-      await copyTree(path.join(source, entry.name), path.join(target, entry.name), cwd, result);
+function packagedDirectories(files, sourcePrefix) {
+  const directories = new Set();
+  for (const sourceFile of files) {
+    let directory = path.posix.dirname(sourceFile.slice(sourcePrefix.length));
+    while (directory !== ".") {
+      directories.add(directory);
+      directory = path.posix.dirname(directory);
     }
-    return;
   }
-
-  if (!sourceStat.isFile()) {
-    return;
-  }
-
-  const content = await readFile(source, "utf8");
-  await writeFileIfMissing(target, content, cwd, result);
+  return [...directories].sort();
 }
 
 async function ensureDirectory(directory, cwd, result) {

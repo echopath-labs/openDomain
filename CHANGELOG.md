@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Add Node SEA standalone CLI builds for macOS arm64/x64, Linux x64, and
+  Windows x64 so projects can initialize OpenDomain without installing Node.js
+  or adding package metadata.
+- Add a shared packaged-resource boundary and exact CLI version reporting so
+  npm and standalone channels use the same schemas, examples, and package
+  version.
+- Add native executable smoke coverage, deterministic SHA-256 manifests, and a
+  least-privilege four-platform GitHub Actions release workflow.
+- Refresh `minimatch`'s transitive `brace-expansion` dependency to the patched
+  `5.0.9` release.
+
 ## 0.1.0-alpha.7 - 2026-08-03
 
 - Add explicit `required`, `not_required`, and `unclassified` Grounding Request

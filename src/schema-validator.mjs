@@ -3,8 +3,8 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
+import { readPackagedText } from "./packaged-resources.mjs";
 
-const DEFAULT_SCHEMA_DIRECTORY = new URL("../schemas/", import.meta.url);
 const SCHEMA_ID_PREFIX = "https://opendomain.dev/schemas/";
 
 const DOMAIN_SCHEMA_DEFINITIONS = Object.freeze([
@@ -39,9 +39,9 @@ export function getDefaultDomainSchemaRegistry() {
 }
 
 export function createDomainSchemaRegistry(options = {}) {
-  const schemaDirectory = normalizeSchemaDirectory(
-    options.schemaDirectory ?? DEFAULT_SCHEMA_DIRECTORY
-  );
+  const schemaDirectory = options.schemaDirectory === undefined
+    ? null
+    : normalizeSchemaDirectory(options.schemaDirectory);
   const definitions = [
     ...DOMAIN_SCHEMA_DEFINITIONS,
     { type: null, file: AGGREGATE_SCHEMA_FILE }
@@ -141,7 +141,9 @@ export function validateDomainFrontmatter(frontmatter, type, registry) {
 function readPackagedSchema(schemaDirectory, file) {
   let source;
   try {
-    source = readFileSync(new URL(file, schemaDirectory), "utf8");
+    source = schemaDirectory
+      ? readFileSync(new URL(file, schemaDirectory), "utf8")
+      : readPackagedText(`schemas/${file}`);
   } catch (error) {
     throw new DomainSchemaRegistryError(
       `Packaged schema '${file}' could not be read: ${error.message}`,

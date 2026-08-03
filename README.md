@@ -46,6 +46,8 @@ This workspace now includes the first MVP slices:
   grounding, indexing, and demo
 - Package-manager-neutral Agent bootstrap with managed Codex Skills,
   repository instructions, updates, and diagnostics
+- Standalone macOS, Linux, and Windows CLI binaries that require no Node.js
+  runtime or host-project package metadata
 - OpenSpec `affects_domain` grounding
 - Explicit `required`, `not_required`, and `unclassified` grounding decisions
 - Advisory and enforced Grounding Assurance for Codex and CI
@@ -60,9 +62,56 @@ This workspace now includes the first MVP slices:
 
 The source of truth remains Markdown with YAML front matter stored in Git.
 
-## Usage
+## Installation And Usage
 
-Install the CLI from npm:
+### Standalone Binary (Recommended)
+
+Download the binary and `SHA256SUMS.txt` for the same version from
+[GitHub Releases](https://github.com/echopath-labs/openDomain/releases):
+
+| Platform | Minimum system | Release asset |
+| --- | --- | --- |
+| macOS Apple silicon | macOS 13.5 | `opendomain-v<version>-darwin-arm64` |
+| macOS Intel | macOS 13.5 | `opendomain-v<version>-darwin-x64` |
+| Linux x64 | kernel 4.18, glibc 2.28, libstdc++ 6.0.25 (`GLIBCXX_3.4.25`) | `opendomain-v<version>-linux-x64` |
+| Windows x64 | Windows 10 or Server 2016 | `opendomain-v<version>-windows-x64.exe` |
+
+The standalone executable embeds the official Node.js 24.18.0 runtime and
+inherits its operating-system requirements. Alpine/musl is not supported in
+the initial matrix. See the
+[Node.js 24 platform requirements](https://github.com/nodejs/node/blob/v24.18.0/BUILDING.md#platform-list).
+
+Verify the downloaded file against its line in `SHA256SUMS.txt` before running
+it. Use `shasum -a 256 <asset>` on macOS, `sha256sum <asset>` on Linux, or
+`Get-FileHash <asset> -Algorithm SHA256` in PowerShell.
+
+On macOS or Linux, make the file executable, rename it, and place it on `PATH`:
+
+```bash
+chmod +x opendomain-v<version>-<target>
+sudo install opendomain-v<version>-<target> /usr/local/bin/opendomain
+```
+
+On Windows, rename the asset to `opendomain.exe` and place it in a directory on
+`PATH`. Then initialize a project without adding Node.js metadata:
+
+```bash
+opendomain --version
+opendomain init --tools codex
+opendomain doctor
+opendomain validate
+```
+
+Upgrade by downloading, verifying, and replacing the binary with the asset from
+a newer release. The initial macOS binaries are ad-hoc signed but not notarized;
+Windows binaries are not Authenticode signed. Checksums detect file changes but
+do not establish publisher identity. Homebrew distribution is planned as a
+separate follow-up and is not yet an installation channel.
+
+### npm (Alternative)
+
+Users who already manage a Node.js tool environment can install the same CLI
+from npm:
 
 ```bash
 npm install -g @echopath-labs/opendomain
@@ -71,7 +120,7 @@ opendomain doctor
 opendomain validate
 ```
 
-The global npm installation is a CLI distribution channel. OpenDomain does not
+Both distribution channels run the same CLI. OpenDomain does not
 create or modify the host project's `package.json`, lockfile, dependency list,
 or npm scripts. `init --tools codex` adds the canonical `opendomain/` workspace,
 generated `.codex/skills/opendomain-*` adapters, and one managed OpenDomain
@@ -87,7 +136,9 @@ If workspace configuration later deselects an adapter, `doctor` reports any
 remaining generated Skills and `update` removes only files that still carry
 OpenDomain generation ownership metadata.
 
-Or try it from a source checkout:
+### Source Checkout
+
+Maintainers can also run it from a source checkout.
 
 Common commands:
 

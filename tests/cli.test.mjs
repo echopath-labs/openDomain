@@ -27,6 +27,20 @@ test("help explains canonical and legacy workspace resolution", async () => {
   assert.match(output, /opendomain doctor/);
 });
 
+test("version commands print exact package metadata version", async () => {
+  const expected = JSON.parse(await readFile("package.json", "utf8")).version;
+
+  for (const args of [["--version"], ["-v"], ["version"]]) {
+    const stdout = memoryStream();
+    const stderr = memoryStream();
+    const exitCode = await runCli(args, { stdout, stderr });
+
+    assert.equal(exitCode, 0);
+    assert.equal(stdout.toString(), `${expected}\n`);
+    assert.equal(stderr.toString(), "");
+  }
+});
+
 test("validate command returns JSON and zero exit code for valid ERP example", async () => {
   const stdout = memoryStream();
   const stderr = memoryStream();
@@ -208,6 +222,39 @@ test("init command can copy the ERP example", async () => {
     assert.equal(validateExitCode, 0);
     assert.equal(payload.errors.length, 0);
     assert.ok(payload.documents.some((document) => document.id === "sales.order"));
+  });
+});
+
+test("init --example preserves nested directory results", async () => {
+  await withTempCwd(async () => {
+    const stdout = memoryStream();
+    const exitCode = await runCli(["init", "--example", "erp", "--json"], {
+      stdout,
+      stderr: memoryStream()
+    });
+    const payload = JSON.parse(stdout.toString());
+    const exampleDirectories = payload.created
+      .filter((item) => item.kind === "directory" && item.path.startsWith("examples/erp"))
+      .map((item) => item.path)
+      .sort();
+
+    assert.equal(exitCode, 0);
+    assert.deepEqual(exampleDirectories, [
+      "examples/erp",
+      "examples/erp/external-features",
+      "examples/erp/opendomain",
+      "examples/erp/opendomain/candidates",
+      "examples/erp/opendomain/concepts",
+      "examples/erp/opendomain/contexts",
+      "examples/erp/opendomain/events",
+      "examples/erp/opendomain/integrations",
+      "examples/erp/opendomain/integrations/profiles",
+      "examples/erp/opendomain/lifecycles",
+      "examples/erp/opendomain/rules",
+      "examples/erp/openspec",
+      "examples/erp/openspec/changes",
+      "examples/erp/openspec/changes/order-cancellation"
+    ]);
   });
 });
 

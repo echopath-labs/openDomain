@@ -1,0 +1,117 @@
+name: Standalone CLI
+
+"on":
+  pull_request:
+    branches:
+      - main
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: darwin-arm64
+            runner: macos-15
+          - target: darwin-x64
+            runner: macos-15-intel
+          - target: linux-x64
+            runner: ubuntu-24.04
+          - target: windows-x64
+            runner: windows-2025
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build native standalone binary
+        run: node ./scripts/build-standalone.mjs --target ${{ matrix.target }} --out-dir dist/standalone
+
+      - name: Smoke standalone binary
+        run: node ./scripts/smoke-standalone.mjs --dir dist/standalone
+
+      - name: Upload native artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: standalone-${{ matrix.target }}
+          path: dist/standalone/opendomain-*
+          if-no-files-found: error
+          retention-days: 7
+
+  aggregate:
+    name: Verify release asset set
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+
+      - name: Download native artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: standalone-*
+          path: dist/native-artifacts
+
+      - name: Validate and assemble native artifacts
+        run: node ./scripts/assemble-standalone-assets.mjs --artifacts-dir dist/native-artifacts --out-dir dist/standalone
+
+      - name: Verify matrix and write checksums
+        if: github.event_name != 'release'
+        run: node ./scripts/write-standalone-checksums.mjs --dir dist/standalone
+
+      - name: Verify release tag, matrix, and checksums
+        if: github.event_name == 'release'
+        run: node ./scripts/write-standalone-checksums.mjs --dir dist/standalone --tag "${{ github.event.release.tag_name }}"
+
+      - name: Upload verified release asset set
+        uses: actions/upload-artifact@v4
+        with:
+          name: standalone-release-assets
+          path: dist/standalone/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish GitHub release assets
+    if: github.event_name == 'release'
+    needs: aggregate
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download verified release asset set
+        uses: actions/download-artifact@v4
+        with:
+          name: standalone-release-assets
+          path: dist/standalone
+
+      - name: Upload assets to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$RELEASE_TAG" dist/standalone/opendomain-* dist/standalone/SHA256SUMS.txt

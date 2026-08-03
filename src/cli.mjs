@@ -20,6 +20,7 @@ import {
   querySemanticIndex,
   writeSemanticIndex
 } from "./indexer.mjs";
+import { getPackageVersion } from "./packaged-resources.mjs";
 
 export async function runCli(argv, options = {}) {
   const io = {
@@ -32,6 +33,11 @@ export async function runCli(argv, options = {}) {
 
   if (!command || command === "help" || command === "--help" || command === "-h") {
     printHelp(io.stdout);
+    return 0;
+  }
+
+  if (command === "version" || command === "--version" || command === "-v") {
+    io.stdout.write(`${getPackageVersion()}\n`);
     return 0;
   }
 
@@ -104,6 +110,7 @@ function printHelp(stream) {
   stream.write(`OpenDomain CLI
 
 Usage:
+  opendomain --version
   opendomain init [--tools codex] [--example erp] [--json]
   opendomain update [--json]
   opendomain doctor [--json]
