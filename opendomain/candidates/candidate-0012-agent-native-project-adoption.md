@@ -22,10 +22,19 @@ evidence:
     location: tests/agent-workspace.test.mjs
     summary: Conformance tests require Codex integration to initialize and update without creating package.json or package-lock.json.
     confidence: high
+  - type: commit
+    location: v0.1.0-alpha.8
+    summary: The published alpha.8 release provides npm-global and standalone CLI channels whose registry and native smoke tests initialize Agent-ready non-Node workspaces without host package metadata.
+    confidence: high
+  - type: spec
+    location: https://openspec.dev/docs/how-commands-work
+    summary: OpenSpec provides external reference evidence that a globally installed CLI can initialize repository-local Agent resources while keeping terminal operations separate from Agent-chat workflows.
+    confidence: medium
 possible_conflicts:
-  - The OpenDomain CLI is still distributed through npm and requires a user-level Node.js runtime until standalone binaries are released.
+  - Users still need either a global npm and Node.js tool environment or a downloaded standalone executable before project initialization.
   - Agent-specific repository files remain necessary even though host language package metadata is not.
-  - Homebrew and standalone binary delivery are separate changes and have not yet provided external adoption evidence.
+  - Repository fixtures and release smoke do not yet prove that installation, initialization, updates, and intent routing remain usable in a real external project.
+  - Homebrew may improve installation lifecycle management, but it is an optional channel and does not determine the package-neutral workspace contract.
 review:
   state: proposed
   suggested_reviewer: opendomain-maintainer
@@ -51,6 +60,9 @@ human workflow.
 
 ## Requested Human Review
 
-Keep this rule proposed until the Codex bootstrap, standalone binary, Homebrew
-installation, and at least one external project adoption confirm that a
-package-manager-neutral project workspace remains practical across upgrades.
+Keep this rule proposed until at least one real external project confirms that
+installation, `init --tools codex`, natural-language Agent routing, CLI upgrade,
+`opendomain update`, and `doctor` remain practical without host package
+metadata. Homebrew is no longer a promotion prerequisite because installation
+channel selection is separate from the repository-local Agent workflow
+contract.
