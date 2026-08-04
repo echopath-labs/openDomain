@@ -14,6 +14,8 @@
   least-privilege four-platform GitHub Actions release workflow.
 - Refresh `minimatch`'s transitive `brace-expansion` dependency to the patched
   `5.0.9` release.
+- Refresh Ajv's transitive `fast-uri` dependency to the patched `3.1.5`
+  release.
 
 ## 0.1.0-alpha.7 - 2026-08-03
 
