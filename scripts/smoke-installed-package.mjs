@@ -16,6 +16,10 @@ import { fileURLToPath } from "node:url";
 const execFile = promisify(execFileCallback);
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "opendomain-package-smoke-"));
+const npmEnvironment = {
+  ...process.env,
+  npm_config_cache: path.join(temporaryRoot, "npm-cache")
+};
 
 try {
   const packResult = await run("npm", [
@@ -24,7 +28,7 @@ try {
     "--ignore-scripts",
     "--pack-destination",
     temporaryRoot
-  ], packageRoot);
+  ], packageRoot, npmEnvironment);
   const packPayload = JSON.parse(packResult.stdout);
   const tarball = path.join(temporaryRoot, packPayload[0].filename);
   const consumer = path.join(temporaryRoot, "consumer");
@@ -41,7 +45,7 @@ try {
     "--no-audit",
     "--no-fund",
     tarball
-  ], consumer);
+  ], consumer, npmEnvironment);
 
   const installedRoot = path.join(
     consumer,
@@ -58,11 +62,13 @@ try {
   await access(path.join(installedRoot, "schemas", "domain-declaration.schema.json"));
   await access(path.join(installedRoot, "schemas", "assurance-result.schema.json"));
   await access(path.join(installedRoot, "schemas", "workspace-config.schema.json"));
+  await access(path.join(installedRoot, "INSTALL.md"));
   await access(path.join(installedRoot, "scripts", "smoke-installed-package.mjs"));
   for (const maintainerScript of [
     "assemble-standalone-assets.mjs",
     "build-standalone.mjs",
     "lib/standalone-release.mjs",
+    "smoke-agent-bootstrap.mjs",
     "smoke-standalone.mjs",
     "write-standalone-checksums.mjs"
   ]) {
@@ -145,11 +151,12 @@ async function runJsonCli(cli, args, cwd) {
   return JSON.parse(result.stdout);
 }
 
-async function run(command, args, cwd) {
+async function run(command, args, cwd, environment = process.env) {
   try {
     return await execFile(command, args, {
       cwd,
       encoding: "utf8",
+      env: environment,
       maxBuffer: 10 * 1024 * 1024
     });
   } catch (error) {

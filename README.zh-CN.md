@@ -134,6 +134,17 @@ OpenDomain 当前不做：
 
 ## 30 秒开始
 
+### 让 Codex 安装
+
+在可以执行 Shell 的 Codex 会话中，可以直接提出：
+
+> 帮我在当前工作区安装 OpenDomain。
+
+Codex 应遵循正式的 [Agent 安装契约](INSTALL.md)，把 OpenDomain 安装为用户工具，
+初始化或更新仓库局部的 Codex adapter，并通过 `doctor` 和 `validate` 提供可核验的
+完成证据。整个过程不得向宿主项目添加 `package.json`、lockfile、依赖或 npm
+scripts。网络、Shell、文件写入或审批权限不可用时，Codex 必须明确报告阻塞原因。
+
 ### 独立二进制（推荐）
 
 从 [GitHub Releases](https://github.com/echopath-labs/openDomain/releases) 下载同一
@@ -158,8 +169,11 @@ macOS 或 Linux 用户需要添加执行权限并放入 `PATH`：
 
 ```bash
 chmod +x opendomain-v<version>-<target>
-sudo install opendomain-v<version>-<target> /usr/local/bin/opendomain
+mkdir -p "${XDG_BIN_HOME:-$HOME/.local/bin}"
+install -m 0755 opendomain-v<version>-<target> "${XDG_BIN_HOME:-$HOME/.local/bin}/opendomain"
 ```
+
+需要确保所选的用户目录已经加入 `PATH`。
 
 Windows 用户可将文件改名为 `opendomain.exe`，再放入 `PATH` 中的目录。随后直接在
 项目中初始化，不需要 Node.js、`package.json` 或 npm scripts：
@@ -173,8 +187,8 @@ opendomain validate
 
 升级时下载新版本、重新校验 SHA-256，然后替换旧二进制。首批 macOS 产物只做
 ad-hoc signing，尚未 notarize；Windows 产物尚未做 Authenticode 签名。checksum
-可以发现文件变化，但不等价于发布者身份证明。Homebrew 将在后续独立阶段提供，
-当前还不是可用安装渠道。
+可以发现文件变化，但不等价于发布者身份证明。Homebrew 当前不是可用安装渠道，
+将在项目达到稳定分发成熟度后重新评估。
 
 ### npm（可选）
 
@@ -184,11 +198,13 @@ ad-hoc signing，尚未 notarize；Windows 产物尚未做 Authenticode 签名�
 全局安装 CLI：
 
 ```bash
-npm install -g @echopath-labs/opendomain
+npm install -g @echopath-labs/opendomain@alpha
 opendomain init --tools codex
 opendomain doctor
 opendomain validate
 ```
+
+预发布阶段必须显式使用 `@alpha`，避免 npm 解析到较旧的 `latest` dist-tag。
 
 两种分发渠道运行相同 CLI。OpenDomain 不会在宿主项目中创建或修改
 `package.json`、lockfile、依赖声明或 npm scripts。`init --tools codex` 会创建

@@ -64,6 +64,19 @@ The source of truth remains Markdown with YAML front matter stored in Git.
 
 ## Installation And Usage
 
+### Install With Codex
+
+In a shell-enabled Codex session, users can ask:
+
+> Install OpenDomain in this workspace.
+
+Codex should follow the canonical [Agent Installation Contract](INSTALL.md).
+It installs OpenDomain as a user tool, initializes or updates the
+repository-local Codex adapter, and proves readiness with `doctor` and
+`validate`. The workflow must not add a `package.json`, lockfile, dependency,
+or npm script to the host project. Network, shell, filesystem, and approval
+boundaries still apply and must be reported when unavailable.
+
 ### Standalone Binary (Recommended)
 
 Download the binary and `SHA256SUMS.txt` for the same version from
@@ -89,8 +102,11 @@ On macOS or Linux, make the file executable, rename it, and place it on `PATH`:
 
 ```bash
 chmod +x opendomain-v<version>-<target>
-sudo install opendomain-v<version>-<target> /usr/local/bin/opendomain
+mkdir -p "${XDG_BIN_HOME:-$HOME/.local/bin}"
+install -m 0755 opendomain-v<version>-<target> "${XDG_BIN_HOME:-$HOME/.local/bin}/opendomain"
 ```
+
+Ensure that the selected user-owned directory is on `PATH`.
 
 On Windows, rename the asset to `opendomain.exe` and place it in a directory on
 `PATH`. Then initialize a project without adding Node.js metadata:
@@ -105,8 +121,9 @@ opendomain validate
 Upgrade by downloading, verifying, and replacing the binary with the asset from
 a newer release. The initial macOS binaries are ad-hoc signed but not notarized;
 Windows binaries are not Authenticode signed. Checksums detect file changes but
-do not establish publisher identity. Homebrew distribution is planned as a
-separate follow-up and is not yet an installation channel.
+do not establish publisher identity. Homebrew is not currently an installation
+channel and will be reconsidered after the project reaches stable distribution
+maturity.
 
 ### npm (Alternative)
 
@@ -114,11 +131,14 @@ Users who already manage a Node.js tool environment can install the same CLI
 from npm:
 
 ```bash
-npm install -g @echopath-labs/opendomain
+npm install -g @echopath-labs/opendomain@alpha
 opendomain init --tools codex
 opendomain doctor
 opendomain validate
 ```
+
+The explicit `@alpha` tag is required during the prerelease period so npm does
+not resolve an older `latest` dist-tag.
 
 Both distribution channels run the same CLI. OpenDomain does not
 create or modify the host project's `package.json`, lockfile, dependency list,

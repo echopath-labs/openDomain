@@ -37,3 +37,6 @@ jobs:
 
       - name: Run installed-package smoke
         run: npm run smoke:package
+
+      - name: Run Agent bootstrap smoke
+        run: npm run smoke:agent-bootstrap
