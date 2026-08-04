@@ -37,5 +37,7 @@ test("standalone workflow builds the declared matrix and isolates release permis
   const serializedPublish = JSON.stringify(workflow.jobs.publish.steps);
   assert.match(serializedPublish, /gh release upload/);
   assert.match(serializedPublish, /SHA256SUMS\.txt/);
+  assert.match(serializedPublish, /--repo/);
+  assert.match(serializedPublish, /GITHUB_REPOSITORY/);
   assert.doesNotMatch(serializedPublish, /--clobber/);
 });
