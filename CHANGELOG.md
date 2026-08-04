@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Add a canonical Agent installation contract so Codex can install OpenDomain
+  without changing host project package metadata, initialize its managed
+  adapter, and prove readiness with diagnostics and validation.
+- Make the npm prerelease channel explicit with `@alpha` and document a
+  checksum-verified, user-local standalone fallback.
+- Add isolated global-install smoke coverage for Agent bootstrap in a non-Node
+  workspace.
+
 ## 0.1.0-alpha.8 - 2026-08-03
 
 - Add Node SEA standalone CLI builds for macOS arm64/x64, Linux x64, and

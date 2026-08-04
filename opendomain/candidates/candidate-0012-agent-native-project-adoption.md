@@ -22,10 +22,19 @@ evidence:
     location: tests/agent-workspace.test.mjs
     summary: Conformance tests require Codex integration to initialize and update without creating package.json or package-lock.json.
     confidence: high
+  - type: human_review
+    location: INSTALL.md
+    summary: The maintainer approved a canonical Agent installation contract in which Codex selects a user-tool installation path, initializes the workspace, and proves readiness without changing host package metadata.
+    confidence: high
+  - type: test
+    location: scripts/smoke-agent-bootstrap.mjs
+    summary: A packed OpenDomain CLI installs into an isolated global prefix and initializes a healthy Codex integration in a non-Node workspace without creating package metadata.
+    confidence: high
 possible_conflicts:
-  - The OpenDomain CLI is still distributed through npm and requires a user-level Node.js runtime until standalone binaries are released.
+  - The npm path still requires a supported user-level Node.js runtime; standalone binaries provide a fallback but add platform and checksum-selection requirements.
   - Agent-specific repository files remain necessary even though host language package metadata is not.
-  - Homebrew and standalone binary delivery are separate changes and have not yet provided external adoption evidence.
+  - Natural-language installation still depends on Agent discovery plus network, shell, filesystem, and human approval boundaries.
+  - The installation contract and isolated smoke do not yet provide external-project adoption or upgrade evidence.
 review:
   state: proposed
   suggested_reviewer: opendomain-maintainer
@@ -51,6 +60,6 @@ human workflow.
 
 ## Requested Human Review
 
-Keep this rule proposed until the Codex bootstrap, standalone binary, Homebrew
-installation, and at least one external project adoption confirm that a
-package-manager-neutral project workspace remains practical across upgrades.
+Keep this rule proposed until at least one external project adoption and an
+upgrade cycle confirm that the package-manager-neutral workspace and Agent
+installation contract remain practical outside OpenDomain's own repository.

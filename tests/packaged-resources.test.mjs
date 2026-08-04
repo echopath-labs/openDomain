@@ -10,10 +10,13 @@ test("packaged resources expose schemas, package metadata, and ERP files", async
   }
 
   const packageMetadata = JSON.parse(resources.readPackagedText("package.json"));
+  const installationContract = resources.readPackagedText("INSTALL.md");
   const schema = JSON.parse(resources.readPackagedText("schemas/context.schema.json"));
   const exampleFiles = resources.listPackagedFiles("examples/erp/");
 
   assert.equal(packageMetadata.name, "@echopath-labs/opendomain");
+  assert.match(installationContract, /OpenDomain Agent Installation Contract/);
+  assert.match(installationContract, /@echopath-labs\/opendomain@alpha/);
   assert.equal(schema.$id, "https://opendomain.dev/schemas/context.schema.json");
   assert.ok(exampleFiles.includes("examples/erp/opendomain/contexts/sales.md"));
   assert.ok(exampleFiles.includes("examples/erp/openspec/changes/order-cancellation/spec.md"));
