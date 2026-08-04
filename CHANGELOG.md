@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.9 - 2026-08-04
+
 - Add a canonical Agent installation contract so Codex can install OpenDomain
   without changing host project package metadata, initialize its managed
   adapter, and prove readiness with diagnostics and validation.
