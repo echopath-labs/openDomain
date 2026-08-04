@@ -114,4 +114,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
-        run: gh release upload "$RELEASE_TAG" dist/standalone/opendomain-* dist/standalone/SHA256SUMS.txt
+        run: gh release upload "$RELEASE_TAG" dist/standalone/opendomain-* dist/standalone/SHA256SUMS.txt --repo "$GITHUB_REPOSITORY"
