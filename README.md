@@ -1,6 +1,7 @@
 # OpenDomain
 
 [![CI](https://github.com/echopath-labs/openDomain/actions/workflows/ci.yml/badge.svg)](https://github.com/echopath-labs/openDomain/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/%40echopath-labs%2Fopendomain/alpha?label=npm)](https://www.npmjs.com/package/@echopath-labs/opendomain)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)
 ![Status](https://img.shields.io/badge/status-alpha-f59e0b.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D20-0f766e.svg)
