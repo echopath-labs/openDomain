@@ -4,6 +4,8 @@
 
 - Correct historical prerelease headings, dates, and notable workspace and
   release-boundary entries against published tags and npm registry history.
+- Reorganize public guidance around natural-language Codex adoption, add paired
+  Usage Guides, and verify public navigation and npm package contents.
 
 ## 0.1.0-alpha.9 - 2026-08-04
 

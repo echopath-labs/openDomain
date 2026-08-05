@@ -1,5 +1,10 @@
 # ERP Example
 
+Start with the [English Usage Guide](../../USAGE.md) or
+[Simplified Chinese Usage Guide](../../USAGE.zh-CN.md) for the complete
+Agent-driven workflow. Return to the project [README](../../README.md) for the
+product boundary and installation entrypoint.
+
 This example demonstrates the smallest useful OpenDomain shape:
 
 - one bounded context

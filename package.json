@@ -39,6 +39,10 @@
     "INSTALL.md",
     "README.md",
     "README.zh-CN.md",
+    "USAGE.md",
+    "USAGE.zh-CN.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
     "LICENSE",
     "CHANGELOG.md"
   ],

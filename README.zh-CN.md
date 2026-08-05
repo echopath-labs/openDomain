@@ -1,549 +1,160 @@
 # OpenDomain
 
-一个面向 AI Agent 和人类维护者的 Git 原生、证据驱动领域语义层。
-
 [![CI](https://github.com/echopath-labs/openDomain/actions/workflows/ci.yml/badge.svg)](https://github.com/echopath-labs/openDomain/actions/workflows/ci.yml)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)
 ![Status](https://img.shields.io/badge/status-alpha-f59e0b.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D20-0f766e.svg)
 ![Source](https://img.shields.io/badge/source-Markdown%20%2B%20YAML-2563eb.svg)
 
-> English version: [README.md](README.md)
+> English: [README.md](README.md)
 
-OpenDomain 用来在软件仓库中持续沉淀长期业务知识：一个业务概念是什么、不是什么，哪些规则长期成立，对象有哪些生命周期，哪些证据支持这些知识，以及哪些内容需要人类审查后才能成为可信语义。
+OpenDomain 是面向 AI Agent 与人类维护者的 Git 原生、证据驱动领域语义层。它用
+仓库内可读的 Markdown 长期保存业务概念、规则、生命周期、事件、证据和审查状态。
 
-它的核心目标是让 Codex、Claude Code、Cursor、Gemini CLI 等 AI 编码 Agent 在修改系统前，能够稳定读取业务语义，而不是临时从代码、数据库、接口或聊天上下文里猜业务含义。
+## 从 Codex 开始
 
-OpenDomain 当前是 early alpha。格式和 CLI 仍可能演进，但已经具备第一批 MVP 能力。
+在需要建模的项目中打开一个可执行 Shell 的 Codex 任务，然后直接说：
 
-## 为什么需要它
+> 帮我在当前工作区安装 OpenDomain。遵循官方 Agent 安装契约，初始化 Codex
+> 集成并证明它已经可用，不要给这个项目添加 package metadata。
 
-AI 编码 Agent 很容易从实现细节里推断业务语义，但实现结构不等于业务世界。
+Codex 应按照 [Agent 安装契约](INSTALL.md)选择兼容的安装渠道，执行初始化或更新，
+最后通过 `doctor` 和 `validate` 验证工作区。
 
-没有稳定的领域语义层时，团队会反复遇到这些问题：
+安装后继续用自然语言工作：
 
-- Agent 把数据库表、API shape 或代码结构误认为业务模型；
-- 长期业务规则散落在代码、测试、文档和历史 Spec 里；
-- 同一个概念在不同上下文中被混用；
-- 某次 Feature 的设计选择被误当成永久规则；
-- AI 推断出的“知识”缺少证据、状态和人类审查；
-- 一年后很难重新找到相关业务模型、规则和历史变更。
+> 只读了解订单取消相关的 accepted 业务模型，不要修改任何内容，并把 Candidate
+> 与 accepted knowledge 分开。
 
-OpenDomain 提供一种轻量方式，把这些长期语义放回 Git，并让 Agent 能通过结构化入口读取。
+> 根据这个既有项目的代码和产品文档逆向梳理业务模型，所有不确定的业务判断先写成
+> Candidate 等我审查。
 
-## OpenDomain 是什么
+> 审查 candidate-0001，列出证据、冲突和兼容性影响，然后等我决定。
 
-OpenDomain 是：
+> 实现这个变更，修改行为前先完成 OpenDomain grounding，最后报告使用过的
+> accepted IDs 和 Candidate boundaries。
 
-- Git-native：source of truth 是仓库中的 Markdown 文件；
-- evidence-backed：重要语义必须有证据；
-- AI-maintainable：结构化到足够让 Agent 解析、检索和引用；
-- human-reviewable：普通 Git diff 就能审查；
-- domain-focused：记录长期业务语义，而不是一次性任务说明。
+受管仓库指令和 Codex Skills 会把这些意图路由到 OpenDomain。正常工作流不需要用户
+自己选择 CLI 命令。完整过程和恢复方式见[简体中文使用指南](USAGE.zh-CN.md)。
 
-它回答的是：
+## 人与 Agent 的责任
 
-```text
-业务世界是什么？
-哪些概念长期存在？
-它们属于哪个业务上下文？
-哪些规则、不变量和生命周期必须长期成立？
-哪些知识已经被人类确认？
-哪些只是待审 Candidate？
-```
+OpenDomain 采用有边界的 Agent 自主性：
 
-## 与 OpenSpec / EchoPath 的边界
+| 人负责 | Codex 负责 |
+| --- | --- |
+| 目标与期望结果 | 阅读仓库指令和运行环境 |
+| 业务边界与最终语义 | 选择合适的 OpenDomain 工作流 |
+| 风险取舍和 Candidate 决定 | 执行工具并维持证据边界 |
+| 最终验收 | 报告验证结果和未解决缺口 |
 
-OpenDomain、OpenSpec 和 EchoPath 是三个不同层次：
+AI 推断出的知识不会自动变成 accepted domain knowledge。它必须先进入 Domain
+Candidate，并由人明确作出审查决定。Codex 也不能绕过 Shell、网络、文件系统、
+仓库规则或审批边界。
+
+## 产品边界
 
 ```text
 OpenDomain
   长期业务语义
   说明业务世界是什么，哪些规则长期成立
 
-OpenSpec
+OpenSpec / Spec Kit / 其他规划工具
   变更意图与交付规范
-  说明这次为什么改、要交付什么、如何验收
+  说明这次为什么改、交付什么、如何验收
 
 EchoPath
   Agent 执行连续性
-  说明 Agent 如何恢复、交接、保留执行上下文
+  说明 Agent 工作如何恢复、交接和继续
 ```
 
-判断一条知识放在哪里，可以先用这条规则：
+OpenSpec 等规划来源可以声明受影响的 OpenDomain ID，但应该引用 accepted domain
+knowledge，而不是复制其定义。
 
-```text
-如果一条知识在当前 Feature 结束后仍长期成立，它更可能属于 OpenDomain。
-如果一条知识只解释某次变更的动机、设计、任务或验收，它属于 OpenSpec。
-```
+## 项目中会增加什么
 
-OpenSpec 应该引用 OpenDomain ID，而不是复制 OpenDomain 定义。
-
-## 适合谁使用
-
-OpenDomain 适合：
-
-- 使用 AI Agent 长期维护复杂业务系统的团队；
-- 希望把业务概念、规则、生命周期和证据放进 Git 的维护者；
-- 需要让 Agent 在改代码前先读取业务语义的项目；
-- 需要区分 accepted knowledge 和 AI-inferred Candidate 的团队；
-- 正在使用 OpenSpec，并希望 Feature spec 能引用长期业务模型的项目。
-
-它特别适合 ERP、CRM、WMS、MES、财务、供应链、订单、库存、制造、支付、权限等业务规则密集的系统。
-
-## 这个项目现在能做什么
-
-当前 MVP 已包含：
-
-- Markdown + YAML front matter 领域语义文件；
-- Bounded Context、Domain Concept、Business Rule、Lifecycle、Domain Event、Domain Candidate；
-- 安全 parser 和 Draft 2020-12 Runtime Schema 校验；
-- 在 Semantic Closure、index 和 grounding 前执行安全语料门禁；
-- CLI 命令：init、validate、ids list、refs check、prepare、assure、integrations、
-  index、update、doctor、demo；
-- 不要求宿主 `package.json` 的 Agent bootstrap，以及受管 Codex Skills 与
-  `AGENTS.md` 指令区块；
-- 不要求预装 Node.js、也不向宿主项目引入 package metadata 的 macOS、Linux 和
-  Windows 独立 CLI 二进制；
-- OpenSpec `affects_domain` grounding；
-- 显式 `required` / `not_required` / `unclassified` Grounding Request；
-- 面向 Codex 与 CI 的 advisory / enforced Grounding Assurance；
-- 面向结构化非 OpenSpec 来源的 repository-local 声明式 Integration Profile；
-- Native Mapping、Sidecar Domain Declaration，以及确定性的 file / bundle
-  Source Unit；
-- Candidate 边界检查；
-- Semantic Retrieval Index，作为派生的 read-first 检索视图；
-- 以 canonical `opendomain/` 为入口的确定性工作区解析；
-- ERP Order Cancellation 示例；
-- OpenDomain 自己的 self-model dogfooding。
-
-## 非目标
-
-OpenDomain 当前不做：
-
-- OpenSpec 的领域版复制品；
-- 数据库 schema 文档；
-- 长篇业务百科；
-- 未经审查的 AI memory；
-- 自动接受 AI 推断的知识库；
-- 以图数据库、embedding index 或 MCP resource 作为 source of truth；
-- SaaS 协作平台；
-- OWL / RDF / SPARQL 默认建模入口。
-
-这些能力未来可以作为导出、派生视图或生态集成出现，但 MVP 的 source of truth 仍然是 Git 中的 Markdown 文件。
-
-## 30 秒开始
-
-### 让 Codex 安装
-
-在可以执行 Shell 的 Codex 会话中，可以直接提出：
-
-> 帮我在当前工作区安装 OpenDomain。
-
-Codex 应遵循正式的 [Agent 安装契约](INSTALL.md)，把 OpenDomain 安装为用户工具，
-初始化或更新仓库局部的 Codex adapter，并通过 `doctor` 和 `validate` 提供可核验的
-完成证据。整个过程不得向宿主项目添加 `package.json`、lockfile、依赖或 npm
-scripts。网络、Shell、文件写入或审批权限不可用时，Codex 必须明确报告阻塞原因。
-
-### 独立二进制（推荐）
-
-从 [GitHub Releases](https://github.com/echopath-labs/openDomain/releases) 下载同一
-版本的目标平台文件和 `SHA256SUMS.txt`：
-
-| 平台 | 最低系统要求 | Release 文件 |
-| --- | --- | --- |
-| macOS Apple silicon | macOS 13.5 | `opendomain-v<version>-darwin-arm64` |
-| macOS Intel | macOS 13.5 | `opendomain-v<version>-darwin-x64` |
-| Linux x64 | kernel 4.18、glibc 2.28、libstdc++ 6.0.25（`GLIBCXX_3.4.25`） | `opendomain-v<version>-linux-x64` |
-| Windows x64 | Windows 10 或 Server 2016 | `opendomain-v<version>-windows-x64.exe` |
-
-独立二进制内嵌官方 Node.js 24.18.0 运行时，因此继承其操作系统要求。首批矩阵不
-支持 Alpine/musl。详见
-[Node.js 24 平台要求](https://github.com/nodejs/node/blob/v24.18.0/BUILDING.md#platform-list)。
-
-运行前先核对文件 SHA-256 是否与 `SHA256SUMS.txt` 中对应行一致。macOS 可使用
-`shasum -a 256 <asset>`，Linux 可使用 `sha256sum <asset>`，PowerShell 可使用
-`Get-FileHash <asset> -Algorithm SHA256`。
-
-macOS 或 Linux 用户需要添加执行权限并放入 `PATH`：
-
-```bash
-chmod +x opendomain-v<version>-<target>
-mkdir -p "${XDG_BIN_HOME:-$HOME/.local/bin}"
-install -m 0755 opendomain-v<version>-<target> "${XDG_BIN_HOME:-$HOME/.local/bin}/opendomain"
-```
-
-需要确保所选的用户目录已经加入 `PATH`。
-
-Windows 用户可将文件改名为 `opendomain.exe`，再放入 `PATH` 中的目录。随后直接在
-项目中初始化，不需要 Node.js、`package.json` 或 npm scripts：
-
-```bash
-opendomain --version
-opendomain init --tools codex
-opendomain doctor
-opendomain validate
-```
-
-升级时下载新版本、重新校验 SHA-256，然后替换旧二进制。首批 macOS 产物只做
-ad-hoc signing，尚未 notarize；Windows 产物尚未做 Authenticode 签名。checksum
-可以发现文件变化，但不等价于发布者身份证明。Homebrew 当前不是可用安装渠道，
-将在项目达到稳定分发成熟度后重新评估。
-
-### npm（可选）
-
-已经维护 Node.js 工具环境的用户，也可以安装同一套 CLI。OpenDomain 的 npm 包名是
-`@echopath-labs/opendomain`，CLI 命令是 `opendomain`。
-
-全局安装 CLI：
-
-```bash
-npm install -g @echopath-labs/opendomain@alpha
-opendomain init --tools codex
-opendomain doctor
-opendomain validate
-```
-
-预发布阶段必须显式使用 `@alpha`，避免 npm 解析到较旧的 `latest` dist-tag。
-
-两种分发渠道运行相同 CLI。OpenDomain 不会在宿主项目中创建或修改
-`package.json`、lockfile、依赖声明或 npm scripts。`init --tools codex` 会创建
-canonical `opendomain/`、生成 `.codex/skills/opendomain-*`，并在 `AGENTS.md`
-中维护一个有明确边界的 OpenDomain 区块；区块之外的项目指令保持原样。
-
-初始化后，用户可以直接要求 Codex 浏览或建模业务、审查 Candidate，或者实现一项
-变更。生成的 Skills 和托管指令负责选择 CLI 操作；直接命令主要保留给 CI、诊断和
-高级使用。
-
-如果 workspace config 后续取消选择某个 adapter，`doctor` 会报告残留的 generated
-Skills，`update` 只移除仍带 OpenDomain generation ownership metadata 的文件。
-
-### 源码开发
-
-维护者也可以从源码运行。
-
-克隆仓库：
-
-```bash
-git clone https://github.com/echopath-labs/openDomain.git
-cd openDomain
-```
-
-查看 CLI：
-
-```bash
-npm run opendomain -- help
-```
-
-初始化 OpenDomain 目录：
-
-```bash
-npm run opendomain -- init
-npm run opendomain -- init --tools codex
-npm run opendomain -- update
-npm run opendomain -- doctor
-```
-
-运行测试：
-
-```bash
-npm test
-```
-
-验证 OpenDomain 文件：
-
-```bash
-npm run opendomain -- validate
-```
-
-运行 ERP 示例验证：
-
-```bash
-npm run opendomain -- validate examples/erp
-(cd examples/erp && node ../../bin/opendomain.mjs assure openspec/changes/order-cancellation/spec.md)
-```
-
-为一个 Feature 准备 Codex grounding：
-
-```bash
-npm run prepare:demo
-```
-
-构建并查询 Semantic Retrieval Index：
-
-```bash
-npm run opendomain -- index build examples/erp --out /tmp/erp-index.json
-npm run opendomain -- index query sales.order --index /tmp/erp-index.json
-```
-
-## 核心工作流
-
-### 1. 写长期业务语义
-
-把长期成立的业务知识写入项目根目录的 `opendomain/`：
+`opendomain init --tools codex` 只创建或更新 OpenDomain 拥有的资源：
 
 ```text
 opendomain/
+  config.yaml
   contexts/
   concepts/
   rules/
   lifecycles/
   events/
   candidates/
-  integrations/
-    profiles/
+
+AGENTS.md                              受管 OpenDomain 区块
+.codex/skills/opendomain-explore/     生成的 Skill
+.codex/skills/opendomain-model/       生成的 Skill
+.codex/skills/opendomain-review/      生成的 Skill
 ```
 
-不传 source path 时，CLI 会从当前项目根目录解析工作区：
+命令会保留用户拥有的内容，不会创建或修改宿主项目的 `package.json`、lockfile、依赖
+或 npm scripts。是否提交这些文件由项目自己决定；它们可以被正常 Git 版本管理。
 
-- 优先使用 canonical `opendomain/`；
-- 在 `0.x` 期间，只有 `domain/` 时会兼容读取并给出迁移提示；
-- 两个根目录同时存在时只读取 `opendomain/`，发出 warning，不合并语料；
-- 默认只读取六类语义目录，不扫描 `examples/`、`generated/` 或 integration 配置；
-- 验证示例、fixture 或外部语料时，需要显式传入文件或目录。
+## 手动安装
 
-例如 `sales.order` 应该说明 Order 在 Sales context 中是什么意思，它不是什么，它受哪些规则和生命周期约束，以及证据是什么。
+大多数用户只需要让 Codex 安装。也可以手动使用相同渠道。
 
-### 2. 用 OpenSpec 引用 OpenDomain
+### npm alpha 渠道
 
-Feature spec 通过 `affects_domain` 引用 OpenDomain ID：
-
-```yaml
----
-type: feature_spec
-id: spec.order-cancellation
-name: Order cancellation
-status: proposed
-grounding:
-  status: required
-  rationale: Cancellation behavior is constrained by accepted order semantics.
-affects_domain:
-  concepts:
-    - sales.order
-  rules:
-    - sales.confirmed-order-cannot-be-deleted
-  lifecycles:
-    - sales.order-lifecycle
-  events:
-    - sales.order-confirmed
----
-```
-
-OpenSpec 描述这次变更，OpenDomain 描述长期语义。
-
-### 3. Codex 先 grounding 再实现
-
-在执行 `opendomain init --tools codex` 后，repository-local Codex Skills 会分别处理
-只读领域探索、Candidate-first 建模和 Candidate 审查；`AGENTS.md` 托管区块要求
-Codex 在实现非平凡 Feature 前默认执行只读 Assurance：
+已有 Node.js 20，或 Node.js 22 及以上环境时使用 npm：
 
 ```bash
-opendomain assure <feature-spec-or-dir>
-opendomain assure <feature-spec-or-dir> --mode enforced --json
+npm install --global @echopath-labs/opendomain@alpha
+opendomain --version
+opendomain init --tools codex
+opendomain doctor
+opendomain validate
 ```
 
-`assure` 会复用 `prepare` 的解析和 Semantic Closure。只需要查看原始 Grounding
-Pack、而不需要策略判断时，可以单独运行
-`opendomain prepare <feature-spec-or-dir>`。
+预发布阶段必须显式使用 `@alpha`。
 
-Grounding Requirement 有三个显式状态：
+### 独立二进制
 
-| 状态 | 含义 |
+没有兼容 npm 环境时，从 [GitHub Releases](https://github.com/echopath-labs/openDomain/releases)
+下载匹配的二进制和 `SHA256SUMS.txt`，执行前必须核对准确 checksum。
+
+| Target | 最低系统 |
 | --- | --- |
-| `required` | 这次工作受长期领域语义约束，需要准备 accepted context |
-| `not_required` | 这次工作不涉及领域语义；必须提供非空白 rationale，且不能声明任何 OpenDomain ID |
-| `unclassified` | Agent 或维护者尚无足够证据完成判断 |
+| `darwin-arm64` / `darwin-x64` | macOS 13.5 |
+| `linux-x64` | kernel 4.18、glibc 2.28、`GLIBCXX_3.4.25` |
+| `windows-x64.exe` | Windows 10 或 Windows Server 2016 |
 
-每个 affected ID 还必须与声明类别一致：`concepts` 对应 `domain_concept`，
-`rules` 对应 `business_rule`，`lifecycles` 对应 `lifecycle`，`events` 对应
-`domain_event`，并且 ID 必须包含非空白文本。当 `opendomain validate` 的目标中
-包含 `feature_spec` 时，它会应用与 `prepare`、`assure` 相同的 grounding decision
-规则。
+首批 macOS 二进制采用 ad-hoc 签名但未 notarize；Windows 二进制没有 Authenticode
+签名。Checksum 可以发现文件变化，但不能证明发布者身份。校验和升级步骤见
+[安装渠道](USAGE.zh-CN.md#安装渠道)。
 
-未知 affected-domain 类别属于非法输入。一个已经被识别为 OpenSpec、但校验失败的
-来源不会回退成匹配的 Profile；外部 Grounding Pack 也不能包含重复的 evidence 或
-Candidate ID。
+## 当前能力
 
-Assurance 将状态判断、准备结果和执行策略分开报告：
+当前 alpha 已包含：
 
-| 准备结果 | advisory | enforced |
-| --- | --- | --- |
-| `prepared` / 合法 `not_required` | `pass` | `pass` |
-| `unclassified` / `domain_model_gap` | `warn`，exit 0 | `fail`，exit 1 |
-| 格式错误、矛盾或断裂引用 | `fail`，exit 1 | `fail`，exit 1 |
+- Markdown + YAML front matter source of truth；
+- Schema 校验与引用完整性检查；
+- accepted 概念、规则、生命周期、事件与证据；
+- Candidate-first AI 推断和显式人工审查；
+- 确定性 Semantic Closure 与派生 read-first index；
+- Grounding Request、Grounding Pack 和 advisory/enforced Assurance；
+- 内置 OpenSpec grounding 与声明式 Integration Profile；
+- 受管 Codex 指令、Skills、更新和诊断；
+- 不引入宿主 package metadata 的 npm 与独立 CLI 分发。
 
-`unclassified` Request 仍会校验所有已经声明的 affected ID；缺失 evidence 或类型
-不匹配属于 malformed Pack，在 advisory 与 enforced 下都会 fail。
-
-Result Schema 会将 `prepared` 绑定到 `required`，将 `not_required` 绑定到无 evidence
-的显式跳过，并限制 `incomplete` 只能对应 `required` 或 `unclassified`。
-它只校验结构与可表达的局部不变量，包括 `pass` 不得携带 finding 或 Pack
-diagnostic，以及 `warn` 不得携带 error finding 或 Pack error；它不会重新验证
-持久化或第三方 JSON 的语义覆盖。CI 必须针对当前 workspace 重新运行
-`opendomain assure`。
-受影响的 concept、rule、lifecycle 与 event ID 必须符合其 OpenDomain source object
-使用的 canonical dotted ID 格式；Grounding Pack evidence ID 也会按声明类型校验。
-`read_first` 只允许 bounded context、concept、rule、lifecycle 与 event，且每个
-evidence path 都必须包含非空白字符；`domain_candidate` 必须留在 Candidate
-boundaries 中。Assurance 输出的 path 必须是无首尾空白、换行或终端控制字符的
-单行值；evidence 与 Candidate path 还必须是无绝对根、反斜杠及 `.` / `..` 穿越
-段的规范化仓库相对路径。外部 diagnostic 文本也遵循相同控制字符边界；schema
-派生的 finding 会先转义属性名中的控制字符，再进入终端输出。调用方直接提供或
-持久化的 Grounding Pack 即使结构合法，也不能建立 completed Assurance；必须针对
-当前 Source Unit 和 workspace 重新运行 `opendomain assure`，从已校验的 OpenDomain
-source 重新生成 accepted evidence 与 Semantic Closure。`preparation` 只报告状态，Grounding Request 与 classification
-只存在于 `grounding_pack.grounding_request`，evidence ID、类型和路径只存在于
-`grounding_pack.read_first` 与 `grounding_pack.candidate_boundaries`。同一个 ID
-不能同时出现在两个 evidence 集合中，Assurance Result 不再携带可能相互矛盾的
-request、classification 或 evidence 摘要。
-每个 Candidate boundary 都必须符合 Candidate ID、生命周期状态与 confidence
-约束，且 `target_id` 必须指向同一 Pack 中的 accepted `read_first` evidence。
-Assurance 文本输出会保留该 review status，包括最终的 `rejected`、`superseded`
-或 `deprecated` 决定。
-
-存量项目应先运行 `opendomain init`。初始化后即使还没有 accepted knowledge，
-`required` 加空引用也会被识别为 `domain_model_gap`；完全缺少 OpenDomain workspace
-则是环境错误。Assurance Result 报告本次执行观察到的事实，但不能证明 Agent 已经
-理解模型，也不能独立证明某个历史仓库状态。
-
-对于其他结构化规划格式，可以在
-`opendomain/integrations/profiles/` 中声明 repository-local Profile：
-
-```bash
-opendomain integrations validate
-opendomain integrations list
-opendomain prepare --profile <profile-id> <structured-file-or-bundle>
-```
-
-未显式选择时，只有一个 built-in adapter 或 Profile 匹配才会继续；多重匹配会
-失败，不按优先级猜测。Profile 只归一化来源中明确存在的 intent 和 OpenDomain
-ID，不扫描正文、不推断 ID，不执行脚本，也不创建或提升 Candidate。Profile 和
-Sidecar Declaration 的正式机器契约位于 `schemas/`。
-
-Profile v1 尚不支持 grounding decision mapping，因此受信 Request Builder 会将
-请求归一化为 `unclassified`。当前应使用 advisory Assurance，或改用能够携带显式
-decision 的 integration；在契约扩展前，它不会通过 enforced Assurance。
-
-`assure` 与 `prepare` 的 grounding evidence 会告诉 Codex：
-
-- `Accepted grounding evidence` / `Read first`：先读哪些 accepted source files；
-- `Candidate boundaries`：显示各 Candidate 的 review status，均不能当作 accepted truth；
-- `Avoided semantic errors`：实现时要避免哪些业务语义错误。
-
-### 4. 不确定知识先写 Candidate
-
-AI 从代码、API、DB、测试或历史 Spec 里发现的新领域知识，默认写成 Domain Candidate：
-
-```yaml
----
-type: domain_candidate
-id: candidate-0001-order-lifecycle
-status: proposed
-proposed_change_type: update_lifecycle
-target:
-  type: lifecycle
-  id: sales.order-lifecycle
-confidence: medium
-extracted_by: codex
-extracted_at: 2026-07-07
-evidence:
-  - type: spec
-    location: examples/erp/opendomain/lifecycles/sales.order-lifecycle.md
-    summary: Accepted lifecycle does not include Closed state.
-    confidence: medium
-possible_conflicts:
-  - Existing accepted lifecycle does not include Closed.
-review:
-  state: proposed
-  suggested_reviewer: sales-domain-owner
----
-```
-
-Candidate 不是 accepted truth。它只是待人类审查的提案。
-
-## 常用命令
-
-| 目标 | 命令 |
-| --- | --- |
-| 查看帮助 | `opendomain help` |
-| 初始化 OpenDomain 与 Codex | `opendomain init --tools codex` |
-| 更新托管 Agent 适配 | `opendomain update` |
-| 检查 workspace 与 Agent 适配 | `opendomain doctor` |
-| 复制 ERP 示例 | `opendomain init --example erp` |
-| 验证全部 OpenDomain 文件 | `opendomain validate` |
-| 验证指定目录 | `opendomain validate examples/erp` |
-| 输出 JSON 验证结果 | `opendomain validate examples/erp --json` |
-| 为 Feature 准备 grounding | `opendomain prepare <feature-spec-or-dir>` |
-| 执行 advisory Assurance | `opendomain assure <source-unit>` |
-| 执行 enforced Assurance | `opendomain assure <source-unit> --mode enforced --json` |
-| 显式使用 OpenSpec integration | `opendomain prepare --integration openspec <feature-spec-or-dir>` |
-| 列出 integration | `opendomain integrations list` |
-| 验证 Integration Profile | `opendomain integrations validate` |
-| 显式使用本地 Profile | `opendomain prepare --profile <profile-id> <source-unit>` |
-| 列出 Candidate | `opendomain candidate list examples/erp` |
-| 查看 Candidate | `opendomain candidate show <candidate-id> examples/erp` |
-| 记录 Candidate review | `opendomain candidate review <candidate-id> --decision rejected --reviewed-by <name> --reason <text> examples/erp` |
-| 列出 ID | `opendomain ids list examples/erp` |
-| 检查引用 | `opendomain refs check examples/erp` |
-| 构建 index | `opendomain index build examples/erp --out /tmp/erp-index.json` |
-| 查询 ID | `opendomain index query sales.order --index /tmp/erp-index.json` |
-| 查询 context | `opendomain index query --context sales --index /tmp/erp-index.json` |
-| 运行 demo | `npm run demo` |
-| 运行测试 | `npm test` |
+OpenDomain 当前适合限定范围试点和公开迭代。稳定版之前格式与 CLI 仍可能变化，暂时
+不应成为生产关键领域决策的唯一治理来源。
 
 ## 公开资料
 
-- [English README](README.md)
+- [简体中文使用指南](USAGE.zh-CN.md)
+- [Agent 安装契约](INSTALL.md)
+- [ERP 示例](examples/erp/README.md)
 - [变更日志](CHANGELOG.md)
 - [贡献指南](CONTRIBUTING.md)
 - [安全策略](SECURITY.md)
-- `schemas/`：机器可读的正式格式契约
-- `examples/erp/`：不包含真实项目过程信息的合成互操作示例
+- `schemas/`：机器可读契约
 
-## 当前状态
+维护者规划记录属于私有过程资料，不会进入公开仓库或 npm 包。
+`examples/erp/` 下的 OpenSpec 只是合成互操作 fixture。
 
-OpenDomain 目前是 early alpha。
-
-已经可以用于：
-
-- 学习和试用 Git-native domain semantics；
-- 初始化一个项目的 OpenDomain 目录；
-- 运行 ERP 示例；
-- 验证 OpenDomain 文件格式；
-- 为 OpenSpec Feature 生成 grounding pack；
-- 用 advisory / enforced Assurance 区分准备状态与策略结果；
-- 用声明式 Profile 为其他结构化规划来源生成 grounding pack；
-- 用 index 生成 read-first plan；
-- 在本仓库中 dogfood OpenDomain 自身模型。
-
-暂时不建议直接用于生产治理的唯一来源。更合理的使用方式是先在一个业务子域中试点，让人类 reviewer 审查 accepted knowledge 和 Candidate 流程是否符合团队习惯。
-
-## 开源边界
-
-这个仓库只包含通用领域语义层、工具链、示例和 OpenDomain 自身模型。
-维护者的 OpenSpec、PRD、ADR、复盘、dogfooding 和发布过程记录不属于公开产品
-仓库，也不会包含在 npm 包中。
-
-请不要提交：
-
-- 公司内部流程；
-- 客户名称；
-- 生产凭证；
-- 私有业务规则；
-- 未脱敏的数据库结构；
-- 内部项目记忆；
-- 未经授权的业务文档或代码片段。
-
-如果你要在公司内部使用 OpenDomain，建议在私有仓库维护项目自己的 `opendomain/` 文件。
-
-## 贡献
-
-见 [CONTRIBUTING.md](CONTRIBUTING.md)。
-
-## 安全
-
-见 [SECURITY.md](SECURITY.md)。
-
-## 开源协议
-
-本项目采用 MIT 协议，见 [LICENSE](LICENSE)。
+OpenDomain 使用 [MIT License](LICENSE)。
