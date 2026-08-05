@@ -54,14 +54,14 @@
   "scripts": {
     "test": "node --test",
     "opendomain": "node ./bin/opendomain.mjs",
-    "validate": "node ./bin/opendomain.mjs validate",
+    "validate": "node ./bin/opendomain.mjs validate examples/erp",
     "prepare:demo": "cd examples/erp && node ../../bin/opendomain.mjs prepare openspec/changes/order-cancellation/spec.md",
     "demo": "node ./bin/opendomain.mjs demo order-cancellation",
     "build:standalone": "node ./scripts/build-standalone.mjs",
     "smoke:agent-bootstrap": "node ./scripts/smoke-agent-bootstrap.mjs",
     "smoke:package": "node ./scripts/smoke-installed-package.mjs",
     "smoke:standalone": "node ./scripts/smoke-standalone.mjs",
-    "prepublishOnly": "npm test && npm run opendomain -- validate"
+    "prepublishOnly": "npm test && npm run validate"
   },
   "engines": {
     "node": "20 || >=22"

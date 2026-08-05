@@ -6,15 +6,7 @@ coverage/
 .next/
 .turbo/
 .cache/
-.codex/
-.echopath/
 .opendomain/
-/opendomain/generated/
-/AGENTS.md
-/openspec/
-/docs/
-/ROADMAP.md
-/examples/self-model/openspec/
 .npmrc
 .env
 .env.*

@@ -33,7 +33,7 @@ jobs:
         run: npm test
 
       - name: Validate OpenDomain
-        run: npm run opendomain -- validate
+        run: npm run validate
 
       - name: Run installed-package smoke
         run: npm run smoke:package

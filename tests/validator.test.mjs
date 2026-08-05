@@ -14,17 +14,7 @@ test("valid ERP grounding example passes", async () => {
   assert.equal(result.errors.length, 0);
   assert.ok(result.documents.some((document) => document.id === "spec.order-cancellation"));
   assert.ok(result.documents.some((document) => document.id === "sales.order-lifecycle"));
-});
-
-test("OpenDomain self model validates as real domain knowledge", async () => {
-  const result = await validatePath("opendomain", {
-    cwd: process.cwd(),
-    now: new Date("2026-07-03T00:00:00Z")
-  });
-
-  assert.equal(result.errors.length, 0);
-  assert.ok(result.documents.some((document) => document.id === "opendomain.domain-knowledge"));
-  assert.ok(result.documents.some((document) => document.id === "candidate-0002-semantic-retrieval-index"));
+  assert.ok(result.documents.some((document) => document.id === "candidate-0001-order-lifecycle"));
 });
 
 test("duplicate ids fail", async () => {
@@ -176,7 +166,7 @@ test("missing and unsupported types cannot enter the validated corpus", async ()
 });
 
 test("current corpus includes valid controls for every domain source schema", async () => {
-  const result = await validatePath(undefined, { cwd: process.cwd() });
+  const result = await validatePath("examples/erp", { cwd: process.cwd() });
   const types = new Set(result.documents.map((document) => document.type));
 
   assert.equal(result.errors.length, 0);
