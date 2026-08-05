@@ -565,7 +565,7 @@ test("prepare command accepts a directory containing one feature spec", async ()
   assert.match(stdout.toString(), /Feature: spec\.order-cancellation/);
 });
 
-test("prepare command works for the OpenDomain self model", async (context) => {
+test("prepare command works with a repository-local domain model", async (context) => {
   const stdout = memoryStream();
   const stderr = memoryStream();
   const fixtureRoot = await mkdtemp(path.join(os.tmpdir(), "opendomain-self-model-feature-"));
@@ -573,30 +573,34 @@ test("prepare command works for the OpenDomain self model", async (context) => {
   context.after(() => rm(fixtureRoot, { recursive: true, force: true }));
   await writeFile(featurePath, `---
 type: feature_spec
-id: spec.opendomain-self-model-maintenance
-name: OpenDomain self-model maintenance
+id: spec.sales-order-maintenance
+name: Sales order maintenance
 status: proposed
 grounding:
   status: required
-  rationale: Self-model maintenance changes OpenDomain's stable product semantics.
+  rationale: Sales order maintenance changes stable product semantics.
 affects_domain:
   concepts:
-    - opendomain.domain-knowledge
+    - sales.order
   rules: []
   lifecycles: []
   events: []
 ---
 
-# OpenDomain self-model maintenance
+# Sales order maintenance
 `, "utf8");
 
-  const exitCode = await runCli(["prepare", featurePath], { stdout, stderr });
+  const exitCode = await runCli(["prepare", featurePath], {
+    stdout,
+    stderr,
+    cwd: ERP_ROOT
+  });
   const output = stdout.toString();
 
   assert.equal(exitCode, 0);
-  assert.match(output, /spec\.opendomain-self-model-maintenance/);
-  assert.match(output, /opendomain\.domain-knowledge/);
-  assert.match(output, /candidate-0002-semantic-retrieval-index/);
+  assert.match(output, /spec\.sales-order-maintenance/);
+  assert.match(output, /sales\.order/);
+  assert.match(output, /candidate-0001-order-lifecycle/);
 });
 
 test("prepare command fails when no feature spec exists", async () => {
