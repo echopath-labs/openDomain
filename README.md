@@ -6,336 +6,168 @@
 ![Node](https://img.shields.io/badge/node-%3E%3D20-0f766e.svg)
 ![Source](https://img.shields.io/badge/source-Markdown%20%2B%20YAML-2563eb.svg)
 
-> 简体中文说明: [README.zh-CN.md](README.zh-CN.md)
+> Simplified Chinese: [README.zh-CN.md](README.zh-CN.md)
 
-OpenDomain is a Git-native, evidence-backed, AI-maintainable domain semantic
-layer for software systems.
+OpenDomain is a Git-native, evidence-backed domain semantic layer for AI
+agents and human maintainers. It keeps long-lived business concepts, rules,
+lifecycles, events, evidence, and review state in repository-readable Markdown.
 
-It helps AI agents and human maintainers preserve long-lived business knowledge:
-what a business concept means, what it is not, which rules and lifecycles govern
-it, which evidence supports it, and which changes require human review.
+## Start With Codex
 
-## Boundary
+Open a shell-enabled Codex task in the project you want to model and say:
 
-OpenDomain, OpenSpec, and EchoPath are separate layers:
+> Install OpenDomain in this workspace. Follow the official Agent installation
+> contract, initialize the Codex integration, and prove that it is ready without
+> adding package metadata to this project.
+
+Codex should follow the [Agent Installation Contract](INSTALL.md), choose a
+compatible installation channel, run initialization or update, then verify the
+workspace with `doctor` and `validate`.
+
+After installation, keep working in natural language:
+
+> Explore the accepted business model for order cancellation. Do not modify
+> anything, and keep Candidate knowledge separate.
+
+> Reverse-model this existing project from its code and product documentation.
+> Put every uncertain business claim into a Candidate for review.
+
+> Review candidate-0001. Show its evidence, conflicts, and compatibility impact,
+> then wait for my decision.
+
+> Implement this change. Complete OpenDomain grounding before modifying
+> behavior, and report the accepted IDs and Candidate boundaries you used.
+
+The managed repository instructions and Codex Skills route these intentions to
+OpenDomain. Users do not need to choose routine CLI commands themselves. See the
+[complete Usage Guide](USAGE.md) for the observable workflow and recovery paths.
+
+## Human And Agent Responsibilities
+
+OpenDomain uses bounded Agent autonomy:
+
+| Human owns | Codex owns |
+| --- | --- |
+| Goals and expected outcomes | Reading repository instructions and environment |
+| Business boundaries and final meaning | Selecting the appropriate OpenDomain workflow |
+| Risk trade-offs and Candidate decisions | Running tools and preserving evidence boundaries |
+| Final acceptance | Reporting validation and unresolved gaps |
+
+AI-inferred knowledge never becomes accepted domain knowledge automatically.
+It starts as a Domain Candidate and requires an explicit human review decision.
+Codex cannot bypass shell, network, filesystem, repository, or approval policy.
+
+## Product Boundary
 
 ```text
 OpenDomain
-  Stable business semantics
-  What the business world is and which rules remain true over time
+  Long-lived business semantics
+  What the business world is and which rules remain true
 
-OpenSpec
+OpenSpec / Spec Kit / other planning tools
   Change intent and delivery specification
-  Why a change exists, what must be delivered, and how it is accepted
+  Why this change exists, what is delivered, and how it is accepted
 
 EchoPath
   Agent execution continuity
-  How agents recover, hand off, preserve context, and propose memory
+  How Agent work is recovered, handed off, and resumed
 ```
 
-OpenDomain should be referenced by OpenSpec, not copied into OpenSpec.
+OpenSpec and other planning sources may declare affected OpenDomain IDs. They
+should reference accepted domain knowledge, not duplicate its definitions.
 
-## Current Capabilities
+## What Gets Added To A Project
 
-This workspace now includes the first MVP slices:
+`opendomain init --tools codex` creates or updates only OpenDomain-owned
+resources:
 
-- Markdown + YAML front matter source files
-- Safe parser and Draft 2020-12 runtime schema validation
-- Safe-corpus gating before semantic closure, indexes, and grounding
-- CLI commands for project init, validation, ID listing, reference checks,
-  grounding, indexing, and demo
-- Package-manager-neutral Agent bootstrap with managed Codex Skills,
-  repository instructions, updates, and diagnostics
-- Standalone macOS, Linux, and Windows CLI binaries that require no Node.js
-  runtime or host-project package metadata
-- OpenSpec `affects_domain` grounding
-- Explicit `required`, `not_required`, and `unclassified` grounding decisions
-- Advisory and enforced Grounding Assurance for Codex and CI
-- Declarative repository-local Integration Profiles for structured non-OpenSpec
-  sources, with Native Mapping and Sidecar Domain Declaration
-- Deterministic file or bundle Source Units and explicit or automatic Profile
-  selection
-- Domain Candidate boundary checks
-- Semantic Retrieval Index as a derived read-first view
-- Deterministic workspace resolution with canonical `opendomain/` sources
-- OpenDomain dogfooding under `opendomain/`
+```text
+opendomain/
+  config.yaml
+  contexts/
+  concepts/
+  rules/
+  lifecycles/
+  events/
+  candidates/
 
-The source of truth remains Markdown with YAML front matter stored in Git.
-
-## Installation And Usage
-
-### Install With Codex
-
-In a shell-enabled Codex session, users can ask:
-
-> Install OpenDomain in this workspace.
-
-Codex should follow the canonical [Agent Installation Contract](INSTALL.md).
-It installs OpenDomain as a user tool, initializes or updates the
-repository-local Codex adapter, and proves readiness with `doctor` and
-`validate`. The workflow must not add a `package.json`, lockfile, dependency,
-or npm script to the host project. Network, shell, filesystem, and approval
-boundaries still apply and must be reported when unavailable.
-
-### Standalone Binary (Recommended)
-
-Download the binary and `SHA256SUMS.txt` for the same version from
-[GitHub Releases](https://github.com/echopath-labs/openDomain/releases):
-
-| Platform | Minimum system | Release asset |
-| --- | --- | --- |
-| macOS Apple silicon | macOS 13.5 | `opendomain-v<version>-darwin-arm64` |
-| macOS Intel | macOS 13.5 | `opendomain-v<version>-darwin-x64` |
-| Linux x64 | kernel 4.18, glibc 2.28, libstdc++ 6.0.25 (`GLIBCXX_3.4.25`) | `opendomain-v<version>-linux-x64` |
-| Windows x64 | Windows 10 or Server 2016 | `opendomain-v<version>-windows-x64.exe` |
-
-The standalone executable embeds the official Node.js 24.18.0 runtime and
-inherits its operating-system requirements. Alpine/musl is not supported in
-the initial matrix. See the
-[Node.js 24 platform requirements](https://github.com/nodejs/node/blob/v24.18.0/BUILDING.md#platform-list).
-
-Verify the downloaded file against its line in `SHA256SUMS.txt` before running
-it. Use `shasum -a 256 <asset>` on macOS, `sha256sum <asset>` on Linux, or
-`Get-FileHash <asset> -Algorithm SHA256` in PowerShell.
-
-On macOS or Linux, make the file executable, rename it, and place it on `PATH`:
-
-```bash
-chmod +x opendomain-v<version>-<target>
-mkdir -p "${XDG_BIN_HOME:-$HOME/.local/bin}"
-install -m 0755 opendomain-v<version>-<target> "${XDG_BIN_HOME:-$HOME/.local/bin}/opendomain"
+AGENTS.md                              managed OpenDomain block
+.codex/skills/opendomain-explore/     generated Skill
+.codex/skills/opendomain-model/       generated Skill
+.codex/skills/opendomain-review/      generated Skill
 ```
 
-Ensure that the selected user-owned directory is on `PATH`.
+The command preserves user-owned content. It does not create or modify the host
+project's `package.json`, lockfile, dependencies, or npm scripts. Whether these
+files are committed is the project's decision; they are compatible with normal
+Git versioning.
 
-On Windows, rename the asset to `opendomain.exe` and place it in a directory on
-`PATH`. Then initialize a project without adding Node.js metadata:
+## Manual Installation
+
+Most users should ask Codex to install OpenDomain. The same channels are
+available manually.
+
+### npm alpha channel
+
+Use npm when Node.js 20 or Node.js 22 and newer is already available:
 
 ```bash
+npm install --global @echopath-labs/opendomain@alpha
 opendomain --version
 opendomain init --tools codex
 opendomain doctor
 opendomain validate
 ```
 
-Upgrade by downloading, verifying, and replacing the binary with the asset from
-a newer release. The initial macOS binaries are ad-hoc signed but not notarized;
-Windows binaries are not Authenticode signed. Checksums detect file changes but
-do not establish publisher identity. Homebrew is not currently an installation
-channel and will be reconsidered after the project reaches stable distribution
-maturity.
+The explicit `@alpha` tag is required during prerelease development.
 
-### npm (Alternative)
+### Standalone binary
 
-Users who already manage a Node.js tool environment can install the same CLI
-from npm:
+When a compatible npm environment is unavailable, download the matching binary
+and `SHA256SUMS.txt` from [GitHub Releases](https://github.com/echopath-labs/openDomain/releases).
+Verify the exact checksum before execution.
 
-```bash
-npm install -g @echopath-labs/opendomain@alpha
-opendomain init --tools codex
-opendomain doctor
-opendomain validate
-```
+| Target | Minimum system |
+| --- | --- |
+| `darwin-arm64` / `darwin-x64` | macOS 13.5 |
+| `linux-x64` | kernel 4.18, glibc 2.28, `GLIBCXX_3.4.25` |
+| `windows-x64.exe` | Windows 10 or Windows Server 2016 |
 
-The explicit `@alpha` tag is required during the prerelease period so npm does
-not resolve an older `latest` dist-tag.
+The initial macOS binaries are ad-hoc signed but not notarized. Windows binaries
+are not Authenticode signed. Checksums detect file changes but do not establish
+publisher identity. See [Installation channels](USAGE.md#installation-channels)
+for verification and upgrade steps.
 
-Both distribution channels run the same CLI. OpenDomain does not
-create or modify the host project's `package.json`, lockfile, dependency list,
-or npm scripts. `init --tools codex` adds the canonical `opendomain/` workspace,
-generated `.codex/skills/opendomain-*` adapters, and one managed OpenDomain
-block in `AGENTS.md`. Existing instructions outside that block remain owned by
-the project.
+## Current Capabilities
 
-After initialization, users can ask Codex to explore or model the domain,
-review a Candidate, or implement a change. The generated Skills and managed
-instructions select the appropriate CLI operations; direct commands remain
-available for CI and diagnostics.
+The current alpha includes:
 
-If workspace configuration later deselects an adapter, `doctor` reports any
-remaining generated Skills and `update` removes only files that still carry
-OpenDomain generation ownership metadata.
+- Markdown with YAML front matter as the source of truth;
+- schema validation and reference integrity checks;
+- accepted concepts, rules, lifecycles, events, and evidence;
+- Candidate-first AI inference with explicit human review;
+- deterministic Semantic Closure and derived read-first indexes;
+- Grounding Request, Grounding Pack, and advisory/enforced Assurance;
+- built-in OpenSpec grounding and declarative Integration Profiles;
+- managed Codex instructions, Skills, updates, and diagnostics;
+- npm and standalone CLI distribution without host package metadata.
 
-### Source Checkout
+OpenDomain is suitable for bounded trials and public iteration. The format and
+CLI may still change before a stable release, and it should not yet be the sole
+governance source for production-critical domain decisions.
 
-Maintainers can also run it from a source checkout.
+## Public Resources
 
-Common commands:
-
-```bash
-npm run opendomain -- help
-npm run opendomain -- init
-npm run opendomain -- init --tools codex
-npm run opendomain -- update
-npm run opendomain -- doctor
-npm run opendomain -- validate
-npm run prepare:demo
-(cd examples/erp && node ../../bin/opendomain.mjs assure openspec/changes/order-cancellation/spec.md)
-npm run opendomain -- integrations validate
-npm run opendomain -- integrations list
-npm run opendomain -- candidate list examples/erp
-npm run opendomain -- candidate show candidate-0001-order-lifecycle examples/erp
-npm run opendomain -- index build examples/erp --out /tmp/erp-index.json
-npm run opendomain -- index query sales.order --index /tmp/erp-index.json
-npm test
-```
-
-Commands without a source path resolve the current project's canonical
-`opendomain/` workspace. During `0.x`, a legacy `domain/` workspace remains
-readable when the canonical root is absent. If both exist, `opendomain/` wins
-with a warning; the roots are never merged. Pass a file or directory explicitly
-when validating a fixture or external corpus such as `examples/erp`.
-
-An OpenSpec-style source unit can declare an explicit grounding decision:
-
-```yaml
-grounding:
-  status: required
-  rationale: Cancellation is constrained by accepted order semantics.
-affects_domain:
-  concepts:
-    - sales.order
-  rules: []
-  lifecycles: []
-  events: []
-```
-
-The supported statuses are `required`, `not_required`, and `unclassified`.
-`not_required` requires a non-whitespace rationale and forbids every OpenDomain
-ID. Empty IDs under `required` represent an incomplete `domain_model_gap`;
-empty IDs never imply `not_required`.
-Every affected ID must also match its declared category: `concepts` resolve to
-`domain_concept`, `rules` to `business_rule`, `lifecycles` to `lifecycle`, and
-`events` to `domain_event`. IDs must contain non-whitespace text. When a
-`feature_spec` is included in an `opendomain validate` target, validation applies
-the same grounding-decision rules used by `prepare` and `assure`.
-Unknown affected-domain categories are invalid. A source recognized as OpenSpec
-but failing validation does not fall through to a matching Profile, and external
-Grounding Packs cannot contain duplicate evidence or Candidate IDs.
-
-Run the read-only preflight locally or in CI:
-
-```bash
-opendomain assure <source-unit>
-opendomain assure <source-unit> --mode enforced --json
-```
-
-Advisory mode warns but exits zero for `unclassified` and `domain_model_gap`.
-Enforced mode fails those incomplete states. Malformed input, contradictions,
-broken references, integration ambiguity, and accepted/Candidate trust boundary
-violations fail in both modes. Run `opendomain init` before adopting Assurance
-in an existing project. The result reports observed evidence; it does not prove
-Agent comprehension or independently attest a historical repository state.
-An `unclassified` request still validates every affected ID it already declares;
-missing or mistyped evidence fails in both modes rather than becoming advisory.
-The Result Schema binds `prepared` to `required`, `not_required` to an explicit
-evidence-free skip, and `incomplete` to `required` or `unclassified`.
-It validates shape and expressible local invariants, including that `pass`
-contains no findings or Pack diagnostics and that `warn` contains no error
-findings or Pack errors. It does not re-evaluate semantic coverage in persisted
-or third-party JSON; CI must run `opendomain assure` against the current
-workspace.
-Affected concepts, rules, lifecycles, and events use the same canonical dotted
-ID grammar as their OpenDomain source objects. Grounding Pack evidence IDs are
-validated against the grammar for their declared type.
-`read_first` accepts only bounded contexts, concepts, rules, lifecycles, and
-events, and every evidence path must contain non-whitespace text;
-`domain_candidate` entries remain confined to Candidate boundaries.
-Paths rendered by Assurance are normalized single-line values without leading
-or trailing whitespace or terminal control characters. Evidence and Candidate
-paths must also be normalized repository-relative paths without absolute roots,
-backslashes, or `.` / `..` traversal segments. External diagnostic text uses the
-same control-character boundary, and schema-derived finding text escapes unsafe
-property-name controls before terminal output.
-Caller-supplied or persisted Grounding Packs cannot establish completed
-Assurance, even when their shape is valid. Run `opendomain assure` against the
-current Source Unit and workspace so accepted evidence and Semantic Closure are
-regenerated from validated OpenDomain sources.
-`preparation` reports only its state. The Grounding Request and classification
-live in `grounding_pack.grounding_request`; evidence IDs, types, and paths live
-in `grounding_pack.read_first` and `grounding_pack.candidate_boundaries`. IDs
-cannot appear in both evidence collections, and the Result carries no divergent
-request, classification, or evidence summary.
-Each Candidate boundary uses the Candidate ID, lifecycle status, and confidence
-contract, and its `target_id` must identify accepted `read_first` evidence in
-that same Pack. Human-readable Assurance output preserves that review status,
-including final `rejected`, `superseded`, or `deprecated` decisions.
-
-Repository-local Integration Profiles can normalize explicit structured intent
-and OpenDomain IDs from non-OpenSpec sources. Profiles do not scan prose, infer
-IDs, execute code, create Candidates, or promote accepted knowledge. The
-machine-readable contracts are published under `schemas/`.
-Profile v1 has no grounding-decision mapping, so its trusted Request Builder
-normalizes requests to `unclassified`; use advisory Assurance, or an integration
-with an explicit decision, until that contract is extended.
-
-## Project Status
-
-OpenDomain is early alpha. The current repository is ready for public iteration,
-but the format and CLI may still change.
-
-Public entry points:
-
+- [Usage Guide](USAGE.md)
+- [Agent Installation Contract](INSTALL.md)
+- [ERP example](examples/erp/README.md)
+- [Changelog](CHANGELOG.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
-- [Changelog](CHANGELOG.md)
 - `schemas/` for machine-readable contracts
-- `examples/erp/` for synthetic integration fixtures
 
-License: MIT.
+Maintainer planning records are private process material and are not shipped in
+the public repository or npm package. The OpenSpec fixture under `examples/erp/`
+is synthetic interoperability data.
 
-## Repository Map
-
-```text
-.
-├── README.md
-├── opendomain/
-│   ├── integrations/profiles/
-│   └── README.md
-├── examples/
-│   └── erp/
-├── schemas/
-└── tests/
-```
-
-## Working Rule
-
-AI-discovered domain knowledge starts as a Candidate. It does not become
-accepted OpenDomain knowledge until a human reviewer approves it.
-
-## MVP Grounding Demo
-
-The first MVP slice demonstrates Order Cancellation grounding:
-
-```bash
-npm test
-npm run prepare:demo
-npm run opendomain -- validate examples/erp
-npm run demo
-```
-
-## Semantic Retrieval Index
-
-The index is a derived read-first view. It helps Codex find accepted source
-files and related Candidate boundaries, but it is not source of truth.
-
-## Dogfooding
-
-OpenDomain now models part of its own product semantics under `opendomain/`.
-
-```bash
-npm run opendomain -- validate
-```
-
-## Planning Split
-
-Use this rule when preserving planning:
-
-- `opendomain/`: long-lived OpenDomain semantics
-- `opendomain/candidates/`: proposed or inferred semantics
-- a project's optional `openspec/changes/`: future delivery work
-
-Maintainer OpenSpec, PRDs, ADRs, dogfooding, review notes, roadmaps, and release
-procedures are development-process records. They are intentionally excluded
-from this public repository and from the npm package. The OpenSpec files under
-`examples/erp/` are synthetic interoperability fixtures, not project records.
+OpenDomain is licensed under the [MIT License](LICENSE).

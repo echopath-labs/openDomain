@@ -62,7 +62,26 @@ try {
   await access(path.join(installedRoot, "schemas", "domain-declaration.schema.json"));
   await access(path.join(installedRoot, "schemas", "assurance-result.schema.json"));
   await access(path.join(installedRoot, "schemas", "workspace-config.schema.json"));
-  await access(path.join(installedRoot, "INSTALL.md"));
+  for (const publicDocument of [
+    "README.md",
+    "README.zh-CN.md",
+    "USAGE.md",
+    "USAGE.zh-CN.md",
+    "INSTALL.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "examples/erp/README.md"
+  ]) {
+    await access(path.join(installedRoot, ...publicDocument.split("/")));
+  }
+  for (const privatePath of ["openspec", "docs", ".codex"]) {
+    await assert.rejects(
+      access(path.join(installedRoot, privatePath)),
+      (error) => error?.code === "ENOENT"
+    );
+  }
   await access(path.join(installedRoot, "scripts", "smoke-installed-package.mjs"));
   for (const maintainerScript of [
     "assemble-standalone-assets.mjs",

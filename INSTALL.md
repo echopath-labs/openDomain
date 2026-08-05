@@ -1,6 +1,8 @@
 # OpenDomain Agent Installation Contract
 
 This is the canonical installation contract for shell-capable AI agents.
+For the human-facing workflow, see the [English Usage Guide](USAGE.md) or
+[Simplified Chinese Usage Guide](USAGE.zh-CN.md).
 
 When a user asks you to install OpenDomain in the current workspace, complete
 this workflow unless the user's instructions or repository policy are stricter.
@@ -61,8 +63,8 @@ Use the standalone fallback when a compatible npm environment is unavailable:
    user-writable executable directory on `PATH`, such as `$HOME/.local/bin`.
 6. Run `opendomain --version` and confirm the expected version.
 
-Supported standalone targets and minimum systems are listed in the project
-[README](README.md#standalone-binary-recommended). Never execute an asset when
+Supported standalone targets and minimum systems are listed under
+[Installation channels](USAGE.md#installation-channels). Never execute an asset when
 the matching checksum is absent or different. Do not silently use `sudo` to
 write to a system directory.
 
