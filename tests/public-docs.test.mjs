@@ -32,6 +32,11 @@ const pairedNavigation = new Map([
   ["USAGE.zh-CN.md", ["USAGE.md", "README.zh-CN.md", "INSTALL.md", "examples/erp/README.md"]]
 ]);
 
+const npmPackageUrl =
+  "https://www.npmjs.com/package/@echopath-labs/opendomain";
+const npmAlphaBadgeUrl =
+  "https://img.shields.io/npm/v/%40echopath-labs%2Fopendomain/alpha?label=npm";
+
 test("public guidance exposes paired Agent adoption entrypoints", async () => {
   for (const document of publicDocuments) {
     const details = await stat(path.join(repositoryRoot, document));
@@ -50,6 +55,19 @@ test("public guidance exposes paired Agent adoption entrypoints", async () => {
         `${document} must link to ${expectedTarget}`
       );
     }
+  }
+});
+
+test("public READMEs expose the same alpha-aware npm package entrypoint", async () => {
+  const expectedBadge = `[![npm](${npmAlphaBadgeUrl})](${npmPackageUrl})`;
+
+  for (const document of ["README.md", "README.zh-CN.md"]) {
+    const content = await readDocument(document);
+    assert.equal(
+      content.split(expectedBadge).length - 1,
+      1,
+      `${document} must contain exactly one linked npm alpha badge`
+    );
   }
 });
 
