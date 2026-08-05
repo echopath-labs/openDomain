@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Correct historical prerelease headings, dates, and notable workspace and
+  release-boundary entries against published tags and npm registry history.
+
 ## 0.1.0-alpha.9 - 2026-08-04
 
 - Add a canonical Agent installation contract so Codex can install OpenDomain
@@ -11,8 +14,10 @@
   checksum-verified, user-local standalone fallback.
 - Add isolated global-install smoke coverage for Agent bootstrap in a non-Node
   workspace.
+- Fix GitHub standalone release asset uploads to target the repository
+  explicitly when the publish job runs without a checkout.
 
-## 0.1.0-alpha.8 - 2026-08-03
+## 0.1.0-alpha.8 - 2026-08-04
 
 - Add Node SEA standalone CLI builds for macOS arm64/x64, Linux x64, and
   Windows x64 so projects can initialize OpenDomain without installing Node.js
@@ -92,6 +97,8 @@
   releases to Node.js 20 or 22 and newer, with CI coverage for both LTS lines.
 - Add a project-specific release runbook covering validation, npm dist-tags,
   registry smoke tests, GitHub releases, and rollback.
+- Establish deterministic canonical `opendomain/` workspace resolution with
+  legacy `domain/` fallback, canonical precedence, and no root merging.
 
 ## 0.1.0-alpha.5 - 2026-07-23
 
@@ -111,6 +118,9 @@
 - Share deterministic Semantic Closure v1 between `prepare` and index queries.
 - Add advisory required-versus-Candidate Context Budget estimates.
 - Preserve existing OpenSpec alpha compatibility metadata.
+- Separate private planning and development-process records from the public
+  product repository and npm package while preserving public schemas, examples,
+  and usage contracts.
 
 ## 0.1.0-alpha.3 - 2026-07-08
 
@@ -131,7 +141,7 @@
 - Add `opendomain init --example erp` for copying the bundled ERP example.
 - Add first-use getting started documentation.
 
-## 0.1.0-alpha
+## 0.1.0-alpha.0 - 2026-07-07
 
 Initial alpha workspace for OpenDomain.
 
