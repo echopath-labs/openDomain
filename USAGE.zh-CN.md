@@ -111,6 +111,83 @@ Codex 初始化会管理：
 受管区块外的既有内容仍由用户拥有。遇到同名用户 Skill 时，OpenDomain 会报告冲突，
 不会覆盖。
 
+## 多产品 Workspace 治理
+
+现有单产品布局仍是默认行为。当一个物理 `opendomain/` 根需要容纳多个独立 owner 的
+产品时，增加 `opendomain/governance.yaml`：
+
+```yaml
+schema_version: "1.0"
+products:
+  - id: public_api
+    owners: [api-team]
+    exposure: public
+    dependencies: [shared_contracts]
+    forbidden_dependencies: [desktop_private]
+  - id: shared_contracts
+    owners: [platform-team]
+    exposure: public
+    dependencies: []
+    forbidden_dependencies: []
+  - id: desktop_private
+    owners: [desktop-team]
+    exposure: private
+    dependencies: [public_api]
+    forbidden_dependencies: []
+domain_groups:
+  - id: public_api.core
+    product: public_api
+    source_root: products/public-api/core
+    owners: [api-team]
+    exposure: public
+    dependencies: [shared_contracts.core]
+    forbidden_dependencies: [desktop_private.context]
+  - id: shared_contracts.core
+    product: shared_contracts
+    source_root: products/shared-contracts/core
+    owners: [platform-team]
+    exposure: public
+    dependencies: []
+    forbidden_dependencies: []
+  - id: desktop_private.context
+    product: desktop_private
+    source_root: products/desktop-private/context
+    owners: [desktop-team]
+    exposure: private
+    dependencies: [public_api.core]
+    forbidden_dependencies: []
+```
+
+每个 `source_root` 继续使用普通的 `contexts/`、`concepts/`、`rules/`、
+`lifecycles/`、`events/` 与 `candidates/`。所有 root 必须是 `opendomain/`
+内部互不重叠的真实目录；每个受治理语义 source 必须且只能属于一个 domain group。
+
+exposure 从最公开到最严格固定为：
+
+```text
+public < ecosystem < internal < private
+```
+
+节点只能依赖相同或更公开的目标。跨产品 group 依赖还必须声明对应 product 依赖。
+`forbidden_dependencies` 会传递检查并返回完整依赖路径。
+
+面向人或自动化执行：
+
+```bash
+opendomain validate
+opendomain validate --json
+```
+
+JSON 会增加 `governance.dependency_graph` 和
+`governance.publication_closures`，包含 manifest provenance、纳入的节点/文件与
+selection path。未知 schema version/exposure、循环、缺失 target、root 重叠、未归属
+source、forbidden path 与 private-to-public 泄漏都会 fail closed。
+
+publication closure 是可重建的静态证据。它不会发布仓库、复制公开投影、授予权限、
+修改 Git 或证明 release 已发生。npm 包与独立 executable 使用相同规则，不依赖
+EchoPath、AGW、package-manager workspace 或私有 sibling。没有 `governance.yaml` 时，
+现有 canonical、legacy 与 explicit-target 行为保持不变。
+
 ## 第一次只读了解业务
 
 可以说：

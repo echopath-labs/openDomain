@@ -123,6 +123,89 @@ Codex initialization manages:
 Existing content outside the managed block remains user-owned. A conflicting
 user-owned Skill is reported rather than overwritten.
 
+## Multi-Product Workspace Governance
+
+The existing single-product layout remains the default. When one physical
+`opendomain/` root must contain several independently owned products, add
+`opendomain/governance.yaml`:
+
+```yaml
+schema_version: "1.0"
+products:
+  - id: public_api
+    owners: [api-team]
+    exposure: public
+    dependencies: [shared_contracts]
+    forbidden_dependencies: [desktop_private]
+  - id: shared_contracts
+    owners: [platform-team]
+    exposure: public
+    dependencies: []
+    forbidden_dependencies: []
+  - id: desktop_private
+    owners: [desktop-team]
+    exposure: private
+    dependencies: [public_api]
+    forbidden_dependencies: []
+domain_groups:
+  - id: public_api.core
+    product: public_api
+    source_root: products/public-api/core
+    owners: [api-team]
+    exposure: public
+    dependencies: [shared_contracts.core]
+    forbidden_dependencies: [desktop_private.context]
+  - id: shared_contracts.core
+    product: shared_contracts
+    source_root: products/shared-contracts/core
+    owners: [platform-team]
+    exposure: public
+    dependencies: []
+    forbidden_dependencies: []
+  - id: desktop_private.context
+    product: desktop_private
+    source_root: products/desktop-private/context
+    owners: [desktop-team]
+    exposure: private
+    dependencies: [public_api.core]
+    forbidden_dependencies: []
+```
+
+Each `source_root` contains the normal `contexts/`, `concepts/`, `rules/`,
+`lifecycles/`, `events/`, and `candidates/` directories. Roots must be real,
+disjoint directories confined to `opendomain/`; every governed semantic source
+must belong to exactly one domain group.
+
+Exposure is fixed from least to most restrictive:
+
+```text
+public < ecosystem < internal < private
+```
+
+A node may only depend on an equal or less restrictive target. Cross-product
+group dependencies also require the corresponding product dependency.
+`forbidden_dependencies` applies transitively and reports the dependency path.
+
+Validate for humans or automation:
+
+```bash
+opendomain validate
+opendomain validate --json
+```
+
+The JSON result adds `governance.dependency_graph` and
+`governance.publication_closures`, including manifest provenance, included
+nodes/files, and selection paths. Unknown schema versions/exposure values,
+cycles, missing targets, overlaps, unassigned sources, forbidden paths, and
+private-to-public leakage fail closed.
+
+Publication closure is rebuildable static evidence. It does not publish a
+repository, copy a public projection, grant access, modify Git, or prove that a
+release occurred. The npm package and standalone executable evaluate the same
+manifest without requiring EchoPath, AGW, a package-manager workspace, or a
+private sibling repository. If `governance.yaml` is absent, current canonical,
+legacy, and explicit-target behavior is unchanged.
+
 ## First Read-Only Domain Exploration
 
 Ask:

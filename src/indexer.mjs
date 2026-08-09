@@ -39,6 +39,17 @@ export async function buildSemanticIndex(targetPath, options = {}) {
     source_root: validation.workspace?.source_root ?? targetPath ?? "<default>",
     derived_from: "OpenDomain Markdown source files in Git",
     authoritative_source: "OpenDomain source files, not this index",
+    ...(validation.governance
+      ? {
+          governance: {
+            schema_version: validation.governance.schema_version,
+            manifest: validation.governance.manifest,
+            derived: true,
+            authoritative_source: validation.governance.authoritative_source,
+            publication_closures: validation.governance.publication_closures
+          }
+        }
+      : {}),
     entries: entries.sort(compareById)
   };
 
@@ -208,7 +219,17 @@ async function toIndexEntry(document, cwd, now) {
     evidence: arrayOrEmpty(frontmatter.evidence),
     review: frontmatter.review,
     source_hash: await hashFile(path.resolve(cwd, sourceFile)),
-    last_indexed_at: now.toISOString()
+    last_indexed_at: now.toISOString(),
+    ...(document.ownership
+      ? {
+          product_id: document.ownership.product_id,
+          domain_group_id: document.ownership.domain_group_id,
+          owners: [...document.ownership.owners],
+          exposure: document.ownership.exposure,
+          governance_schema_version: document.ownership.governance_schema_version,
+          governance_source_root: document.ownership.source_root
+        }
+      : {})
   };
 }
 

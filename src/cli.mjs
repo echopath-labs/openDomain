@@ -1256,6 +1256,15 @@ function printValidationResult(result, stream) {
     stream.write(".\n");
   }
 
+  if (result.governance) {
+    const closures = result.governance.publication_closures ?? [];
+    stream.write(
+      `Governance ${result.governance.schema_version}: ${result.governance.products.length} products, `
+      + `${result.governance.domain_groups.length} domain groups, ${closures.length} public closures passed `
+      + "(derived evidence; no publication performed).\n"
+    );
+  }
+
   for (const issue of [...result.errors, ...result.warnings]) {
     printIssue(issue, stream);
   }

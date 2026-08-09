@@ -62,6 +62,7 @@ try {
   await access(path.join(installedRoot, "schemas", "domain-declaration.schema.json"));
   await access(path.join(installedRoot, "schemas", "assurance-result.schema.json"));
   await access(path.join(installedRoot, "schemas", "workspace-config.schema.json"));
+  await access(path.join(installedRoot, "schemas", "governance.schema.json"));
   for (const publicDocument of [
     "README.md",
     "README.zh-CN.md",

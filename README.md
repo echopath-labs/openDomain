@@ -148,6 +148,7 @@ The current alpha includes:
 - accepted concepts, rules, lifecycles, events, and evidence;
 - Candidate-first AI inference with explicit human review;
 - deterministic Semantic Closure and derived read-first indexes;
+- optional multi-product workspace governance with deterministic exposure and publication-closure validation;
 - Grounding Request, Grounding Pack, and advisory/enforced Assurance;
 - built-in OpenSpec grounding and declarative Integration Profiles;
 - managed Codex instructions, Skills, updates, and diagnostics;
@@ -156,6 +157,14 @@ The current alpha includes:
 OpenDomain is suitable for bounded trials and public iteration. The format and
 CLI may still change before a stable release, and it should not yet be the sole
 governance source for production-critical domain decisions.
+
+For a multi-product canonical workspace, add a versioned
+`opendomain/governance.yaml` and place each domain group's normal semantic
+directories under its declared `source_root`. `opendomain validate --json`
+then returns product/group ownership, dependency graphs, exposure diagnostics,
+and derived public dependency closures. A passing closure is static evidence;
+it does not publish files, grant permissions, change Git, or require EchoPath.
+See [Multi-product workspace governance](USAGE.md#multi-product-workspace-governance).
 
 ## Public Resources
 

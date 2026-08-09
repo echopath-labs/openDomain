@@ -1,0 +1,22 @@
+schema_version: "1.0"
+products:
+  - id: alpha
+    owners: [alpha-owner]
+    exposure: public
+    dependencies: []
+    forbidden_dependencies: []
+domain_groups:
+  - id: alpha.one
+    product: alpha
+    source_root: products/alpha/one
+    owners: [alpha-owner]
+    exposure: public
+    dependencies: [alpha.two]
+    forbidden_dependencies: []
+  - id: alpha.two
+    product: alpha
+    source_root: products/alpha/two
+    owners: [alpha-owner]
+    exposure: public
+    dependencies: [alpha.one]
+    forbidden_dependencies: []

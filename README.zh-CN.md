@@ -137,6 +137,7 @@ opendomain validate
 - accepted 概念、规则、生命周期、事件与证据；
 - Candidate-first AI 推断和显式人工审查；
 - 确定性 Semantic Closure 与派生 read-first index；
+- 可选的多产品 workspace 治理、exposure 传播与 public dependency closure 校验；
 - Grounding Request、Grounding Pack 和 advisory/enforced Assurance；
 - 内置 OpenSpec grounding 与声明式 Integration Profile；
 - 受管 Codex 指令、Skills、更新和诊断；
@@ -144,6 +145,12 @@ opendomain validate
 
 OpenDomain 当前适合限定范围试点和公开迭代。稳定版之前格式与 CLI 仍可能变化，暂时
 不应成为生产关键领域决策的唯一治理来源。
+
+多产品 canonical workspace 可以增加版本化的 `opendomain/governance.yaml`，并把每个
+domain group 的普通语义目录放入声明的 `source_root`。`opendomain validate --json`
+会返回 product/group owner、依赖图、exposure 诊断与派生 public closure。closure 通过
+只是静态证据，不会发布文件、授予权限、修改 Git，也不要求安装 EchoPath。详见
+[多产品 Workspace 治理](USAGE.zh-CN.md#多产品-workspace-治理)。
 
 ## 公开资料
 

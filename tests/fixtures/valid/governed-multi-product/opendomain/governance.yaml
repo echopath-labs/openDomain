@@ -1,0 +1,48 @@
+schema_version: "1.0"
+products:
+  - id: alpha
+    owners: [alpha-owner]
+    exposure: public
+    dependencies: [beta]
+    forbidden_dependencies: []
+  - id: beta
+    owners: [beta-owner]
+    exposure: public
+    dependencies: []
+    forbidden_dependencies: []
+domain_groups:
+  - id: alpha.ecosystem
+    product: alpha
+    source_root: products/alpha/ecosystem
+    owners: [alpha-owner]
+    exposure: ecosystem
+    dependencies: []
+    forbidden_dependencies: []
+  - id: alpha.internal
+    product: alpha
+    source_root: products/alpha/internal
+    owners: [alpha-owner]
+    exposure: internal
+    dependencies: []
+    forbidden_dependencies: []
+  - id: alpha.private
+    product: alpha
+    source_root: products/alpha/private
+    owners: [alpha-owner]
+    exposure: private
+    dependencies: []
+    forbidden_dependencies: []
+  - id: alpha.public
+    product: alpha
+    source_root: products/alpha/public
+    owners: [alpha-owner]
+    exposure: public
+    dependencies: [beta.public]
+    forbidden_dependencies: []
+  - id: beta.public
+    product: beta
+    source_root: products/beta/public
+    owners: [beta-owner]
+    exposure: public
+    dependencies: []
+    forbidden_dependencies: []

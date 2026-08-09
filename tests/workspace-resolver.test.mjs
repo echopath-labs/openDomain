@@ -35,6 +35,79 @@ test("canonical workspace is selected without scanning repository examples", asy
   });
 });
 
+test("governed canonical workspace collects disjoint groups with ownership metadata", async () => {
+  await withTempProject(async (project) => {
+    await writeGovernance(project, validGovernance());
+    await writeMarkdown(project, "opendomain/products/alpha/core/contexts/alpha.md");
+    await writeMarkdown(project, "opendomain/products/beta/core/concepts/beta.md");
+
+    const result = await resolveWorkspaceSources(undefined, { cwd: project });
+
+    assert.equal(result.errors.length, 0);
+    assert.equal(result.governance.manifest.schema_version, "1.0");
+    assert.deepEqual(relativeFiles(project, result.files), [
+      "opendomain/products/alpha/core/contexts/alpha.md",
+      "opendomain/products/beta/core/concepts/beta.md"
+    ]);
+    assert.deepEqual(result.sourceOwnership.get(result.files[0]), {
+      product_id: "alpha",
+      domain_group_id: "alpha.core",
+      owners: ["alpha-owner"],
+      exposure: "public",
+      governance_schema_version: "1.0",
+      source_root: "products/alpha/core"
+    });
+  });
+});
+
+test("governed source roots reject overlap, missing, empty, symlinked, and unassigned sources", async () => {
+  await withTempProject(async (project) => {
+    const overlapping = validGovernance();
+    overlapping.domain_groups[1].source_root = "products/alpha/core/nested";
+    await writeGovernance(project, overlapping);
+    await writeMarkdown(project, "opendomain/products/alpha/core/contexts/alpha.md");
+    await writeMarkdown(project, "opendomain/products/alpha/core/nested/contexts/beta.md");
+    let result = await resolveWorkspaceSources(undefined, { cwd: project });
+    assert.ok(result.errors.some((error) => error.problem.includes("overlap")));
+
+    await rm(path.join(project, "opendomain"), { recursive: true, force: true });
+    const missing = validGovernance();
+    await writeGovernance(project, missing);
+    await writeMarkdown(project, "opendomain/products/alpha/core/contexts/alpha.md");
+    result = await resolveWorkspaceSources(undefined, { cwd: project });
+    assert.ok(result.errors.some((error) => error.problem.includes("does not exist")));
+
+    await rm(path.join(project, "opendomain"), { recursive: true, force: true });
+    await writeGovernance(project, validGovernance());
+    await writeMarkdown(project, "opendomain/products/alpha/core/contexts/alpha.md");
+    await mkdir(path.join(project, "opendomain/products/beta/core"), { recursive: true });
+    result = await resolveWorkspaceSources(undefined, { cwd: project });
+    assert.ok(result.errors.some((error) => error.problem.includes("no eligible Markdown")));
+
+    await rm(path.join(project, "opendomain"), { recursive: true, force: true });
+    await writeGovernance(project, validGovernance());
+    await writeMarkdown(project, "opendomain/products/alpha/core/contexts/alpha.md");
+    const external = await mkdtemp(path.join(os.tmpdir(), "opendomain-governed-symlink-"));
+    try {
+      await writeMarkdown(external, "concepts/beta.md");
+      await mkdir(path.join(project, "opendomain/products/beta"), { recursive: true });
+      await symlink(external, path.join(project, "opendomain/products/beta/core"));
+      result = await resolveWorkspaceSources(undefined, { cwd: project });
+      assert.ok(result.errors.some((error) => error.problem.includes("symbolic link")));
+    } finally {
+      await rm(external, { recursive: true, force: true });
+    }
+
+    await rm(path.join(project, "opendomain"), { recursive: true, force: true });
+    await writeGovernance(project, validGovernance());
+    await writeMarkdown(project, "opendomain/products/alpha/core/contexts/alpha.md");
+    await writeMarkdown(project, "opendomain/products/beta/core/concepts/beta.md");
+    await writeMarkdown(project, "opendomain/orphan/contexts/unassigned.md");
+    result = await resolveWorkspaceSources(undefined, { cwd: project });
+    assert.ok(result.errors.some((error) => error.problem.includes("outside every declared")));
+  });
+});
+
 test("legacy workspace remains readable with an actionable warning", async () => {
   await withTempProject(async (project) => {
     await writeMarkdown(project, "domain/contexts/legacy.md");
@@ -177,6 +250,72 @@ async function writeMarkdown(project, relativePath) {
   const file = path.join(project, relativePath);
   await mkdir(path.dirname(file), { recursive: true });
   await writeFile(file, "---\ntype: fixture\n---\n", "utf8");
+}
+
+async function writeGovernance(project, manifest) {
+  const file = path.join(project, "opendomain/governance.yaml");
+  await mkdir(path.dirname(file), { recursive: true });
+  const lines = [`schema_version: "${manifest.schema_version}"`, "products:"];
+  for (const product of manifest.products) {
+    lines.push(`  - id: ${product.id}`);
+    lines.push(`    owners: [${product.owners.join(", ")}]`);
+    lines.push(`    exposure: ${product.exposure}`);
+    lines.push(`    dependencies: [${product.dependencies.join(", ")}]`);
+    lines.push(`    forbidden_dependencies: [${product.forbidden_dependencies.join(", ")}]`);
+  }
+  lines.push("domain_groups:");
+  for (const group of manifest.domain_groups) {
+    lines.push(`  - id: ${group.id}`);
+    lines.push(`    product: ${group.product}`);
+    lines.push(`    source_root: ${group.source_root}`);
+    lines.push(`    owners: [${group.owners.join(", ")}]`);
+    lines.push(`    exposure: ${group.exposure}`);
+    lines.push(`    dependencies: [${group.dependencies.join(", ")}]`);
+    lines.push(`    forbidden_dependencies: [${group.forbidden_dependencies.join(", ")}]`);
+  }
+  await writeFile(file, `${lines.join("\n")}\n`, "utf8");
+}
+
+function validGovernance() {
+  return {
+    schema_version: "1.0",
+    products: [
+      {
+        id: "alpha",
+        owners: ["alpha-owner"],
+        exposure: "public",
+        dependencies: ["beta"],
+        forbidden_dependencies: []
+      },
+      {
+        id: "beta",
+        owners: ["beta-owner"],
+        exposure: "public",
+        dependencies: [],
+        forbidden_dependencies: []
+      }
+    ],
+    domain_groups: [
+      {
+        id: "alpha.core",
+        product: "alpha",
+        source_root: "products/alpha/core",
+        owners: ["alpha-owner"],
+        exposure: "public",
+        dependencies: ["beta.core"],
+        forbidden_dependencies: []
+      },
+      {
+        id: "beta.core",
+        product: "beta",
+        source_root: "products/beta/core",
+        owners: ["beta-owner"],
+        exposure: "public",
+        dependencies: [],
+        forbidden_dependencies: []
+      }
+    ]
+  };
 }
 
 function relativeFiles(project, files) {
