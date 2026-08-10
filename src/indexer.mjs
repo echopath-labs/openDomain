@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { collectSemanticClosure } from "./semantic-closure.mjs";
+import { selectSemanticContext } from "./semantic-query.mjs";
 import { validatePath } from "./validator.mjs";
 import {
   LEGACY_DEFAULT_INDEX_PATH,
@@ -15,6 +15,18 @@ export async function buildSemanticIndex(targetPath, options = {}) {
   const cwd = options.cwd ?? process.cwd();
   const now = options.now ?? new Date();
   const validation = await validatePath(targetPath, { cwd, now });
+
+  return buildSemanticIndexFromValidation(validation, {
+    cwd,
+    now,
+    targetPath
+  });
+}
+
+export async function buildSemanticIndexFromValidation(validation, options = {}) {
+  const cwd = options.cwd ?? process.cwd();
+  const now = options.now ?? new Date();
+  const targetPath = options.targetPath;
 
   const result = {
     index: null,
@@ -98,72 +110,29 @@ export async function querySemanticIndex(query, options = {}) {
   }
   const loaded = await loadSemanticIndex(indexPath, { cwd });
   const index = loaded.index;
-  const entriesById = new Map((index.entries ?? []).map((entry) => [entry.id, entry]));
-  const errors = [];
-  const warnings = [...resolutionWarnings];
-  const queryMode = query.context ? "context" : "id";
-  let selectedEntries = [];
-
-  if (query.context) {
-    selectedEntries = (index.entries ?? []).filter((entry) => (
-      entry.status === "accepted"
-      && (entry.context === query.context || entry.id === query.context)
-    ));
-    if (selectedEntries.length === 0) {
-      errors.push(issue({
-        field: "context",
-        problem: `No accepted index entries found for context '${query.context}'.`,
-        fix: "Build the index again or query an existing OpenDomain context id."
-      }));
-    }
-  } else {
-    const entry = entriesById.get(query.id);
-    if (!entry) {
-      errors.push(issue({
-        field: "id",
-        problem: `Index entry '${query.id}' was not found.`,
-        fix: "Build the index again or query an existing OpenDomain id."
-      }));
-    } else if (entry.status === "accepted") {
-      selectedEntries = [entry];
-    } else if (entry.type === "domain_candidate") {
-      selectedEntries = [];
-    } else {
-      warnings.push(issue({
-        severity: "warning",
-        field: "status",
-        problem: `Index entry '${query.id}' is not accepted knowledge.`,
-        fix: "Treat it as non-authoritative unless accepted in OpenDomain source."
-      }));
-    }
-  }
-
-  const closure = collectSemanticClosure(selectedEntries.map((entry) => entry.id), index.entries ?? []);
-  const readFirst = closure.entries;
-  const readFirstIds = new Set(readFirst.map((entry) => entry.id));
-  const candidateBoundaries = collectCandidateBoundaries(index.entries ?? [], readFirstIds, query);
-  const staleWarnings = await checkFreshness([...readFirst, ...candidateBoundaries], cwd);
+  const selection = selectSemanticContext(index, query);
+  const warnings = [...resolutionWarnings, ...selection.warnings];
+  const staleWarnings = await checkFreshness(
+    [...selection.entries, ...selection.candidate_entries],
+    cwd
+  );
   warnings.push(...staleWarnings);
 
   return {
-    query: queryMode === "context"
+    query: query.context
       ? { context: query.context }
       : { id: query.id },
     index_file: loaded.file,
     schema: index.schema,
     source_files_authoritative: true,
     authoritative_source: index.authoritative_source ?? "OpenDomain source files, not this index",
-    semantic_closure: {
-      policy: closure.policy,
-      root_ids: closure.root_ids,
-      selection_paths: closure.selection_paths
-    },
-    read_first: readFirst.map(toReadFirstItem),
-    accepted_ids: readFirst.map((entry) => entry.id).sort(),
-    candidate_boundaries: candidateBoundaries.map(toCandidateBoundary),
-    verify_with: readFirst.map(toVerificationItem),
+    semantic_closure: selection.semantic_closure,
+    read_first: selection.read_first,
+    accepted_ids: selection.accepted_ids,
+    candidate_boundaries: selection.candidate_boundaries,
+    verify_with: selection.verify_with,
     warnings,
-    errors
+    errors: selection.errors
   };
 }
 
@@ -260,18 +229,6 @@ function collectAffectsDomainIds(affectsDomain) {
   ];
 }
 
-function collectCandidateBoundaries(entries, readFirstIds, query) {
-  return entries
-    .filter((entry) => entry.type === "domain_candidate")
-    .filter((entry) => {
-      const targetId = entry.target?.id;
-      return readFirstIds.has(targetId)
-        || (query.id && entry.id === query.id)
-        || (query.context && entry.context === query.context);
-    })
-    .sort(compareById);
-}
-
 async function checkFreshness(entries, cwd) {
   const warnings = [];
   for (const entry of entries) {
@@ -317,40 +274,6 @@ function summarizeDocument(document) {
   }
 
   return paragraph.replace(/\s+/g, " ").slice(0, 240);
-}
-
-function toReadFirstItem(entry) {
-  return {
-    id: entry.id,
-    type: entry.type,
-    name: entry.name,
-    status: entry.status,
-    context: entry.context,
-    source_file: entry.source_file,
-    summary: entry.summary,
-    referencing_feature_specs: entry.referencing_feature_specs,
-    source_hash: entry.source_hash
-  };
-}
-
-function toCandidateBoundary(entry) {
-  return {
-    id: entry.id,
-    status: entry.status,
-    target_id: entry.target?.id,
-    confidence: entry.confidence,
-    source_file: entry.source_file,
-    summary: entry.summary
-  };
-}
-
-function toVerificationItem(entry) {
-  return {
-    id: entry.id,
-    source_file: entry.source_file,
-    evidence: entry.evidence,
-    review: entry.review
-  };
 }
 
 function arrayOrEmpty(value) {

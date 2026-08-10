@@ -6,8 +6,10 @@ import {
   access,
   constants,
   mkdtemp,
+  mkdir,
   rm,
-  stat
+  stat,
+  writeFile
 } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -64,6 +66,44 @@ async function main() {
     const workspaceValidation = await runJson(binary, ["validate", "--json"], workspace);
     assert.deepEqual(workspaceValidation.errors, []);
 
+    const sourceQuery = await runJson(binary, [
+      "query",
+      "examples/erp",
+      "--id",
+      "sales.order",
+      "--json"
+    ], workspace);
+    assert.deepEqual(sourceQuery.errors, []);
+    assert.ok(sourceQuery.accepted_ids.includes("sales.order"));
+    const contextExport = await runJson(binary, [
+      "export",
+      "context",
+      "examples/erp",
+      "--id",
+      "sales.order",
+      "--json"
+    ], workspace);
+    assert.deepEqual(contextExport.errors, []);
+    assert.equal(contextExport.schema, "opendomain.context-export.v1");
+    assert.ok(contextExport.documents.some((item) => item.id === "sales.order"));
+    assert.ok(contextExport.candidate_boundaries.length > 0);
+    await assertAbsent(path.join(workspace, "opendomain", "generated", "index.json"));
+
+    const governedRoot = path.join(workspace, "governed");
+    await createGovernedWorkspace(governedRoot);
+    const publicExport = await runJson(binary, [
+      "export",
+      "context",
+      "--product",
+      "alpha",
+      "--exposure",
+      "public",
+      "--json"
+    ], governedRoot);
+    assert.deepEqual(publicExport.errors, []);
+    assert.deepEqual(publicExport.documents.map((item) => item.id), ["alpha"]);
+    assert.equal(publicExport.governance.publication_closure.product_id, "alpha");
+
     const exampleRoot = path.join(workspace, "examples", "erp");
     const exampleValidation = await runJson(binary, ["validate", "--json"], exampleRoot);
     assert.deepEqual(exampleValidation.errors, []);
@@ -86,12 +126,55 @@ async function main() {
     process.stdout.write(
       `Standalone smoke passed: ${path.basename(binary)}, `
       + `${groundingPack.read_first.length} grounded sources, `
+      + `${contextExport.documents.length} Core-equivalent exported sources, `
       + `Agent integration ${doctor.status}, `
       + `Assurance ${assurance.policy.outcome}.\n`
     );
   } finally {
     await rm(workspace, { recursive: true, force: true });
   }
+}
+
+async function createGovernedWorkspace(root) {
+  const sourceRoot = path.join(root, "opendomain", "products", "alpha", "public", "contexts");
+  await mkdir(sourceRoot, { recursive: true });
+  await writeFile(path.join(root, "opendomain", "governance.yaml"), `schema_version: "1.0"
+products:
+  - id: alpha
+    owners: [alpha-owner]
+    exposure: public
+    dependencies: []
+    forbidden_dependencies: []
+domain_groups:
+  - id: alpha.public
+    product: alpha
+    source_root: products/alpha/public
+    owners: [alpha-owner]
+    exposure: public
+    dependencies: []
+    forbidden_dependencies: []
+`, "utf8");
+  await writeFile(path.join(sourceRoot, "alpha.md"), `---
+type: bounded_context
+id: alpha
+name: Alpha
+status: accepted
+owners: [alpha-owner]
+evidence:
+  - type: human_review
+    location: smoke:standalone
+    summary: Synthetic public context for standalone context-export smoke.
+    confidence: high
+review:
+  state: accepted
+  reviewed_by: smoke-maintainer
+  reviewed_at: 2026-08-10
+---
+
+# Alpha
+
+Synthetic public Alpha context.
+`, "utf8");
 }
 
 function parseArguments(arguments_) {

@@ -63,6 +63,7 @@ try {
   await access(path.join(installedRoot, "schemas", "assurance-result.schema.json"));
   await access(path.join(installedRoot, "schemas", "workspace-config.schema.json"));
   await access(path.join(installedRoot, "schemas", "governance.schema.json"));
+  await access(path.join(installedRoot, "schemas", "context-export.schema.json"));
   for (const publicDocument of [
     "README.md",
     "README.zh-CN.md",
@@ -114,6 +115,48 @@ try {
   assert.equal(doctor.status, "healthy");
   assert.deepEqual(doctor.errors, []);
 
+  const governedRoot = path.join(consumer, "governed");
+  await createGovernedWorkspace(governedRoot);
+  const coreSmokeFile = path.join(consumer, "core-smoke.mjs");
+  await writeFile(coreSmokeFile, `
+import assert from "node:assert/strict";
+import * as root from "@echopath-labs/opendomain";
+import * as core from "@echopath-labs/opendomain/core";
+
+const now = new Date("2026-08-10T00:00:00Z");
+assert.equal(root.CORE_API_VERSION, "1.0");
+assert.equal(core.exportContext, root.exportContext);
+const query = await root.queryWorkspace({ target: "examples/erp", cwd: process.cwd(), selector: { id: "sales.order" }, now });
+const context = await core.exportContext({ target: "examples/erp", cwd: process.cwd(), selector: { id: "sales.order" }, now });
+const publication = await core.exportContext({
+  cwd: ${JSON.stringify(governedRoot)},
+  selector: { product: "alpha" },
+  exposure: "public",
+  now
+});
+assert.equal(query.status, "pass");
+assert.equal(context.status, "pass");
+assert.equal(publication.status, "pass");
+assert.deepEqual(publication.documents.map((item) => item.id), ["alpha"]);
+process.stdout.write(JSON.stringify({
+  api: root.CORE_API_VERSION,
+  query: query.accepted_ids.length,
+  context: context.documents.length,
+  candidates: context.candidate_boundaries.length,
+  public_documents: publication.documents.length
+}));
+`, "utf8");
+  const coreSmoke = JSON.parse((await run(process.execPath, [coreSmokeFile], consumer)).stdout);
+  assert.equal(coreSmoke.api, "1.0");
+  assert.ok(coreSmoke.query > 0);
+  assert.equal(coreSmoke.context, coreSmoke.query);
+  assert.ok(coreSmoke.candidates > 0);
+  assert.equal(coreSmoke.public_documents, 1);
+  await assert.rejects(
+    access(path.join(consumer, "opendomain", "generated", "index.json")),
+    (error) => error?.code === "ENOENT"
+  );
+
   const exampleRoot = path.join(consumer, "examples", "erp");
   const inspection = await runJsonCli(
     cli,
@@ -159,11 +202,54 @@ try {
     `Installed-package smoke passed: ${packPayload[0].filename}, `
     + `${inspection.valid_profile_count} Profile, `
     + `${automatic.read_first.length} grounded sources, `
+    + `Core ${coreSmoke.api} with ${coreSmoke.context} exported sources, `
     + `Agent integration ${doctor.status}, `
     + `Assurance ${assurance.policy.outcome}.\n`
   );
 } finally {
   await rm(temporaryRoot, { recursive: true, force: true });
+}
+
+async function createGovernedWorkspace(root) {
+  const sourceRoot = path.join(root, "opendomain", "products", "alpha", "public", "contexts");
+  await mkdir(sourceRoot, { recursive: true });
+  await writeFile(path.join(root, "opendomain", "governance.yaml"), `schema_version: "1.0"
+products:
+  - id: alpha
+    owners: [alpha-owner]
+    exposure: public
+    dependencies: []
+    forbidden_dependencies: []
+domain_groups:
+  - id: alpha.public
+    product: alpha
+    source_root: products/alpha/public
+    owners: [alpha-owner]
+    exposure: public
+    dependencies: []
+    forbidden_dependencies: []
+`, "utf8");
+  await writeFile(path.join(sourceRoot, "alpha.md"), `---
+type: bounded_context
+id: alpha
+name: Alpha
+status: accepted
+owners: [alpha-owner]
+evidence:
+  - type: human_review
+    location: smoke:installed-package
+    summary: Synthetic public context for installed-package Core smoke.
+    confidence: high
+review:
+  state: accepted
+  reviewed_by: smoke-maintainer
+  reviewed_at: 2026-08-10
+---
+
+# Alpha
+
+Synthetic public Alpha context.
+`, "utf8");
 }
 
 async function runJsonCli(cli, args, cwd) {

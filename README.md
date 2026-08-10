@@ -149,6 +149,7 @@ The current alpha includes:
 - Candidate-first AI inference with explicit human review;
 - deterministic Semantic Closure and derived read-first indexes;
 - optional multi-product workspace governance with deterministic exposure and publication-closure validation;
+- a side-effect-free Embeddable Core v1 with source-first query and versioned context export;
 - Grounding Request, Grounding Pack, and advisory/enforced Assurance;
 - built-in OpenSpec grounding and declarative Integration Profiles;
 - managed Codex instructions, Skills, updates, and diagnostics;
@@ -165,6 +166,14 @@ then returns product/group ownership, dependency graphs, exposure diagnostics,
 and derived public dependency closures. A passing closure is static evidence;
 it does not publish files, grant permissions, change Git, or require EchoPath.
 See [Multi-product workspace governance](USAGE.md#multi-product-workspace-governance).
+
+Host and plugin authors can import the package root or `@echopath-labs/opendomain/core`
+to call the same validate, query, and context-export implementation used by the
+CLI. `opendomain export context` returns accepted content and reports related
+Candidates separately; `--exposure public --product <id>` succeeds only from a
+validated public dependency closure. The API is read-only and does not manage
+EchoPath memory, accept Candidates, write projections, or publish releases. See
+[Embed Core and export context](USAGE.md#embed-core-and-export-context).
 
 ## Public Resources
 

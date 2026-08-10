@@ -27,6 +27,15 @@
     "knowledge-management"
   ],
   "type": "module",
+  "main": "./src/core.mjs",
+  "exports": {
+    ".": "./src/core.mjs",
+    "./core": "./src/core.mjs",
+    "./src/*": "./src/*",
+    "./schemas/*": "./schemas/*",
+    "./examples/*": "./examples/*",
+    "./package.json": "./package.json"
+  },
   "bin": {
     "opendomain": "bin/opendomain.mjs"
   },

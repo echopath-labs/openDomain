@@ -13,6 +13,7 @@ test("packaged resources expose schemas, package metadata, and ERP files", async
   const installationContract = resources.readPackagedText("INSTALL.md");
   const schema = JSON.parse(resources.readPackagedText("schemas/context.schema.json"));
   const governanceSchema = JSON.parse(resources.readPackagedText("schemas/governance.schema.json"));
+  const contextExportSchema = JSON.parse(resources.readPackagedText("schemas/context-export.schema.json"));
   const exampleFiles = resources.listPackagedFiles("examples/erp/");
 
   assert.equal(packageMetadata.name, "@echopath-labs/opendomain");
@@ -20,6 +21,7 @@ test("packaged resources expose schemas, package metadata, and ERP files", async
   assert.match(installationContract, /@echopath-labs\/opendomain@alpha/);
   assert.equal(schema.$id, "https://opendomain.dev/schemas/context.schema.json");
   assert.equal(governanceSchema.$id, "https://opendomain.dev/schemas/governance.schema.json");
+  assert.equal(contextExportSchema.$id, "https://opendomain.dev/schemas/context-export.schema.json");
   assert.ok(exampleFiles.includes("examples/erp/opendomain/contexts/sales.md"));
   assert.ok(exampleFiles.includes("examples/erp/openspec/changes/order-cancellation/spec.md"));
   assert.deepEqual(exampleFiles, [...exampleFiles].sort());

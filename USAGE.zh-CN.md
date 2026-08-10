@@ -188,6 +188,65 @@ publication closure 是可重建的静态证据。它不会发布仓库、复制
 EchoPath、AGW、package-manager workspace 或私有 sibling。没有 `governance.yaml` 时，
 现有 canonical、legacy 与 explicit-target 行为保持不变。
 
+## 嵌入 Core 与导出 Context
+
+正常用户仍然可以直接向 Codex 表达意图。以下接口面向需要可观察 context payload 的
+Agent host、插件、CI 和维护者。
+
+直接查询当前 source，不创建或读取 generated index：
+
+```bash
+opendomain query --id sales.order --json
+opendomain query --context sales --type domain_concept --json
+```
+
+导出选中的 accepted sources、semantic closure、evidence、review、source hash 和相关但
+非权威的 Candidate boundaries：
+
+```bash
+opendomain export context --id sales.order --json
+```
+
+selector 包括 `--id`、`--context`、`--product`、`--domain-group`、`--owner`、
+`--lifecycle` 和 `--type`。多个 selector 使用逻辑 AND。请求至少要有一个 selector；
+空请求或无匹配请求会失败，不会回退成整个 workspace 导出。
+
+在受治理的 canonical workspace 中，可以导出一个完整 public proof：
+
+```bash
+opendomain export context --product public_api --exposure public --json
+```
+
+public export 必须使用当前验证通过的 publication closure。ungoverned workspace、非 public
+product、非法依赖图、无法映射的 source 或会裁剪 proof 的额外 selector 都会 fail closed。
+通过的 payload 也只是证据，不会复制文件、修改 Git、授予权限或发布任何内容。
+
+Node host 和插件作者可以有意把 npm 包作为依赖，并使用无副作用 Core API：
+
+```js
+import {
+  CORE_API_VERSION,
+  validateWorkspace,
+  queryWorkspace,
+  exportContext
+} from "@echopath-labs/opendomain";
+
+const context = await exportContext({
+  cwd: process.cwd(),
+  selector: { id: "sales.order" }
+});
+```
+
+package root 与 `@echopath-labs/opendomain/core` 暴露相同的 Core API `1.0`。调用只返回
+结构化结果，不写 stdout/stderr、不设置 process exit code、不创建 index、不修改 source、
+不访问 Git/network，也不管理 EchoPath lifecycle。`opendomain.context-export.v1` 包含完整
+accepted Markdown content 和 workspace-relative provenance；Candidate 只会出现在
+`candidate_boundaries`，并明确标记 `authoritative: false`。
+
+Core v1 内可以增加 named export 和可选结果字段。删除字段、改变 selector AND 语义、削弱
+Candidate 隔离或重新解释 exposure proof，都必须使用新的 API/export version 并提供迁移说明。
+普通项目仍应遵循 Agent 安装契约，不能只是为了使用 CLI 就给宿主项目增加依赖。
+
 ## 第一次只读了解业务
 
 可以说：
@@ -346,6 +405,9 @@ opendomain validate --json
 | 验证 Profile | `opendomain integrations validate` |
 | 构建派生 index | `opendomain index build` |
 | 查询 domain ID | `opendomain index query <domain-id>` |
+| 查询当前 source | `opendomain query --id <domain-id>` |
+| 导出 accepted context | `opendomain export context --id <domain-id> --json` |
+| 导出 public closure | `opendomain export context --product <product-id> --exposure public --json` |
 
 ## ERP 示例
 

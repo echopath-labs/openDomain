@@ -1,0 +1,265 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opendomain.dev/schemas/context-export.schema.json",
+  "title": "OpenDomain Context Export v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "api_version",
+    "status",
+    "generated_at",
+    "request",
+    "source",
+    "selection",
+    "governance",
+    "documents",
+    "candidate_boundaries",
+    "warnings",
+    "errors"
+  ],
+  "properties": {
+    "schema": { "const": "opendomain.context-export.v1" },
+    "api_version": { "const": "1.0" },
+    "status": { "enum": ["pass", "fail"] },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "request": { "$ref": "#/$defs/request" },
+    "source": { "$ref": "#/$defs/source" },
+    "selection": { "$ref": "#/$defs/selection" },
+    "governance": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/governance" }
+      ]
+    },
+    "documents": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/document" }
+    },
+    "candidate_boundaries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/candidateBoundary" }
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/issue" }
+    },
+    "errors": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/issue" }
+    }
+  },
+  "$defs": {
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target", "selector", "exposure"],
+      "properties": {
+        "target": { "type": ["string", "null"] },
+        "selector": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": { "$ref": "#/$defs/nonEmptyString" },
+            "context": { "$ref": "#/$defs/nonEmptyString" },
+            "product": { "$ref": "#/$defs/nonEmptyString" },
+            "domain_group": { "$ref": "#/$defs/nonEmptyString" },
+            "owner": { "$ref": "#/$defs/nonEmptyString" },
+            "lifecycle": { "$ref": "#/$defs/nonEmptyString" },
+            "type": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        "exposure": {
+          "oneOf": [
+            { "type": "null" },
+            { "const": "public" }
+          ]
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authoritative", "derived", "authority", "workspace"],
+      "properties": {
+        "authoritative": { "const": true },
+        "derived": { "const": true },
+        "authority": { "$ref": "#/$defs/nonEmptyString" },
+        "workspace": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "object", "additionalProperties": true }
+          ]
+        }
+      }
+    },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["root_ids", "accepted_ids", "selection_paths"],
+      "properties": {
+        "root_ids": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "accepted_ids": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "selection_paths": {
+          "type": "array",
+          "items": { "type": "object", "additionalProperties": true }
+        }
+      }
+    },
+    "governance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "manifest",
+        "derived",
+        "authoritative_source",
+        "products",
+        "domain_groups",
+        "publication_closure"
+      ],
+      "properties": {
+        "schema_version": { "$ref": "#/$defs/nonEmptyString" },
+        "manifest": { "$ref": "#/$defs/nonEmptyString" },
+        "derived": { "const": true },
+        "authoritative_source": { "$ref": "#/$defs/nonEmptyString" },
+        "products": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+        "domain_groups": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+        "publication_closure": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "object", "additionalProperties": true }
+          ]
+        }
+      }
+    },
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "name",
+        "status",
+        "authoritative",
+        "frontmatter",
+        "body",
+        "summary",
+        "source",
+        "review",
+        "evidence",
+        "governance"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "type": { "$ref": "#/$defs/nonEmptyString" },
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "status": { "const": "accepted" },
+        "context": { "$ref": "#/$defs/nonEmptyString" },
+        "authoritative": { "const": true },
+        "frontmatter": { "type": "object", "additionalProperties": true },
+        "body": { "type": "string" },
+        "summary": { "type": "string" },
+        "source": { "$ref": "#/$defs/sourceReference" },
+        "review": { "type": "object", "additionalProperties": true },
+        "evidence": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+        "governance": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/ownership" }
+          ]
+        }
+      }
+    },
+    "candidateBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "status",
+        "authoritative",
+        "target",
+        "confidence",
+        "possible_conflicts",
+        "review",
+        "summary",
+        "source",
+        "governance"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "type": { "const": "domain_candidate" },
+        "status": { "$ref": "#/$defs/nonEmptyString" },
+        "authoritative": { "const": false },
+        "target": { "type": "object", "additionalProperties": true },
+        "confidence": { "$ref": "#/$defs/nonEmptyString" },
+        "possible_conflicts": { "type": "array" },
+        "review": { "type": "object", "additionalProperties": true },
+        "summary": { "type": "string" },
+        "source": { "$ref": "#/$defs/sourceReference" },
+        "governance": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/ownership" }
+          ]
+        }
+      }
+    },
+    "sourceReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "hash"],
+      "properties": {
+        "file": { "$ref": "#/$defs/nonEmptyString" },
+        "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "ownership": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "product_id",
+        "domain_group_id",
+        "owners",
+        "exposure",
+        "governance_schema_version",
+        "source_root"
+      ],
+      "properties": {
+        "product_id": { "$ref": "#/$defs/nonEmptyString" },
+        "domain_group_id": { "$ref": "#/$defs/nonEmptyString" },
+        "owners": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "exposure": { "enum": ["public", "ecosystem", "internal", "private"] },
+        "governance_schema_version": { "$ref": "#/$defs/nonEmptyString" },
+        "source_root": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "issue": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["severity", "file", "field", "problem", "fix"],
+      "properties": {
+        "severity": { "enum": ["error", "warning"] },
+        "file": { "$ref": "#/$defs/nonEmptyString" },
+        "field": { "$ref": "#/$defs/nonEmptyString" },
+        "problem": { "$ref": "#/$defs/nonEmptyString" },
+        "fix": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

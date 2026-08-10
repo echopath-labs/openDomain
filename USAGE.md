@@ -206,6 +206,71 @@ manifest without requiring EchoPath, AGW, a package-manager workspace, or a
 private sibling repository. If `governance.yaml` is absent, current canonical,
 legacy, and explicit-target behavior is unchanged.
 
+## Embed Core And Export Context
+
+Normal users can continue expressing intent to Codex. These interfaces are for
+Agent hosts, plugins, CI, and maintainers that need an observable context payload.
+
+Query current source without creating or reading a generated index:
+
+```bash
+opendomain query --id sales.order --json
+opendomain query --context sales --type domain_concept --json
+```
+
+Export the selected accepted sources, their semantic closure, evidence, review,
+source hashes, and related non-authoritative Candidate boundaries:
+
+```bash
+opendomain export context --id sales.order --json
+```
+
+Selectors are `--id`, `--context`, `--product`, `--domain-group`, `--owner`,
+`--lifecycle`, and `--type`. Multiple selectors use logical AND. At least one is
+required; an empty or unmatched request fails instead of exporting the whole
+workspace.
+
+In a governed canonical workspace, export one complete public proof with:
+
+```bash
+opendomain export context --product public_api --exposure public --json
+```
+
+Public export requires the current validated publication closure. It rejects an
+ungoverned workspace, non-public product, invalid graph, stale source mapping,
+or extra selector that would crop the proof. A passing payload is evidence only;
+it does not copy files, change Git, grant access, or publish anything.
+
+Node host and plugin authors may deliberately depend on the npm package and use
+the side-effect-free Core API:
+
+```js
+import {
+  CORE_API_VERSION,
+  validateWorkspace,
+  queryWorkspace,
+  exportContext
+} from "@echopath-labs/opendomain";
+
+const context = await exportContext({
+  cwd: process.cwd(),
+  selector: { id: "sales.order" }
+});
+```
+
+The package root and `@echopath-labs/opendomain/core` expose the same Core API
+`1.0`. Calls return structured results and do not write stdout/stderr, set a
+process exit code, create an index, mutate source, access Git/network, or manage
+EchoPath lifecycle. `opendomain.context-export.v1` contains full accepted
+Markdown content and workspace-relative provenance; Candidates remain only in
+`candidate_boundaries` with `authoritative: false`.
+
+Within Core v1, new named exports and optional result fields may be additive.
+Removing fields, changing selector conjunction, weakening Candidate isolation,
+or reinterpreting exposure proof requires a new API/export version and migration
+guidance. Ordinary project installation should still follow the Agent
+Installation Contract and must not add a host dependency merely to use the CLI.
+
 ## First Read-Only Domain Exploration
 
 Ask:
@@ -380,6 +445,9 @@ can continue expressing intent to Codex.
 | Validate Profiles | `opendomain integrations validate` |
 | Build a derived index | `opendomain index build` |
 | Query a domain ID | `opendomain index query <domain-id>` |
+| Query current source | `opendomain query --id <domain-id>` |
+| Export accepted context | `opendomain export context --id <domain-id> --json` |
+| Export a public closure | `opendomain export context --product <product-id> --exposure public --json` |
 
 ## ERP Example
 
