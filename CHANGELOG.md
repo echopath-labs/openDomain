@@ -7,6 +7,16 @@
 - Reorganize public guidance around natural-language Codex adoption, add paired
   Usage Guides, and verify public navigation and npm package contents.
 
+## 0.1.0-alpha.10 - 2026-08-10
+
+- Add multi-product governance manifests, exposure propagation, dependency-cycle and forbidden-dependency checks,
+  and fail-closed public dependency closure while preserving ungoverned single-product compatibility.
+- Add stable Core API 1.0 entrypoints for validation, semantic query, and bounded context export; CLI commands reuse
+  the same implementation and preserve Candidate boundaries outside accepted documents.
+- Require governed canonical workspaces for product-level public export and prove direct/transitive Core-only
+  exposure leaks fail closed.
+- Add an explicit offline installed-package smoke mode for clean public projection and local-cache validation.
+
 ## 0.1.0-alpha.9 - 2026-08-04
 
 - Add a canonical Agent installation contract so Codex can install OpenDomain

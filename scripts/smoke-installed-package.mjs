@@ -16,10 +16,10 @@ import { fileURLToPath } from "node:url";
 const execFile = promisify(execFileCallback);
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "opendomain-package-smoke-"));
-const npmEnvironment = {
-  ...process.env,
-  npm_config_cache: path.join(temporaryRoot, "npm-cache")
-};
+const offline = parseArguments(process.argv.slice(2));
+const npmEnvironment = offline
+  ? { ...process.env, npm_config_offline: "true" }
+  : { ...process.env, npm_config_cache: path.join(temporaryRoot, "npm-cache") };
 
 try {
   const packResult = await run("npm", [
@@ -44,6 +44,7 @@ try {
     "--ignore-scripts",
     "--no-audit",
     "--no-fund",
+    ...(offline ? ["--offline"] : []),
     tarball
   ], consumer, npmEnvironment);
 
@@ -273,4 +274,10 @@ async function run(command, args, cwd, environment = process.env) {
       { cause: error }
     );
   }
+}
+
+function parseArguments(arguments_) {
+  if (arguments_.length === 0) return false;
+  if (arguments_.length === 1 && arguments_[0] === "--offline") return true;
+  throw new Error("Usage: smoke-installed-package [--offline]");
 }
