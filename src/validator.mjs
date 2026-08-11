@@ -5,6 +5,7 @@ import {
 } from "./domain-reference-types.mjs";
 import { parseMarkdownFile, FrontMatterError } from "./frontmatter.mjs";
 import { validateGroundingDecision } from "./grounding-decision.mjs";
+import { analyzeGovernance } from "./governance-graph.mjs";
 import { resolveWorkspaceSources } from "./workspace-resolver.mjs";
 import {
   createDomainSchemaRegistry,
@@ -48,7 +49,8 @@ export async function validatePath(targetPath, options = {}) {
     documents: [],
     errors: [],
     warnings: [],
-    workspace: null
+    workspace: null,
+    governance: null
   };
 
   let schemaRegistry;
@@ -64,10 +66,31 @@ export async function validatePath(targetPath, options = {}) {
     mode: resolution.mode,
     source_root: resolution.sourceRootDisplay,
     default_index_path: resolution.defaultIndexPath,
-    explicit: resolution.explicit
+    explicit: resolution.explicit,
+    governed: Boolean(resolution.governance),
+    governance_manifest: resolution.governance?.file ?? null
   };
   result.errors.push(...resolution.errors);
   result.warnings.push(...resolution.warnings);
+
+  if (resolution.governance) {
+    const sourceFilesByGroup = new Map();
+    for (const file of resolution.files) {
+      const ownership = resolution.sourceOwnership.get(file);
+      if (!ownership) {
+        continue;
+      }
+      const files = sourceFilesByGroup.get(ownership.domain_group_id) ?? [];
+      files.push(documentPath(file, resolution.projectRoot));
+      sourceFilesByGroup.set(ownership.domain_group_id, files);
+    }
+    result.governance = analyzeGovernance(resolution.governance, {
+      sourceFilesByGroup,
+      prerequisiteFailed: resolution.errors.length > 0
+    });
+    result.errors.push(...result.governance.errors);
+    result.warnings.push(...result.governance.warnings);
+  }
 
   const files = resolution.files;
   for (const file of files) {
@@ -126,6 +149,9 @@ export async function validatePath(targetPath, options = {}) {
         absoluteFile: file,
         type,
         id: parsed.frontmatter.id,
+        ...(resolution.sourceOwnership.get(file)
+          ? { ownership: resolution.sourceOwnership.get(file) }
+          : {}),
         frontmatter: parsed.frontmatter,
         body: parsed.body
       });

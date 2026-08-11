@@ -1,6 +1,6 @@
 {
   "name": "@echopath-labs/opendomain",
-  "version": "0.1.0-alpha.9",
+  "version": "0.1.0-alpha.10",
   "description": "Git-native, evidence-backed domain semantics for AI agents.",
   "license": "MIT",
   "author": {
@@ -27,6 +27,15 @@
     "knowledge-management"
   ],
   "type": "module",
+  "main": "./src/core.mjs",
+  "exports": {
+    ".": "./src/core.mjs",
+    "./core": "./src/core.mjs",
+    "./src/*": "./src/*",
+    "./schemas/*": "./schemas/*",
+    "./examples/*": "./examples/*",
+    "./package.json": "./package.json"
+  },
   "bin": {
     "opendomain": "bin/opendomain.mjs"
   },

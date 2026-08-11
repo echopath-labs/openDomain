@@ -1,5 +1,10 @@
 import { validatePath } from "./validator.mjs";
 import {
+  exportContext,
+  queryWorkspace,
+  validateWorkspace
+} from "./core.mjs";
+import {
   emptyGroundingPack,
   formatGroundingPack,
   prepareGroundingPack
@@ -26,7 +31,8 @@ export async function runCli(argv, options = {}) {
   const io = {
     stdout: options.stdout ?? process.stdout,
     stderr: options.stderr ?? process.stderr,
-    cwd: options.cwd ?? process.cwd()
+    cwd: options.cwd ?? process.cwd(),
+    now: options.now
   };
 
   const [command, subcommand, ...rest] = argv;
@@ -43,6 +49,14 @@ export async function runCli(argv, options = {}) {
 
   if (command === "validate") {
     return runValidate([subcommand, ...rest].filter(Boolean), io);
+  }
+
+  if (command === "query") {
+    return runSourceQuery([subcommand, ...rest].filter(Boolean), io);
+  }
+
+  if (command === "export" && subcommand === "context") {
+    return runContextExport(rest, io);
   }
 
   if (command === "prepare") {
@@ -115,6 +129,8 @@ Usage:
   opendomain update [--json]
   opendomain doctor [--json]
   opendomain validate [path] [--json]
+  opendomain query [path] (--id <id> | --context <id> | --product <id> | --domain-group <id> | --owner <id> | --lifecycle <id> | --type <type>) [--json]
+  opendomain export context [path] <selector flags> [--exposure public] [--json]
   opendomain prepare [--integration openspec | --profile <id>] <source-unit> [--json]
   opendomain assure [--integration openspec | --profile <id>] [--mode advisory|enforced] <source-unit> [--json]
   opendomain integrations list [--json]
@@ -143,6 +159,96 @@ function splitArgs(args) {
     json: args.includes("--json"),
     paths: args.filter((arg) => arg !== "--json")
   };
+}
+
+function parseContextCommandArgs(args, options = {}) {
+  const selectorFlags = new Map([
+    ["--id", "id"],
+    ["--context", "context"],
+    ["--product", "product"],
+    ["--domain-group", "domain_group"],
+    ["--owner", "owner"],
+    ["--lifecycle", "lifecycle"],
+    ["--type", "type"]
+  ]);
+  const parsed = {
+    json: false,
+    path: undefined,
+    selector: {},
+    exposure: undefined,
+    errors: []
+  };
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--json") {
+      parsed.json = true;
+      continue;
+    }
+    if (arg === "--exposure") {
+      if (!options.allowExposure) {
+        parsed.errors.push(inputIssue(
+          "exposure",
+          "The query command does not accept --exposure.",
+          "Use opendomain export context --exposure public for publication-proof export."
+        ));
+        index += 1;
+        continue;
+      }
+      const value = requiredFlagValue(args, index, arg, parsed.errors);
+      if (value !== undefined) {
+        parsed.exposure = value;
+      }
+      index += 1;
+      continue;
+    }
+    if (selectorFlags.has(arg)) {
+      const field = selectorFlags.get(arg);
+      const value = requiredFlagValue(args, index, arg, parsed.errors);
+      if (Object.hasOwn(parsed.selector, field)) {
+        parsed.errors.push(inputIssue(
+          `selector.${field}`,
+          `Selector '${field}' was provided more than once.`,
+          `Provide ${arg} exactly once.`
+        ));
+      } else if (value !== undefined) {
+        parsed.selector[field] = value;
+      }
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--")) {
+      parsed.errors.push(inputIssue(
+        "$",
+        `Unknown context argument '${arg}'.`,
+        "Use --id, --context, --product, --domain-group, --owner, --lifecycle, --type, --exposure public, or --json."
+      ));
+      continue;
+    }
+    if (parsed.path !== undefined) {
+      parsed.errors.push(inputIssue(
+        "target",
+        `Multiple context target paths were provided: '${parsed.path}' and '${arg}'.`,
+        "Provide at most one optional workspace path."
+      ));
+    } else {
+      parsed.path = arg;
+    }
+  }
+  return parsed;
+}
+
+function requiredFlagValue(args, index, flag, errors) {
+  const value = args[index + 1];
+  if (!value || value.startsWith("--")) {
+    errors.push(inputIssue(
+      flag.slice(2),
+      `Option '${flag}' requires a value.`,
+      `Provide a non-empty value after ${flag}.`
+    ));
+    return undefined;
+  }
+  return value;
 }
 
 async function runInit(args, io) {
@@ -252,7 +358,11 @@ function emptyWorkspaceIntegrationResult(target, errors) {
 
 async function runValidate(args, io) {
   const { json, paths } = splitArgs(args);
-  const result = await validatePath(paths[0], { cwd: io.cwd });
+  const result = await validateWorkspace({
+    target: paths[0],
+    cwd: io.cwd,
+    now: io.now
+  });
 
   if (json) {
     io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
@@ -260,6 +370,57 @@ async function runValidate(args, io) {
     printValidationResult(result, io.stdout);
   }
 
+  return result.errors.length > 0 ? 1 : 0;
+}
+
+async function runSourceQuery(args, io) {
+  const parsed = parseContextCommandArgs(args);
+  const result = await queryWorkspace({
+    target: parsed.path,
+    selector: parsed.selector,
+    cwd: io.cwd,
+    now: io.now
+  });
+  if (parsed.errors.length > 0) {
+    result.status = "fail";
+    result.semantic_closure = { policy: null, root_ids: [], selection_paths: [] };
+    result.read_first = [];
+    result.accepted_ids = [];
+    result.candidate_boundaries = [];
+    result.verify_with = [];
+    result.errors = parsed.errors;
+  }
+
+  if (parsed.json) {
+    io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  } else {
+    printSourceQueryResult(result, io.stdout);
+  }
+  return result.errors.length > 0 ? 1 : 0;
+}
+
+async function runContextExport(args, io) {
+  const parsed = parseContextCommandArgs(args, { allowExposure: true });
+  const result = await exportContext({
+    target: parsed.path,
+    selector: parsed.selector,
+    exposure: parsed.exposure,
+    cwd: io.cwd,
+    now: io.now
+  });
+  if (parsed.errors.length > 0) {
+    result.status = "fail";
+    result.selection = { root_ids: [], accepted_ids: [], selection_paths: [] };
+    result.documents = [];
+    result.candidate_boundaries = [];
+    result.errors = parsed.errors;
+  }
+
+  if (parsed.json) {
+    io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  } else {
+    printContextExportResult(result, io.stdout);
+  }
   return result.errors.length > 0 ? 1 : 0;
 }
 
@@ -1215,6 +1376,46 @@ function printIndexQueryResult(result, stream) {
   }
 }
 
+function printSourceQueryResult(result, stream) {
+  if (result.errors.length > 0) {
+    stream.write(`OpenDomain source query failed: ${result.errors.length} errors.\n`);
+    printIssues([...result.errors, ...result.warnings], stream);
+    return;
+  }
+
+  stream.write("OpenDomain Source-First Query\n\n");
+  stream.write(`Schema: ${result.schema}\n`);
+  stream.write(`Accepted sources: ${result.read_first.length}\n`);
+  stream.write(`Candidate boundaries: ${result.candidate_boundaries.length}\n`);
+  stream.write("Boundary: OpenDomain source files remain authoritative; no generated index was required.\n");
+  for (const item of result.read_first) {
+    stream.write(`- ${item.id} (${item.type}) -> ${item.source_file}\n`);
+  }
+  printIssues(result.warnings, stream);
+}
+
+function printContextExportResult(result, stream) {
+  if (result.errors.length > 0) {
+    stream.write(`OpenDomain context export failed: ${result.errors.length} errors.\n`);
+    printIssues([...result.errors, ...result.warnings], stream);
+    return;
+  }
+
+  stream.write("OpenDomain Context Export\n\n");
+  stream.write(`Schema: ${result.schema}\n`);
+  stream.write(`Accepted documents: ${result.documents.length}\n`);
+  stream.write(`Candidate boundaries: ${result.candidate_boundaries.length}\n`);
+  if (result.governance?.publication_closure) {
+    stream.write(`Public product: ${result.governance.publication_closure.product_id}\n`);
+    stream.write("Publication closure: pass (derived evidence only; no publication performed).\n");
+  }
+  stream.write("Boundary: read-only derived payload; source review, Git, and publication state were not modified.\n");
+  for (const item of result.documents) {
+    stream.write(`- ${item.id} (${item.type}) -> ${item.source.file}\n`);
+  }
+  printIssues(result.warnings, stream);
+}
+
 async function runOrderCancellationDemo(io) {
   const result = await validatePath("examples/erp", { cwd: io.cwd });
   const feature = result.documents.find((document) => document.id === "spec.order-cancellation");
@@ -1254,6 +1455,15 @@ function printValidationResult(result, stream) {
       stream.write(`, ${result.warnings.length} warnings`);
     }
     stream.write(".\n");
+  }
+
+  if (result.governance) {
+    const closures = result.governance.publication_closures ?? [];
+    stream.write(
+      `Governance ${result.governance.schema_version}: ${result.governance.products.length} products, `
+      + `${result.governance.domain_groups.length} domain groups, ${closures.length} public closures passed `
+      + "(derived evidence; no publication performed).\n"
+    );
   }
 
   for (const issue of [...result.errors, ...result.warnings]) {

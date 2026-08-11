@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opendomain.dev/schemas/governance.schema.json",
+  "title": "OpenDomain Multi-Product Governance Manifest v1.0",
+  "type": "object",
+  "required": ["schema_version", "products", "domain_groups"],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "products": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/product"
+      }
+    },
+    "domain_groups": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/domainGroup"
+      }
+    }
+  },
+  "$defs": {
+    "productId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*$"
+    },
+    "domainGroupId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*(\\.[a-z][a-z0-9_-]*)+$"
+    },
+    "owners": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._@/-]*$"
+      }
+    },
+    "exposure": {
+      "enum": ["public", "ecosystem", "internal", "private"]
+    },
+    "productDependencies": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/productId"
+      }
+    },
+    "domainGroupDependencies": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/domainGroupId"
+      }
+    },
+    "product": {
+      "type": "object",
+      "required": ["id", "owners", "exposure", "dependencies", "forbidden_dependencies"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/productId"
+        },
+        "owners": {
+          "$ref": "#/$defs/owners"
+        },
+        "exposure": {
+          "$ref": "#/$defs/exposure"
+        },
+        "dependencies": {
+          "$ref": "#/$defs/productDependencies"
+        },
+        "forbidden_dependencies": {
+          "$ref": "#/$defs/productDependencies"
+        }
+      },
+      "additionalProperties": false
+    },
+    "domainGroup": {
+      "type": "object",
+      "required": [
+        "id",
+        "product",
+        "source_root",
+        "owners",
+        "exposure",
+        "dependencies",
+        "forbidden_dependencies"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/domainGroupId"
+        },
+        "product": {
+          "$ref": "#/$defs/productId"
+        },
+        "source_root": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*$"
+        },
+        "owners": {
+          "$ref": "#/$defs/owners"
+        },
+        "exposure": {
+          "$ref": "#/$defs/exposure"
+        },
+        "dependencies": {
+          "$ref": "#/$defs/domainGroupDependencies"
+        },
+        "forbidden_dependencies": {
+          "$ref": "#/$defs/domainGroupDependencies"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

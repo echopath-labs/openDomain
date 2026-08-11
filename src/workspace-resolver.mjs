@@ -1,5 +1,6 @@
 import { lstat, readdir, realpath, stat } from "node:fs/promises";
 import path from "node:path";
+import { loadGovernanceManifest } from "./governance.mjs";
 
 export const CANONICAL_WORKSPACE_DIRECTORY = "opendomain";
 export const LEGACY_WORKSPACE_DIRECTORY = "domain";
@@ -85,6 +86,8 @@ export async function resolveWorkspaceSources(targetPath, options = {}) {
   const result = {
     ...workspace,
     files: [],
+    governance: null,
+    sourceOwnership: new Map(),
     explicit: false
   };
 
@@ -102,11 +105,39 @@ export async function resolveWorkspaceSources(targetPath, options = {}) {
   }
 
   try {
-    result.files = await collectImplicitMarkdown(
-      workspace.sourceRoot,
-      workspace.sourceRootDisplay,
-      result.errors
-    );
+    if (workspace.mode === "canonical") {
+      const governance = await loadGovernanceManifest(workspace.sourceRoot, {
+        displayPath: workspace.sourceRootDisplay
+      });
+      result.errors.push(...governance.errors);
+      result.warnings.push(...governance.warnings);
+      if (governance.present) {
+        result.governance = governance.valid ? governance : null;
+        if (!governance.valid) {
+          return result;
+        }
+        const governed = await collectGovernedMarkdown(
+          workspace.sourceRoot,
+          workspace.sourceRootDisplay,
+          governance,
+          result.errors
+        );
+        result.files = governed.files;
+        result.sourceOwnership = governed.sourceOwnership;
+      } else {
+        result.files = await collectImplicitMarkdown(
+          workspace.sourceRoot,
+          workspace.sourceRootDisplay,
+          result.errors
+        );
+      }
+    } else {
+      result.files = await collectImplicitMarkdown(
+        workspace.sourceRoot,
+        workspace.sourceRootDisplay,
+        result.errors
+      );
+    }
   } catch (error) {
     result.errors.push(issue({
       file: workspace.sourceRootDisplay,
@@ -152,6 +183,8 @@ async function resolveExplicitSources(targetPath, cwd) {
     warnings: [],
     errors: [],
     files: [],
+    governance: null,
+    sourceOwnership: new Map(),
     explicit: true
   };
 
@@ -329,6 +362,178 @@ async function collectImplicitMarkdown(workspaceRoot, workspaceDisplay, errors) 
   return sortPaths(files);
 }
 
+async function collectGovernedMarkdown(workspaceRoot, workspaceDisplay, governance, errors) {
+  const workspaceRealPath = await realpath(workspaceRoot);
+  const resolvedGroups = [];
+  const sourceOwnership = new Map();
+
+  for (const group of governance.domainGroups) {
+    const sourcePath = path.resolve(workspaceRoot, group.source_root);
+    const display = `${workspaceDisplay}/${group.source_root}`;
+    const segmentError = await validateGovernedSourceRoot(
+      workspaceRoot,
+      workspaceRealPath,
+      group,
+      sourcePath,
+      display
+    );
+    if (segmentError) {
+      errors.push(segmentError);
+      continue;
+    }
+    resolvedGroups.push({ group, sourcePath, display });
+  }
+
+  for (let leftIndex = 0; leftIndex < resolvedGroups.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < resolvedGroups.length; rightIndex += 1) {
+      const left = resolvedGroups[leftIndex];
+      const right = resolvedGroups[rightIndex];
+      if (isWithin(left.sourcePath, right.sourcePath) || isWithin(right.sourcePath, left.sourcePath)) {
+        errors.push(issue({
+          file: governance.file,
+          field: "domain_groups[].source_root",
+          problem: `Governed source roots '${left.group.source_root}' and '${right.group.source_root}' overlap.`,
+          fix: "Use disjoint source roots so every semantic document belongs to exactly one domain group."
+        }));
+      }
+    }
+  }
+
+  if (errors.length > 0) {
+    return { files: [], sourceOwnership };
+  }
+
+  const files = [];
+  for (const entry of resolvedGroups) {
+    const groupErrorsBefore = errors.length;
+    const groupFiles = await collectImplicitMarkdown(entry.sourcePath, entry.display, errors);
+    if (groupFiles.length === 0 && errors.length === groupErrorsBefore) {
+      errors.push(issue({
+        file: entry.display,
+        field: "source_root",
+        problem: `Domain group '${entry.group.id}' contains no eligible Markdown sources.`,
+        fix: "Add a semantic source under contexts, concepts, rules, lifecycles, events, or candidates."
+      }));
+      continue;
+    }
+    for (const file of groupFiles) {
+      files.push(file);
+      sourceOwnership.set(file, Object.freeze({
+        product_id: entry.group.product,
+        domain_group_id: entry.group.id,
+        owners: Object.freeze([...entry.group.owners]),
+        exposure: entry.group.exposure,
+        governance_schema_version: governance.manifest.schema_version,
+        source_root: entry.group.source_root
+      }));
+    }
+  }
+
+  const unassigned = await collectUnassignedSemanticMarkdown(
+    workspaceRoot,
+    resolvedGroups.map((entry) => entry.sourcePath)
+  );
+  for (const file of unassigned) {
+    errors.push(issue({
+      file: displayPath(path.dirname(workspaceRoot), file),
+      field: "source_root",
+      problem: "Governed semantic source is outside every declared domain-group source root.",
+      fix: "Move the source under one declared group root or add a disjoint domain-group declaration."
+    }));
+  }
+
+  return {
+    files: sortGovernedFiles(files, sourceOwnership, workspaceRoot),
+    sourceOwnership
+  };
+}
+
+async function validateGovernedSourceRoot(workspaceRoot, workspaceRealPath, group, sourcePath, display) {
+  const segments = group.source_root.split("/");
+  let current = workspaceRoot;
+  for (const segment of segments) {
+    current = path.join(current, segment);
+    let currentStat;
+    try {
+      currentStat = await lstat(current);
+    } catch (error) {
+      return issue({
+        file: display,
+        field: "source_root",
+        problem: error.code === "ENOENT"
+          ? `Domain group '${group.id}' source root does not exist.`
+          : `Unable to inspect domain group '${group.id}' source root: ${error.message}`,
+        fix: "Create the declared source root as a real directory inside opendomain/."
+      });
+    }
+    if (currentStat.isSymbolicLink()) {
+      return issue({
+        file: display,
+        field: "source_root",
+        problem: `Domain group '${group.id}' source root traverses a symbolic link.`,
+        fix: "Use a real directory path contained by opendomain/."
+      });
+    }
+  }
+
+  const sourceRealPath = await realpath(sourcePath);
+  const sourceStat = await stat(sourceRealPath);
+  if (!sourceStat.isDirectory()) {
+    return issue({
+      file: display,
+      field: "source_root",
+      problem: `Domain group '${group.id}' source root is not a directory.`,
+      fix: "Replace the declared source root with a directory."
+    });
+  }
+  if (!isWithin(workspaceRealPath, sourceRealPath)) {
+    return issue({
+      file: display,
+      field: "source_root",
+      problem: `Domain group '${group.id}' source root resolves outside the canonical workspace.`,
+      fix: "Use a workspace-relative directory contained by opendomain/."
+    });
+  }
+  return null;
+}
+
+async function collectUnassignedSemanticMarkdown(workspaceRoot, assignedRoots) {
+  const files = [];
+  await visit(workspaceRoot);
+  return sortPaths(files);
+
+  async function visit(directory) {
+    const entries = (await readdir(directory, { withFileTypes: true }))
+      .sort((left, right) => compareText(left.name, right.name));
+    for (const entry of entries) {
+      if (entry.isSymbolicLink() || !entry.isDirectory()) {
+        continue;
+      }
+      if ([...SKIPPED_DIRECTORY_NAMES, "generated", "integrations"].includes(entry.name)) {
+        continue;
+      }
+      const child = path.join(directory, entry.name);
+      if (assignedRoots.some((root) => isWithin(root, child))) {
+        continue;
+      }
+      if (SEMANTIC_SOURCE_DIRECTORIES.includes(entry.name)) {
+        files.push(...await walkMarkdown(child));
+        continue;
+      }
+      await visit(child);
+    }
+  }
+}
+
+function sortGovernedFiles(files, sourceOwnership, workspaceRoot) {
+  return files.sort((left, right) => {
+    const leftOwner = sourceOwnership.get(left);
+    const rightOwner = sourceOwnership.get(right);
+    return compareText(leftOwner.domain_group_id, rightOwner.domain_group_id)
+      || compareText(path.relative(workspaceRoot, left), path.relative(workspaceRoot, right));
+  });
+}
+
 async function walkMarkdown(root) {
   const entries = (await readdir(root, { withFileTypes: true }))
     .sort((left, right) => compareText(left.name, right.name));
@@ -389,7 +594,7 @@ function issue(fields) {
   return {
     severity: fields.severity ?? "error",
     file: fields.file,
-    field: "$",
+    field: fields.field ?? "$",
     problem: fields.problem,
     fix: fields.fix
   };
