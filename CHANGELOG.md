@@ -2,12 +2,9 @@
 
 ## Unreleased
 
-- Correct historical prerelease headings, dates, and notable workspace and
-  release-boundary entries against published tags and npm registry history.
-- Reorganize public guidance around natural-language Codex adoption, add paired
-  Usage Guides, and verify public navigation and npm package contents.
+_No unreleased changes._
 
-## 0.1.0-alpha.10 - 2026-08-10
+## 0.1.0-alpha.10 - 2026-08-11
 
 - Add multi-product governance manifests, exposure propagation, dependency-cycle and forbidden-dependency checks,
   and fail-closed public dependency closure while preserving ungoverned single-product compatibility.
@@ -16,6 +13,10 @@
 - Require governed canonical workspaces for product-level public export and prove direct/transitive Core-only
   exposure leaks fail closed.
 - Add an explicit offline installed-package smoke mode for clean public projection and local-cache validation.
+- Correct historical prerelease headings, dates, and notable workspace and
+  release-boundary entries against published tags and npm registry history.
+- Reorganize public guidance around natural-language Codex adoption, add paired
+  Usage Guides, and verify public navigation and npm package contents.
 
 ## 0.1.0-alpha.9 - 2026-08-04
 
