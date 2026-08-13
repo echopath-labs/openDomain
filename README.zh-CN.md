@@ -1,9 +1,9 @@
 # OpenDomain
 
 [![CI](https://github.com/echopath-labs/openDomain/actions/workflows/ci.yml/badge.svg)](https://github.com/echopath-labs/openDomain/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/%40echopath-labs%2Fopendomain/alpha?label=npm)](https://www.npmjs.com/package/@echopath-labs/opendomain)
-![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)
-![Status](https://img.shields.io/badge/status-alpha-f59e0b.svg)
+[![npm](https://img.shields.io/npm/v/%40echopath-labs%2Fopendomain/rc?label=npm%20rc)](https://www.npmjs.com/package/@echopath-labs/opendomain)
+![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-green.svg)
+![Status](https://img.shields.io/badge/status-release%20candidate-f59e0b.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D20-0f766e.svg)
 ![Source](https://img.shields.io/badge/source-Markdown%20%2B%20YAML-2563eb.svg)
 
@@ -99,19 +99,19 @@ AGENTS.md                              受管 OpenDomain 区块
 
 大多数用户只需要让 Codex 安装。也可以手动使用相同渠道。
 
-### npm alpha 渠道
+### npm RC 渠道
 
 已有 Node.js 20，或 Node.js 22 及以上环境时使用 npm：
 
 ```bash
-npm install --global @echopath-labs/opendomain@alpha
+npm install --global @echopath-labs/opendomain@rc
 opendomain --version
 opendomain init --tools codex
 opendomain doctor
 opendomain validate
 ```
 
-预发布阶段必须显式使用 `@alpha`。
+评估 release candidate 时必须显式使用 `@rc`；该渠道不会移动 npm `latest`。
 
 ### 独立二进制
 
@@ -130,7 +130,7 @@ opendomain validate
 
 ## 当前能力
 
-当前 alpha 已包含：
+当前 release candidate 已包含：
 
 - Markdown + YAML front matter source of truth；
 - Schema 校验与引用完整性检查；
@@ -144,8 +144,11 @@ opendomain validate
 - 受管 Codex 指令、Skills、更新和诊断；
 - 不引入宿主 package metadata 的 npm 与独立 CLI 分发。
 
-OpenDomain 当前适合限定范围试点和公开迭代。稳定版之前格式与 CLI 仍可能变化，暂时
-不应成为生产关键领域决策的唯一治理来源。
+OpenDomain rc.1 是 `0.1.0` 的兼容性演练，冻结已发布的 Markdown/YAML source schemas、
+Grounding Protocol v1、Core API 1.0、context-export v1、现有 CLI 命令与退出语义、
+workspace resolution，以及现有维护者项目使用的 package-neutral npm/standalone 行为。
+发现不兼容行为时必须延期 stable 或提供经过审查的迁移说明。本证据不能替代组织自身
+的生产治理、安全审查与人工 Candidate 决策；独立外部客户验证仍是明确延期项。
 
 多产品 canonical workspace 可以增加版本化的 `opendomain/governance.yaml`，并把每个
 domain group 的普通语义目录放入声明的 `source_root`。`opendomain validate --json`
@@ -173,4 +176,5 @@ release。详见[嵌入 Core 与导出 Context](USAGE.zh-CN.md#嵌入-core-与�
 维护者规划记录属于私有过程资料，不会进入公开仓库或 npm 包。
 `examples/erp/` 下的 OpenSpec 只是合成互操作 fixture。
 
-OpenDomain 使用 [MIT License](LICENSE)。
+OpenDomain 从 `0.1.0-rc.1` 开始采用 [Apache License 2.0](LICENSE)。已经发布的
+`0.1.0-alpha.10` 及更早 artifacts 保持其原始许可身份；归属信息见 [NOTICE](NOTICE)。

@@ -75,6 +75,7 @@ try {
     "SECURITY.md",
     "CHANGELOG.md",
     "LICENSE",
+    "NOTICE",
     "examples/erp/README.md"
   ]) {
     await access(path.join(installedRoot, ...publicDocument.split("/")));

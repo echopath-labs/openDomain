@@ -58,12 +58,12 @@ opendomain validate --json
 
 [Agent 安装契约](INSTALL.md)是渠道选择和安全边界的正式依据。
 
-### npm alpha
+### npm RC
 
 已经有 Node.js 20，或 Node.js 22 及以上环境时优先使用 npm：
 
 ```bash
-npm install --global @echopath-labs/opendomain@alpha
+npm install --global @echopath-labs/opendomain@rc
 opendomain --version
 ```
 
@@ -85,7 +85,8 @@ macOS 使用 `shasum -a 256`，Linux 使用 `sha256sum`，PowerShell 使用
 `Get-FileHash -Algorithm SHA256`。只安装到 `PATH` 上用户拥有的目录。当前 macOS
 二进制采用 ad-hoc 签名但未 notarize，Windows 二进制没有 Authenticode 签名。
 
-npm 使用显式 alpha tag 升级；独立二进制需要下载、校验并替换 executable。升级后
+`@rc` 是显式的首个 stable 演练渠道，不会移动 npm `latest`。RC 安装使用显式 rc tag
+升级；独立二进制需要下载、校验并替换 executable。升级后
 运行：
 
 ```bash

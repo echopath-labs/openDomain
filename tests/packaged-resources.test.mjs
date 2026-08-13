@@ -17,8 +17,12 @@ test("packaged resources expose schemas, package metadata, and ERP files", async
   const exampleFiles = resources.listPackagedFiles("examples/erp/");
 
   assert.equal(packageMetadata.name, "@echopath-labs/opendomain");
+  assert.equal(packageMetadata.version, "0.1.0-rc.1");
+  assert.equal(packageMetadata.license, "Apache-2.0");
+  assert.equal(packageMetadata.publishConfig.tag, "rc");
   assert.match(installationContract, /OpenDomain Agent Installation Contract/);
-  assert.match(installationContract, /@echopath-labs\/opendomain@alpha/);
+  assert.match(installationContract, /@echopath-labs\/opendomain@rc/);
+  assert.doesNotMatch(installationContract, /@echopath-labs\/opendomain@alpha/);
   assert.equal(schema.$id, "https://opendomain.dev/schemas/context.schema.json");
   assert.equal(governanceSchema.$id, "https://opendomain.dev/schemas/governance.schema.json");
   assert.equal(contextExportSchema.$id, "https://opendomain.dev/schemas/context-export.schema.json");

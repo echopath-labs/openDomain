@@ -67,12 +67,12 @@ generated Skills automatically.
 The [Agent Installation Contract](INSTALL.md) is authoritative for channel
 selection and safety.
 
-### npm alpha
+### npm release candidate
 
 Prefer npm when Node.js 20 or Node.js 22 and newer is already available:
 
 ```bash
-npm install --global @echopath-labs/opendomain@alpha
+npm install --global @echopath-labs/opendomain@rc
 opendomain --version
 ```
 
@@ -96,9 +96,10 @@ Verify with `shasum -a 256` on macOS, `sha256sum` on Linux, or
 directory on `PATH`. macOS binaries are currently ad-hoc signed but not
 notarized; Windows binaries are not Authenticode signed.
 
-Upgrade npm installations with the explicit alpha tag. Upgrade standalone
-installations by downloading, verifying, and replacing the executable. Then
-run:
+The `@rc` channel is an explicit first-stable rehearsal and does not move npm
+`latest`. Upgrade npm release-candidate installations with the explicit rc tag.
+Upgrade standalone installations by downloading, verifying, and replacing the
+executable. Then run:
 
 ```bash
 opendomain update --json
