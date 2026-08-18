@@ -1,9 +1,9 @@
 # OpenDomain
 
 [![CI](https://github.com/echopath-labs/openDomain/actions/workflows/ci.yml/badge.svg)](https://github.com/echopath-labs/openDomain/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/%40echopath-labs%2Fopendomain/alpha?label=npm)](https://www.npmjs.com/package/@echopath-labs/opendomain)
-![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)
-![Status](https://img.shields.io/badge/status-alpha-f59e0b.svg)
+[![npm](https://img.shields.io/npm/v/%40echopath-labs%2Fopendomain/rc?label=npm%20rc)](https://www.npmjs.com/package/@echopath-labs/opendomain)
+![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-green.svg)
+![Status](https://img.shields.io/badge/status-release%20candidate-f59e0b.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D20-0f766e.svg)
 ![Source](https://img.shields.io/badge/source-Markdown%20%2B%20YAML-2563eb.svg)
 
@@ -108,19 +108,20 @@ Git versioning.
 Most users should ask Codex to install OpenDomain. The same channels are
 available manually.
 
-### npm alpha channel
+### npm release candidate channel
 
 Use npm when Node.js 20 or Node.js 22 and newer is already available:
 
 ```bash
-npm install --global @echopath-labs/opendomain@alpha
+npm install --global @echopath-labs/opendomain@rc
 opendomain --version
 opendomain init --tools codex
 opendomain doctor
 opendomain validate
 ```
 
-The explicit `@alpha` tag is required during prerelease development.
+The explicit `@rc` tag is required for release-candidate evaluation and does
+not move npm `latest`.
 
 ### Standalone binary
 
@@ -141,7 +142,7 @@ for verification and upgrade steps.
 
 ## Current Capabilities
 
-The current alpha includes:
+The current release candidate includes:
 
 - Markdown with YAML front matter as the source of truth;
 - schema validation and reference integrity checks;
@@ -155,9 +156,14 @@ The current alpha includes:
 - managed Codex instructions, Skills, updates, and diagnostics;
 - npm and standalone CLI distribution without host package metadata.
 
-OpenDomain is suitable for bounded trials and public iteration. The format and
-CLI may still change before a stable release, and it should not yet be the sole
-governance source for production-critical domain decisions.
+OpenDomain rc.1 is the compatibility rehearsal for `0.1.0`. It freezes the
+published Markdown/YAML source schemas, Grounding Protocol v1, Core API 1.0,
+context-export v1, existing CLI commands and exit semantics, workspace
+resolution, and package-neutral npm/standalone behavior used by current
+maintainer-owned adopters. A discovered incompatibility defers stable release
+or requires reviewed migration guidance. This evidence does not replace each
+organization's production governance, security review, or human Candidate
+decisions, and independent external-customer validation remains deferred.
 
 For a multi-product canonical workspace, add a versioned
 `opendomain/governance.yaml` and place each domain group's normal semantic
@@ -189,4 +195,6 @@ Maintainer planning records are private process material and are not shipped in
 the public repository or npm package. The OpenSpec fixture under `examples/erp/`
 is synthetic interoperability data.
 
-OpenDomain is licensed under the [MIT License](LICENSE).
+OpenDomain is licensed under the [Apache License 2.0](LICENSE) starting with
+`0.1.0-rc.1`. Published `0.1.0-alpha.10` and earlier artifacts retain their
+original license identities. See [NOTICE](NOTICE) for attribution information.

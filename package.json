@@ -1,8 +1,8 @@
 {
   "name": "@echopath-labs/opendomain",
-  "version": "0.1.0-alpha.10",
+  "version": "0.1.0-rc.1",
   "description": "Git-native, evidence-backed domain semantics for AI agents.",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "author": {
     "name": "Chase",
     "email": "chasechou007@gmail.com"
@@ -53,12 +53,13 @@
     "CONTRIBUTING.md",
     "SECURITY.md",
     "LICENSE",
+    "NOTICE",
     "CHANGELOG.md"
   ],
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/",
-    "tag": "alpha"
+    "tag": "rc"
   },
   "scripts": {
     "test": "node --test",

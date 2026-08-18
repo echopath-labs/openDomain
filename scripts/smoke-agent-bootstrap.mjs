@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 
 const execFile = promisify(execFileCallback);
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const expectedVersion = JSON.parse(await readFile(path.join(packageRoot, "package.json"), "utf8")).version;
 const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "opendomain-agent-bootstrap-"));
 const npmEnvironment = {
   ...process.env,
@@ -56,7 +57,7 @@ try {
   await access(cli);
 
   const version = await run(cli, ["--version"], workspace);
-  assert.match(version.stdout.trim(), /^0\.1\.0-alpha\.\d+$/);
+  assert.equal(version.stdout.trim(), expectedVersion);
 
   const init = await runJsonCli(cli, [
     "init",

@@ -1,7 +1,12 @@
 # Contributing to OpenDomain
 
-OpenDomain is an early alpha project. Contributions should keep the core small,
-Git-native, evidence-backed, and easy for AI agents to consume.
+OpenDomain is preparing its first stable release. Contributions should keep the
+core small, Git-native, evidence-backed, and easy for AI agents to consume.
+
+Unless explicitly stated otherwise, contributions submitted for inclusion in
+OpenDomain are licensed under the Apache License 2.0 beginning with
+`0.1.0-rc.1`. Contributors must have the right to submit their work under
+that license.
 
 ## Development Setup
 

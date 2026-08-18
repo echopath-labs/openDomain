@@ -4,6 +4,21 @@
 
 _No unreleased changes._
 
+## 0.1.0-rc.1 - 2026-08-13
+
+- Adopt the Apache License 2.0 for OpenDomain releases starting with rc.1,
+  including aligned package metadata, public documentation, and NOTICE material.
+- Preserve alpha.10 and all earlier immutable releases under the licenses with
+  which they were originally distributed; this change is forward-only.
+- Freeze the intended `0.1.0` compatibility surface for the published source
+  schemas, Grounding Protocol v1, Core API 1.0, context-export v1, existing CLI
+  and workspace behavior, and package-neutral npm/standalone installation.
+- Add explicit `@rc` installation guidance and keep the release candidate away
+  from npm `latest`; stable publication remains a separately approved operation.
+- Record real maintainer-owned project adoption and a bounded human Candidate
+  judgement while retaining the reviewed Candidate as Proposed and
+  non-authoritative; no accepted knowledge is promoted by this release source.
+
 ## 0.1.0-alpha.10 - 2026-08-11
 
 - Add multi-product governance manifests, exposure propagation, dependency-cycle and forbidden-dependency checks,

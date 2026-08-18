@@ -1,6 +1,7 @@
 # Security Policy
 
-OpenDomain is currently early alpha.
+OpenDomain is currently a release candidate preparing for its first stable
+release.
 
 ## Reporting a Vulnerability
 
