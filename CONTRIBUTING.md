@@ -1,7 +1,7 @@
 # Contributing to OpenDomain
 
-OpenDomain is preparing its first stable release. Contributions should keep the
-core small, Git-native, evidence-backed, and easy for AI agents to consume.
+OpenDomain maintains a small stable core that is Git-native, evidence-backed,
+and easy for AI agents to consume.
 
 Unless explicitly stated otherwise, contributions submitted for inclusion in
 OpenDomain are licensed under the Apache License 2.0 beginning with

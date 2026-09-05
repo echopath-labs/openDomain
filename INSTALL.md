@@ -29,22 +29,21 @@ First run `opendomain --version` if `opendomain` is already on `PATH`. A usable
 existing CLI does not need to be installed again; continue with workspace
 initialization or update below.
 
-### npm Release Candidate Channel
+### npm Stable Channel
 
 Prefer npm when a supported Node.js and npm tool environment is already
 available. OpenDomain currently supports Node.js 20 or Node.js 22 and newer;
 Node.js 21 is not supported.
 
-During the release-candidate rehearsal, always name the `rc` distribution tag:
+Install the current stable release from the default channel:
 
 ```bash
-npm install --global @echopath-labs/opendomain@rc
+npm install --global @echopath-labs/opendomain
 opendomain --version
 ```
 
-The RC tag does not move npm `latest`. Use `@rc` only when deliberately testing
-the first-stable compatibility candidate; normal stable installation remains a
-separately published and verified channel.
+Use `@echopath-labs/opendomain@0.1.0` when an exact version must be pinned.
+Prerelease channels are explicit opt-ins and must not move npm `latest`.
 
 This is a global tool installation. Do not run `npm install` without
 `--global` from the user's project. If the configured global prefix is not

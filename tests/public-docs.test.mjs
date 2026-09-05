@@ -34,8 +34,8 @@ const pairedNavigation = new Map([
 
 const npmPackageUrl =
   "https://www.npmjs.com/package/@echopath-labs/opendomain";
-const npmRcBadgeUrl =
-  "https://img.shields.io/npm/v/%40echopath-labs%2Fopendomain/rc?label=npm%20rc";
+const npmStableBadgeUrl =
+  "https://img.shields.io/npm/v/%40echopath-labs%2Fopendomain?label=npm";
 
 test("public guidance exposes paired Agent adoption entrypoints", async () => {
   for (const document of publicDocuments) {
@@ -58,28 +58,29 @@ test("public guidance exposes paired Agent adoption entrypoints", async () => {
   }
 });
 
-test("public READMEs expose the same RC-aware npm package entrypoint", async () => {
-  const expectedBadge = `[![npm](${npmRcBadgeUrl})](${npmPackageUrl})`;
+test("public READMEs expose the same stable npm package entrypoint", async () => {
+  const expectedBadge = `[![npm](${npmStableBadgeUrl})](${npmPackageUrl})`;
 
   for (const document of ["README.md", "README.zh-CN.md"]) {
     const content = await readDocument(document);
     assert.equal(
       content.split(expectedBadge).length - 1,
       1,
-      `${document} must contain exactly one linked npm RC badge`
+      `${document} must contain exactly one linked stable npm badge`
     );
   }
 });
 
-test("active installation guidance uses only the explicit RC channel", async () => {
+test("active installation guidance uses the stable default channel", async () => {
   for (const document of ["README.md", "README.zh-CN.md", "USAGE.md", "USAGE.zh-CN.md", "INSTALL.md"]) {
     const content = await readDocument(document);
-    assert.match(content, /@echopath-labs\/opendomain@rc/);
+    assert.match(content, /npm install --global @echopath-labs\/opendomain(?:\s|$)/m);
+    assert.match(content, /@echopath-labs\/opendomain@0\.1\.0/);
     assert.doesNotMatch(content, /@echopath-labs\/opendomain@alpha/);
   }
 });
 
-test("RC guidance freezes the intended stable compatibility surface", async () => {
+test("stable guidance freezes the intended compatibility surface", async () => {
   const english = await readDocument("README.md");
   const chinese = await readDocument("README.zh-CN.md");
   for (const phrase of ["Grounding Protocol v1", "Core API 1.0", "context-export v1"]) {

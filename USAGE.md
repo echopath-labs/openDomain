@@ -67,12 +67,12 @@ generated Skills automatically.
 The [Agent Installation Contract](INSTALL.md) is authoritative for channel
 selection and safety.
 
-### npm release candidate
+### npm stable release
 
 Prefer npm when Node.js 20 or Node.js 22 and newer is already available:
 
 ```bash
-npm install --global @echopath-labs/opendomain@rc
+npm install --global @echopath-labs/opendomain
 opendomain --version
 ```
 
@@ -96,9 +96,9 @@ Verify with `shasum -a 256` on macOS, `sha256sum` on Linux, or
 directory on `PATH`. macOS binaries are currently ad-hoc signed but not
 notarized; Windows binaries are not Authenticode signed.
 
-The `@rc` channel is an explicit first-stable rehearsal and does not move npm
-`latest`. Upgrade npm release-candidate installations with the explicit rc tag.
-Upgrade standalone installations by downloading, verifying, and replacing the
+Pin `@echopath-labs/opendomain@0.1.0` when exact reproducibility is required.
+Future prereleases remain explicit and cannot move npm `latest`. Upgrade
+standalone installations by downloading, verifying, and replacing the
 executable. Then run:
 
 ```bash
@@ -334,9 +334,32 @@ opendomain candidate review candidate-0001 --decision rejected --reviewed-by cha
 opendomain validate
 ```
 
-An `accepted` Candidate review records that promotion is required; it does not
-silently rewrite accepted knowledge. Promotion remains a separately reviewed
-domain-model change.
+An `accepted` Candidate review records attributable approval for promotion. It
+keeps Candidate `status` and `review.state` as `proposed`, so grounding still
+reports it as non-authoritative. It never rewrites accepted knowledge.
+
+After a human has authored or updated the accepted target source, use the
+non-applying plan to validate the exact target and review its SHA-256 digest:
+
+```bash
+opendomain candidate promote plan candidate-0001 --accepted-source opendomain/concepts/sales.order.md --json
+```
+
+Only after a second human confirmation may OpenDomain record completion:
+
+```bash
+opendomain candidate promote complete candidate-0001 --accepted-source opendomain/concepts/sales.order.md --confirmed-by chase --reason "Confirmed the final accepted source and evidence" --json
+```
+
+Completion changes only the Candidate to `superseded` and records the accepted
+target path and digest. It does not create or edit accepted source content.
+Update and deprecation Candidates also require `--compatibility-note` during
+planning and completion.
+
+A human-authored source document with `status: proposed` is a deliberate draft
+of that source type. Agent-extracted or uncertain semantics belong in a
+`domain_candidate`. Neither is accepted knowledge until the normal human source
+review and the separate Candidate promotion boundary have been satisfied.
 
 ## Ground An Implementation Task
 

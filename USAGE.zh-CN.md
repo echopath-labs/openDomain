@@ -58,12 +58,12 @@ opendomain validate --json
 
 [Agent 安装契约](INSTALL.md)是渠道选择和安全边界的正式依据。
 
-### npm RC
+### npm stable release
 
 已经有 Node.js 20，或 Node.js 22 及以上环境时优先使用 npm：
 
 ```bash
-npm install --global @echopath-labs/opendomain@rc
+npm install --global @echopath-labs/opendomain
 opendomain --version
 ```
 
@@ -85,9 +85,9 @@ macOS 使用 `shasum -a 256`，Linux 使用 `sha256sum`，PowerShell 使用
 `Get-FileHash -Algorithm SHA256`。只安装到 `PATH` 上用户拥有的目录。当前 macOS
 二进制采用 ad-hoc 签名但未 notarize，Windows 二进制没有 Authenticode 签名。
 
-`@rc` 是显式的首个 stable 演练渠道，不会移动 npm `latest`。RC 安装使用显式 rc tag
-升级；独立二进制需要下载、校验并替换 executable。升级后
-运行：
+需要精确复现时固定 `@echopath-labs/opendomain@0.1.0`。后续 prerelease 必须显式
+选择，并且不能移动 npm `latest`。独立二进制需要下载、校验并替换 executable。
+升级后运行：
 
 ```bash
 opendomain update --json
@@ -300,8 +300,30 @@ opendomain candidate review candidate-0001 --decision rejected --reviewed-by cha
 opendomain validate
 ```
 
-`accepted` Candidate review 只会记录需要 promotion，不会静默改写 accepted
-knowledge。Promotion 仍是一次单独审查的领域模型变更。
+`accepted` Candidate review 只会记录可归属的 promotion approval，不会静默改写
+accepted knowledge。Candidate 的 `status` 与 `review.state` 仍保持 `proposed`，
+因此 grounding 仍把它视为非权威内容。
+
+人类完成 accepted target source 的新增或修改后，先生成不应用变更的计划，并确认
+精确目标与 SHA-256 指纹：
+
+```bash
+opendomain candidate promote plan candidate-0001 --accepted-source opendomain/concepts/sales.order.md --json
+```
+
+只有第二次人工确认后，OpenDomain 才记录 promotion 完成：
+
+```bash
+opendomain candidate promote complete candidate-0001 --accepted-source opendomain/concepts/sales.order.md --confirmed-by chase --reason "Confirmed the final accepted source and evidence" --json
+```
+
+完成操作只把 Candidate 改为 `superseded`，并记录 accepted target 的路径与指纹；它
+不会创建或修改 accepted source 内容。更新和废弃类 Candidate 在 plan 与 complete
+时还必须提供 `--compatibility-note`。
+
+由人主动编写、`status: proposed` 的 source document 是该 source type 的显式草稿；
+Agent 提取或仍不确定的语义必须进入 `domain_candidate`。两者都不是 accepted
+knowledge，直至正常的人工 source review 与独立 Candidate promotion 边界均已满足。
 
 ## 为实现任务准备 Grounding
 

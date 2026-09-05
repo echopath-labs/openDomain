@@ -1,4 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { parseMarkdown, serializeFrontmatter } from "./frontmatter.mjs";
 import { validatePath } from "./validator.mjs";
@@ -75,21 +76,53 @@ export async function reviewCandidate(candidateId, targetPath, reviewInput, opti
     };
   }
 
-  const effectiveState = reviewInput.decision === "accepted" ? "superseded" : reviewInput.decision;
+  if (reviewInput.decision === "accepted" && frontmatter.approval) {
+    return {
+      candidate: toCandidateSummary(document),
+      decision: reviewInput.decision,
+      effective_state: frontmatter.status,
+      file: document.file,
+      warnings: corpus.warnings,
+      errors: [issue({
+        file: document.file,
+        field: "approval",
+        problem: `Candidate '${candidateId}' already has promotion approval.`,
+        fix: "Prepare a promotion plan, or record a different final review decision with explicit rationale."
+       })]
+    };
+  }
+
+  const effectiveState = reviewInput.decision === "accepted" ? "proposed" : reviewInput.decision;
   const absoluteFile = path.resolve(cwd, document.file);
   const content = await readFile(absoluteFile, "utf8");
   const parsed = parseMarkdown(content, document.file);
-  const updatedFrontmatter = {
-    ...parsed.frontmatter,
-    status: effectiveState,
-    review: {
-      ...parsed.frontmatter.review,
-      state: effectiveState,
-      reviewed_by: reviewInput.reviewedBy,
-      reviewed_at: reviewInput.reviewedAt ?? formatDate(options.now ?? new Date()),
-      decision_reason: normalizeLine(reviewInput.reason)
-    }
-  };
+  const decisionDate = reviewInput.reviewedAt ?? formatDate(options.now ?? new Date());
+  const updatedFrontmatter = reviewInput.decision === "accepted"
+    ? {
+        ...parsed.frontmatter,
+        status: "proposed",
+        approval: {
+          state: "approved_for_promotion",
+          approved_by: reviewInput.reviewedBy,
+          approved_at: decisionDate,
+          decision_reason: normalizeLine(reviewInput.reason)
+        },
+        review: {
+          ...parsed.frontmatter.review,
+          state: "proposed"
+        }
+      }
+    : {
+        ...parsed.frontmatter,
+        status: effectiveState,
+        review: {
+          ...parsed.frontmatter.review,
+          state: effectiveState,
+          reviewed_by: reviewInput.reviewedBy,
+          reviewed_at: decisionDate,
+          decision_reason: normalizeLine(reviewInput.reason)
+        }
+      };
 
   const nextContent = `---\n${serializeFrontmatter(updatedFrontmatter, document.file)}---\n${parsed.body}`;
   await writeFile(absoluteFile, nextContent, "utf8");
@@ -103,8 +136,200 @@ export async function reviewCandidate(candidateId, targetPath, reviewInput, opti
     file: document.file,
     promotion_required: reviewInput.decision === "accepted",
     boundary: reviewInput.decision === "accepted"
-      ? "Accepted domain knowledge files were not modified automatically."
+      ? "Promotion approval was recorded; the Candidate remains proposed and accepted domain knowledge files were not modified."
       : "Candidate review metadata was updated; accepted domain knowledge files were not modified.",
+    warnings: validation.warnings,
+    errors: validation.errors
+  };
+}
+
+export async function planCandidatePromotion(candidateId, targetPath, promotionInput, options = {}) {
+  const cwd = options.cwd ?? process.cwd();
+  const corpus = await listCandidateCorpus(candidateId, targetPath, options);
+  const errors = [...corpus.errors];
+  const document = corpus.document;
+
+  if (!document) {
+    return promotionPlanResult({ candidateId, targetPath, warnings: corpus.warnings, errors });
+  }
+
+  const frontmatter = document.frontmatter;
+  const compatibilityRequired = requiresCompatibilityNote(frontmatter.proposed_change_type);
+  if (frontmatter.status !== "proposed" || frontmatter.review?.state !== "proposed") {
+    errors.push(issue({
+      file: document.file,
+      field: "status",
+      problem: `Candidate '${candidateId}' is '${frontmatter.status}', not proposed.`,
+      fix: "Prepare promotion only for an approved proposed Candidate."
+    }));
+  }
+  if (frontmatter.approval?.state !== "approved_for_promotion") {
+    errors.push(issue({
+      file: document.file,
+      field: "approval",
+      problem: `Candidate '${candidateId}' has no promotion approval.`,
+      fix: "Run candidate review with --decision accepted before preparing promotion."
+    }));
+  }
+  if (!promotionInput.acceptedSource) {
+    errors.push(issue({
+      file: "<input>",
+      field: "accepted_source",
+      problem: "Missing accepted target source path.",
+      fix: "Pass --accepted-source <file> for the human-reviewed accepted target."
+    }));
+  }
+  if (compatibilityRequired && !promotionInput.compatibilityNote) {
+    errors.push(issue({
+      file: "<input>",
+      field: "compatibility_note",
+      problem: `Candidate operation '${frontmatter.proposed_change_type}' requires a compatibility note.`,
+      fix: "Pass --compatibility-note <text> describing the accepted semantic impact."
+    }));
+  }
+
+  const target = corpus.documents.find((item) => (
+    item.id === frontmatter.target?.id && item.type === frontmatter.target?.type
+  ));
+  if (!target) {
+    errors.push(issue({
+      file: document.file,
+      field: "target.id",
+      problem: `Accepted target '${frontmatter.target?.id ?? ""}' with type '${frontmatter.target?.type ?? ""}' was not found.`,
+      fix: "Create or select the human-reviewed target source before completing promotion."
+    }));
+  } else if (target.frontmatter.status !== "accepted" || target.frontmatter.review?.state !== "accepted") {
+    errors.push(issue({
+      file: target.file,
+      field: "status",
+      problem: `Promotion target '${target.id}' is not accepted human-reviewed knowledge.`,
+      fix: "Add accepted review metadata and evidence to the target, then validate again."
+    }));
+  }
+
+  let targetSummary = target ? {
+    type: target.type,
+    id: target.id,
+    file: target.file,
+    status: target.frontmatter.status,
+    evidence: Array.isArray(target.frontmatter.evidence) ? target.frontmatter.evidence : [],
+    review: target.frontmatter.review ?? null,
+    source_hash: null
+  } : null;
+
+  if (target && promotionInput.acceptedSource) {
+    const declaredFile = path.resolve(cwd, promotionInput.acceptedSource);
+    const resolvedFile = path.resolve(cwd, target.file);
+    if (declaredFile !== resolvedFile) {
+      errors.push(issue({
+        file: promotionInput.acceptedSource,
+        field: "accepted_source",
+        problem: `Accepted source does not resolve to Candidate target '${target.id}' at '${target.file}'.`,
+        fix: `Pass --accepted-source ${target.file}.`
+      }));
+    } else {
+      const content = await readFile(resolvedFile, "utf8");
+      targetSummary = {
+        ...targetSummary,
+        source_hash: sha256(content)
+      };
+    }
+  }
+
+  return promotionPlanResult({
+    candidateId,
+    targetPath,
+    candidate: toCandidatePromotionDescriptor(document),
+    target: targetSummary,
+    compatibilityNote: promotionInput.compatibilityNote,
+    compatibilityRequired,
+    warnings: corpus.warnings,
+    errors
+  });
+}
+
+export async function completeCandidatePromotion(candidateId, targetPath, completionInput, options = {}) {
+  const cwd = options.cwd ?? process.cwd();
+  const corpus = await listCandidateCorpus(candidateId, targetPath, options);
+  const document = corpus.document;
+  const inputErrors = validateCompletionInput(completionInput);
+
+  if (document?.frontmatter.promotion?.state === "completed" && document.frontmatter.status === "superseded") {
+    return {
+      plan: null,
+      candidate: toCandidateSummary(document),
+      file: document.file,
+      already_completed: true,
+      boundary: "Promotion was already completed; accepted domain knowledge files were not modified.",
+      warnings: corpus.warnings,
+      errors: inputErrors
+    };
+  }
+
+  if (inputErrors.length > 0) {
+    return {
+      plan: null,
+      candidate: document ? toCandidateSummary(document) : null,
+      file: document?.file ?? null,
+      already_completed: false,
+      warnings: corpus.warnings,
+      errors: [...corpus.errors, ...inputErrors]
+    };
+  }
+
+  const plan = await planCandidatePromotion(candidateId, targetPath, completionInput, options);
+  if (plan.errors.length > 0) {
+    return {
+      plan,
+      candidate: plan.candidate,
+      file: plan.candidate?.file ?? null,
+      already_completed: false,
+      warnings: plan.warnings,
+      errors: plan.errors
+    };
+  }
+
+  const content = await readFile(path.resolve(cwd, document.file), "utf8");
+  const parsed = parseMarkdown(content, document.file);
+  const completionDate = completionInput.confirmedAt ?? formatDate(options.now ?? new Date());
+  const updatedFrontmatter = {
+    ...parsed.frontmatter,
+    status: "superseded",
+    promotion: {
+      state: "completed",
+      accepted_target: {
+        type: plan.target.type,
+        id: plan.target.id,
+        file: plan.target.file,
+        source_hash: plan.target.source_hash
+      },
+      completed_by: completionInput.confirmedBy,
+      completed_at: completionDate,
+      decision_reason: normalizeLine(completionInput.reason),
+      ...(completionInput.compatibilityNote
+        ? { compatibility_note: normalizeLine(completionInput.compatibilityNote) }
+        : {})
+    },
+    review: {
+      ...parsed.frontmatter.review,
+      state: "superseded",
+      reviewed_by: completionInput.confirmedBy,
+      reviewed_at: completionDate,
+      decision_reason: normalizeLine(completionInput.reason)
+    }
+  };
+
+  const nextContent = `---\n${serializeFrontmatter(updatedFrontmatter, document.file)}---\n${parsed.body}`;
+  await writeFile(path.resolve(cwd, document.file), nextContent, "utf8");
+  const validation = await validatePath(targetPath, { cwd, now: options.now ?? new Date() });
+  const candidate = validation.documents.find((item) => item.id === candidateId && item.type === "domain_candidate");
+
+  return {
+    plan,
+    candidate: candidate ? toCandidateSummary(candidate) : null,
+    file: document.file,
+    already_completed: false,
+    boundary: "Promotion completion updated only the Candidate; accepted domain knowledge files were not modified.",
     warnings: validation.warnings,
     errors: validation.errors
   };
@@ -192,6 +417,7 @@ async function listCandidateCorpus(candidateId, targetPath, options) {
 
   return {
     document: candidate,
+    documents: validation.documents,
     warnings: validation.warnings,
     errors: []
   };
@@ -210,6 +436,8 @@ function toCandidateSummary(document) {
     reviewed_by: frontmatter.review?.reviewed_by,
     reviewed_at: frontmatter.review?.reviewed_at,
     decision_reason: frontmatter.review?.decision_reason,
+    approval: frontmatter.approval ?? null,
+    promotion: frontmatter.promotion ?? null,
     file: document.file
   };
 }
@@ -226,6 +454,14 @@ function toCandidateDetail(document) {
   };
 }
 
+function toCandidatePromotionDescriptor(document) {
+  return {
+    ...toCandidateSummary(document),
+    evidence: Array.isArray(document.frontmatter.evidence) ? document.frontmatter.evidence : [],
+    review: document.frontmatter.review ?? null
+  };
+}
+
 function compareCandidates(left, right) {
   return left.id.localeCompare(right.id);
 }
@@ -236,6 +472,74 @@ function normalizeLine(value) {
 
 function formatDate(date) {
   return date.toISOString().slice(0, 10);
+}
+
+function requiresCompatibilityNote(changeType) {
+  return String(changeType ?? "").startsWith("update_") || changeType === "deprecate_knowledge";
+}
+
+function validateCompletionInput(input) {
+  const errors = [];
+  if (!input.confirmedBy) {
+    errors.push(issue({
+      file: "<input>",
+      field: "confirmed_by",
+      problem: "Missing final human confirmer.",
+      fix: "Pass --confirmed-by <name>."
+    }));
+  }
+  if (!input.reason) {
+    errors.push(issue({
+      file: "<input>",
+      field: "reason",
+      problem: "Missing Promotion completion reason.",
+      fix: "Pass --reason <text> describing the confirmed accepted result."
+    }));
+  }
+  if (input.confirmedAt && !/^\d{4}-\d{2}-\d{2}$/.test(input.confirmedAt)) {
+    errors.push(issue({
+      file: "<input>",
+      field: "confirmed_at",
+      problem: `Invalid confirmed_at date '${input.confirmedAt}'.`,
+      fix: "Use --confirmed-at YYYY-MM-DD."
+    }));
+  }
+  return errors;
+}
+
+function promotionPlanResult({
+  candidateId,
+  targetPath,
+  candidate = null,
+  target = null,
+  compatibilityNote = null,
+  compatibilityRequired = false,
+  warnings = [],
+  errors = []
+}) {
+  return {
+    schema_version: "opendomain.candidate-promotion-plan.v1",
+    applies: false,
+    status: errors.length > 0 ? "blocked" : "ready",
+    source: targetPath ?? "<default>",
+    candidate: candidate ?? { id: candidateId },
+    target,
+    compatibility_note: compatibilityNote ? normalizeLine(compatibilityNote) : null,
+    compatibility_validation: {
+      required: compatibilityRequired,
+      provided: Boolean(compatibilityNote),
+      status: compatibilityRequired && !compatibilityNote ? "fail" : "pass"
+    },
+    required_confirmation: errors.length > 0
+      ? null
+      : "A human must confirm the final accepted target before Candidate supersession.",
+    warnings,
+    errors
+  };
+}
+
+function sha256(content) {
+  return createHash("sha256").update(content).digest("hex");
 }
 
 function issue(issueFields) {

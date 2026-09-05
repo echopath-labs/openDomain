@@ -348,6 +348,43 @@ function validateStatusAndReview(document, result) {
         });
       }
     }
+
+    if (frontmatter.approval && frontmatter.approval.state !== "approved_for_promotion") {
+      addIssue(result.errors, {
+        file: document.file,
+        field: "approval.state",
+        problem: `Unsupported Candidate approval state '${frontmatter.approval.state ?? ""}'.`,
+        fix: "Use approval.state 'approved_for_promotion'."
+      });
+    }
+
+    if (frontmatter.promotion?.state === "completed") {
+      if (frontmatter.status !== "superseded" || frontmatter.review?.state !== "superseded") {
+        addIssue(result.errors, {
+          file: document.file,
+          field: "promotion.state",
+          problem: "Completed Candidate Promotion requires matching superseded status and review state.",
+          fix: "Set Candidate status and review.state to superseded only after Promotion completes."
+        });
+      }
+      if (frontmatter.approval?.state !== "approved_for_promotion") {
+        addIssue(result.errors, {
+          file: document.file,
+          field: "approval",
+          problem: "Completed Candidate Promotion has no attributable prior approval.",
+          fix: "Preserve the approved_for_promotion record when completing Promotion."
+        });
+      }
+      if (frontmatter.promotion.accepted_target?.id !== frontmatter.target?.id
+        || frontmatter.promotion.accepted_target?.type !== frontmatter.target?.type) {
+        addIssue(result.errors, {
+          file: document.file,
+          field: "promotion.accepted_target",
+          problem: "Completed Promotion target does not match the Candidate target.",
+          fix: "Record the exact accepted target id and type validated during Promotion."
+        });
+      }
+    }
   }
 }
 
@@ -424,7 +461,23 @@ function validateTypedReferences(document, domainById, result) {
     const requiresExistingTarget = String(frontmatter.proposed_change_type ?? "").startsWith("update_")
       || frontmatter.proposed_change_type === "deprecate_knowledge";
     if (requiresExistingTarget) {
-      requireReference(frontmatter.target.id, "target.id");
+      requireReference(frontmatter.target.id, "target.id", frontmatter.target.type ? [frontmatter.target.type] : null);
+    }
+    if (frontmatter.promotion?.state === "completed") {
+      const promotedTarget = domainById.get(frontmatter.promotion.accepted_target?.id);
+      requireReference(
+        frontmatter.promotion.accepted_target?.id,
+        "promotion.accepted_target.id",
+        frontmatter.promotion.accepted_target?.type ? [frontmatter.promotion.accepted_target.type] : null
+      );
+      if (promotedTarget && promotedTarget.frontmatter.status !== "accepted") {
+        addIssue(result.errors, {
+          file: document.file,
+          field: "promotion.accepted_target.id",
+          problem: `Completed Promotion target '${promotedTarget.id}' is no longer accepted.`,
+          fix: "Restore an accepted target or record a new reviewed semantic change instead of trusting this Promotion."
+        });
+      }
     }
   }
 }
