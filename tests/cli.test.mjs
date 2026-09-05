@@ -25,6 +25,8 @@ test("help explains canonical and legacy workspace resolution", async () => {
   assert.match(output, /opendomain init \[--tools codex\]/);
   assert.match(output, /opendomain update/);
   assert.match(output, /opendomain doctor/);
+  assert.match(output, /candidate promote plan/);
+  assert.match(output, /candidate promote complete/);
 });
 
 test("version commands print exact package metadata version", async () => {
@@ -696,7 +698,7 @@ test("candidate review records rejected decision metadata", async () => {
   });
 });
 
-test("candidate accepted review maps to superseded without modifying accepted knowledge", async () => {
+test("candidate approval remains proposed until separately confirmed Promotion", async () => {
   await withTempCwd(async () => {
     await writeCandidate("candidate-1001-accepted");
 
@@ -717,14 +719,118 @@ test("candidate accepted review maps to superseded without modifying accepted kn
       "opendomain"
     ], { stdout, stderr });
     const output = stdout.toString();
-    const file = await readFile("opendomain/candidates/candidate-1001-accepted.md", "utf8");
+    const approvedFile = await readFile("opendomain/candidates/candidate-1001-accepted.md", "utf8");
 
     assert.equal(exitCode, 0);
     assert.match(output, /Decision: accepted/);
-    assert.match(output, /Recorded state: superseded/);
-    assert.match(output, /accepted OpenDomain source files/);
-    assert.match(file, /status: superseded/);
-    assert.match(file, /state: superseded/);
+    assert.match(output, /Recorded state: proposed/);
+    assert.match(output, /Promotion approval was recorded/);
+    assert.match(approvedFile, /status: proposed/);
+    assert.match(approvedFile, /state: approved_for_promotion/);
+    assert.match(approvedFile, /approved_by: Chase/);
+    assert.doesNotMatch(approvedFile, /status: superseded/);
+
+    const blockedStdout = memoryStream();
+    const blockedExit = await runCli([
+      "candidate",
+      "promote",
+      "plan",
+      "candidate-1001-accepted",
+      "--accepted-source",
+      "opendomain/concepts/example.new-concept.md",
+      "opendomain",
+      "--json"
+    ], { stdout: blockedStdout, stderr: memoryStream() });
+    const blocked = JSON.parse(blockedStdout.toString());
+
+    assert.equal(blockedExit, 1);
+    assert.equal(blocked.applies, false);
+    assert.equal(blocked.status, "blocked");
+    assert.ok(blocked.errors.some((error) => error.field === "target.id"));
+    assert.equal(await readFile("opendomain/candidates/candidate-1001-accepted.md", "utf8"), approvedFile);
+
+    await writeAcceptedTarget();
+    const acceptedSource = "opendomain/concepts/example.new-concept.md";
+    const acceptedBefore = await readFile(acceptedSource, "utf8");
+    const planStdout = memoryStream();
+    const planExit = await runCli([
+      "candidate",
+      "promote",
+      "plan",
+      "candidate-1001-accepted",
+      "--accepted-source",
+      acceptedSource,
+      "opendomain",
+      "--json"
+    ], { stdout: planStdout, stderr: memoryStream() });
+    const plan = JSON.parse(planStdout.toString());
+
+    assert.equal(planExit, 0);
+    assert.equal(plan.schema_version, "opendomain.candidate-promotion-plan.v1");
+    assert.equal(plan.applies, false);
+    assert.equal(plan.status, "ready");
+    assert.equal(plan.target.id, "example.new-concept");
+    assert.match(plan.target.source_hash, /^[a-f0-9]{64}$/);
+    assert.equal(plan.candidate.evidence[0].type, "spec");
+    assert.equal(plan.candidate.review.state, "proposed");
+    assert.equal(plan.target.evidence[0].type, "human_review");
+    assert.equal(plan.target.review.state, "accepted");
+    assert.deepEqual(plan.compatibility_validation, {
+      required: false,
+      provided: false,
+      status: "pass"
+    });
+    assert.equal(await readFile(acceptedSource, "utf8"), acceptedBefore);
+
+    const completeStdout = memoryStream();
+    const completeExit = await runCli([
+      "candidate",
+      "promote",
+      "complete",
+      "candidate-1001-accepted",
+      "--accepted-source",
+      acceptedSource,
+      "--confirmed-by",
+      "Chase",
+      "--confirmed-at",
+      "2026-07-09",
+      "--reason",
+      "Confirmed the final accepted concept and retained its evidence.",
+      "opendomain",
+      "--json"
+    ], { stdout: completeStdout, stderr: memoryStream() });
+    const completed = JSON.parse(completeStdout.toString());
+    const completedFile = await readFile("opendomain/candidates/candidate-1001-accepted.md", "utf8");
+
+    assert.equal(completeExit, 0);
+    assert.equal(completed.candidate.status, "superseded");
+    assert.equal(completed.candidate.promotion.state, "completed");
+    assert.match(completedFile, /status: superseded/);
+    assert.match(completedFile, /accepted_target:/);
+    assert.match(completedFile, new RegExp(plan.target.source_hash));
+    assert.equal(await readFile(acceptedSource, "utf8"), acceptedBefore);
+
+    const repeatedStdout = memoryStream();
+    const repeatedExit = await runCli([
+      "candidate",
+      "promote",
+      "complete",
+      "candidate-1001-accepted",
+      "--accepted-source",
+      acceptedSource,
+      "--confirmed-by",
+      "Chase",
+      "--reason",
+      "Repeated completion must be idempotent.",
+      "opendomain",
+      "--json"
+    ], { stdout: repeatedStdout, stderr: memoryStream() });
+    const repeated = JSON.parse(repeatedStdout.toString());
+
+    assert.equal(repeatedExit, 0);
+    assert.equal(repeated.already_completed, true);
+    assert.equal(await readFile("opendomain/candidates/candidate-1001-accepted.md", "utf8"), completedFile);
+    assert.equal(await readFile(acceptedSource, "utf8"), acceptedBefore);
   });
 });
 
@@ -806,6 +912,108 @@ test("candidate list handles deprecated and stale candidates", async () => {
   });
 });
 
+test("candidate schema accepts context and event update intent without applying it", async () => {
+  await withTempCwd(async () => {
+    await writeAcceptedTarget();
+    await writeAcceptedEvent();
+    await writeCandidate("candidate-1005-update-context", {
+      changeType: "update_context",
+      targetType: "bounded_context",
+      targetId: "example"
+    });
+    await writeCandidate("candidate-1006-update-event", {
+      changeType: "update_event",
+      targetType: "domain_event",
+      targetId: "example.changed"
+    });
+
+    const stdout = memoryStream();
+    const exitCode = await runCli(["validate", "opendomain", "--json"], {
+      stdout,
+      stderr: memoryStream()
+    });
+    const payload = JSON.parse(stdout.toString());
+
+    assert.equal(exitCode, 0);
+    assert.deepEqual(payload.errors, []);
+    assert.equal((await readFile("opendomain/contexts/example.md", "utf8")).match(/status: accepted/g)?.length, 1);
+    assert.equal((await readFile("opendomain/events/example.changed.md", "utf8")).match(/status: accepted/g)?.length, 1);
+  });
+});
+
+test("candidate update promotion plan requires an explicit compatibility note", async () => {
+  await withTempCwd(async () => {
+    await writeAcceptedTarget();
+    await writeCandidate("candidate-1007-update-context", {
+      changeType: "update_context",
+      targetType: "bounded_context",
+      targetId: "example"
+    });
+    const reviewExit = await runCli([
+      "candidate",
+      "review",
+      "candidate-1007-update-context",
+      "--decision",
+      "accepted",
+      "--reviewed-by",
+      "Chase",
+      "--reason",
+      "Approved for a compatibility-reviewed context update.",
+      "opendomain"
+    ], { stdout: memoryStream(), stderr: memoryStream() });
+    assert.equal(reviewExit, 0);
+
+    const acceptedSource = "opendomain/contexts/example.md";
+    const acceptedBefore = await readFile(acceptedSource, "utf8");
+    const blockedStdout = memoryStream();
+    const blockedExit = await runCli([
+      "candidate",
+      "promote",
+      "plan",
+      "candidate-1007-update-context",
+      "--accepted-source",
+      acceptedSource,
+      "opendomain",
+      "--json"
+    ], { stdout: blockedStdout, stderr: memoryStream() });
+    const blocked = JSON.parse(blockedStdout.toString());
+
+    assert.equal(blockedExit, 1);
+    assert.equal(blocked.status, "blocked");
+    assert.ok(blocked.errors.some((error) => error.field === "compatibility_note"));
+    assert.deepEqual(blocked.compatibility_validation, {
+      required: true,
+      provided: false,
+      status: "fail"
+    });
+
+    const readyStdout = memoryStream();
+    const readyExit = await runCli([
+      "candidate",
+      "promote",
+      "plan",
+      "candidate-1007-update-context",
+      "--accepted-source",
+      acceptedSource,
+      "--compatibility-note",
+      "Existing consumers remain compatible because only descriptive context text changed.",
+      "opendomain",
+      "--json"
+    ], { stdout: readyStdout, stderr: memoryStream() });
+    const ready = JSON.parse(readyStdout.toString());
+
+    assert.equal(readyExit, 0);
+    assert.equal(ready.status, "ready");
+    assert.match(ready.compatibility_note, /Existing consumers remain compatible/);
+    assert.deepEqual(ready.compatibility_validation, {
+      required: true,
+      provided: true,
+      status: "pass"
+    });
+    assert.equal(await readFile(acceptedSource, "utf8"), acceptedBefore);
+  });
+});
+
 function memoryStream() {
   let value = "";
   return {
@@ -854,10 +1062,10 @@ async function writeCandidate(id, options = {}) {
 type: domain_candidate
 id: ${id}
 status: ${status}
-proposed_change_type: add_concept
+proposed_change_type: ${options.changeType ?? "add_concept"}
 target:
-  type: domain_concept
-  id: example.new-concept
+  type: ${options.targetType ?? "domain_concept"}
+  id: ${options.targetId ?? "example.new-concept"}
 confidence: medium
 extracted_by: codex
 extracted_at: ${extractedAt}
@@ -870,6 +1078,87 @@ ${possibleConflicts}${reviewLines.join("\n")}
 ---
 
 ${body}`, "utf8");
+}
+
+async function writeAcceptedTarget() {
+  await mkdir("opendomain/contexts", { recursive: true });
+  await mkdir("opendomain/concepts", { recursive: true });
+  await writeFile("opendomain/contexts/example.md", `---
+type: bounded_context
+id: example
+name: Example
+status: accepted
+owners:
+  - domain-owner
+evidence:
+  - type: human_review
+    location: tests/cli.test.mjs
+    summary: Human-confirmed fixture context.
+    confidence: high
+review:
+  state: accepted
+  reviewed_by: Chase
+  reviewed_at: 2026-07-09
+---
+
+# Example
+`, "utf8");
+  await writeFile("opendomain/concepts/example.new-concept.md", `---
+type: domain_concept
+id: example.new-concept
+name: New Concept
+context: example
+status: accepted
+version: 1
+aliases: []
+not_synonyms: []
+owners:
+  - domain-owner
+related: []
+rules: []
+lifecycles: []
+events: []
+evidence:
+  - type: human_review
+    location: tests/cli.test.mjs
+    summary: Human-confirmed accepted Promotion target.
+    confidence: high
+review:
+  state: accepted
+  reviewed_by: Chase
+  reviewed_at: 2026-07-09
+---
+
+# New Concept
+`, "utf8");
+}
+
+async function writeAcceptedEvent() {
+  await mkdir("opendomain/events", { recursive: true });
+  await writeFile("opendomain/events/example.changed.md", `---
+type: domain_event
+id: example.changed
+name: Example Changed
+context: example
+status: accepted
+version: 1
+occurs_when: The example changes.
+applies_to:
+  - example.new-concept
+related_lifecycle: []
+evidence:
+  - type: human_review
+    location: tests/cli.test.mjs
+    summary: Human-confirmed fixture event.
+    confidence: high
+review:
+  state: accepted
+  reviewed_by: Chase
+  reviewed_at: 2026-07-09
+---
+
+# Example Changed
+`, "utf8");
 }
 
 async function writeCliProfile(project, id, pattern) {

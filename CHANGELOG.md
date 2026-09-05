@@ -4,6 +4,25 @@
 
 _No unreleased changes._
 
+## 0.1.0 - 2026-09-04
+
+- Separate Candidate approval from promotion completion: an accepted review
+  now leaves the Candidate proposed and records attributable promotion intent.
+- Add deterministic, non-applying `candidate promote plan` and explicit
+  `candidate promote complete` commands; completion records the validated
+  accepted target digest while leaving accepted source files unchanged.
+- Add `update_context` and `update_event` Candidate intent classifications.
+- Restrict the supported JavaScript API to the package root and `./core`, while
+  retaining exported schemas as public data contracts and rejecting `src/*`
+  deep imports.
+- Preserve the Grounding Protocol v1, Core API 1.0, context-export v1, source
+  schemas, workspace resolution and package-neutral installation behavior
+  rehearsed by rc.1.
+- Establish the default npm channel as the stable installation path while
+  keeping later prereleases explicit and unable to move `latest`.
+- Refresh the locked transitive `fast-uri` dependency to `3.1.7`, outside the
+  affected ranges reported by the npm advisory service.
+
 ## 0.1.0-rc.1 - 2026-08-13
 
 - Adopt the Apache License 2.0 for OpenDomain releases starting with rc.1,

@@ -122,12 +122,22 @@ try {
   const coreSmokeFile = path.join(consumer, "core-smoke.mjs");
   await writeFile(coreSmokeFile, `
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import * as root from "@echopath-labs/opendomain";
 import * as core from "@echopath-labs/opendomain/core";
 
 const now = new Date("2026-08-10T00:00:00Z");
 assert.equal(root.CORE_API_VERSION, "1.0");
 assert.equal(core.exportContext, root.exportContext);
+await assert.rejects(
+  import("@echopath-labs/opendomain/src/candidates.mjs"),
+  (error) => error?.code === "ERR_PACKAGE_PATH_NOT_EXPORTED"
+);
+const candidateSchema = JSON.parse(await readFile(
+  new URL(import.meta.resolve("@echopath-labs/opendomain/schemas/candidate.schema.json")),
+  "utf8"
+));
+assert.equal(candidateSchema.$id, "https://opendomain.dev/schemas/candidate.schema.json");
 const query = await root.queryWorkspace({ target: "examples/erp", cwd: process.cwd(), selector: { id: "sales.order" }, now });
 const context = await core.exportContext({ target: "examples/erp", cwd: process.cwd(), selector: { id: "sales.order" }, now });
 const publication = await core.exportContext({

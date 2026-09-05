@@ -29,9 +29,11 @@
         "add_rule",
         "add_lifecycle",
         "add_event",
+        "update_context",
         "update_concept",
         "update_rule",
         "update_lifecycle",
+        "update_event",
         "deprecate_knowledge"
       ]
     },
@@ -53,6 +55,42 @@
     "possible_conflicts": {
       "type": "array",
       "items": { "type": "string", "minLength": 1 }
+    },
+    "approval": {
+      "type": "object",
+      "required": ["state", "approved_by", "approved_at", "decision_reason"],
+      "properties": {
+        "state": { "const": "approved_for_promotion" },
+        "approved_by": { "type": "string", "minLength": 1 },
+        "approved_at": { "type": "string", "format": "date" },
+        "decision_reason": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    },
+    "promotion": {
+      "type": "object",
+      "required": ["state", "accepted_target", "completed_by", "completed_at", "decision_reason"],
+      "properties": {
+        "state": { "const": "completed" },
+        "accepted_target": {
+          "type": "object",
+          "required": ["type", "id", "file", "source_hash"],
+          "properties": {
+            "type": {
+              "enum": ["bounded_context", "domain_concept", "business_rule", "lifecycle", "domain_event"]
+            },
+            "id": { "type": "string", "minLength": 1 },
+            "file": { "type": "string", "minLength": 1 },
+            "source_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+          },
+          "additionalProperties": true
+        },
+        "completed_by": { "type": "string", "minLength": 1 },
+        "completed_at": { "type": "string", "format": "date" },
+        "decision_reason": { "type": "string", "minLength": 1 },
+        "compatibility_note": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
     },
     "review": {
       "type": "object",

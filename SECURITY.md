@@ -1,7 +1,8 @@
 # Security Policy
 
-OpenDomain is currently a release candidate preparing for its first stable
-release.
+OpenDomain `0.1.0` is the current stable line. Security fixes follow normal
+SemVer compatibility unless a vulnerability requires an explicitly documented
+breaking correction.
 
 ## Reporting a Vulnerability
 

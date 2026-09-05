@@ -1,6 +1,6 @@
 {
   "name": "@echopath-labs/opendomain",
-  "version": "0.1.0-rc.1",
+  "version": "0.1.0",
   "description": "Git-native, evidence-backed domain semantics for AI agents.",
   "license": "Apache-2.0",
   "author": {
@@ -31,7 +31,6 @@
   "exports": {
     ".": "./src/core.mjs",
     "./core": "./src/core.mjs",
-    "./src/*": "./src/*",
     "./schemas/*": "./schemas/*",
     "./examples/*": "./examples/*",
     "./package.json": "./package.json"
@@ -59,7 +58,7 @@
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/",
-    "tag": "rc"
+    "tag": "stable-candidate"
   },
   "scripts": {
     "test": "node --test",

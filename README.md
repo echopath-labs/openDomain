@@ -1,9 +1,9 @@
 # OpenDomain
 
 [![CI](https://github.com/echopath-labs/openDomain/actions/workflows/ci.yml/badge.svg)](https://github.com/echopath-labs/openDomain/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/%40echopath-labs%2Fopendomain/rc?label=npm%20rc)](https://www.npmjs.com/package/@echopath-labs/opendomain)
+[![npm](https://img.shields.io/npm/v/%40echopath-labs%2Fopendomain?label=npm)](https://www.npmjs.com/package/@echopath-labs/opendomain)
 ![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-green.svg)
-![Status](https://img.shields.io/badge/status-release%20candidate-f59e0b.svg)
+![Status](https://img.shields.io/badge/status-stable-16a34a.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D20-0f766e.svg)
 ![Source](https://img.shields.io/badge/source-Markdown%20%2B%20YAML-2563eb.svg)
 
@@ -108,20 +108,20 @@ Git versioning.
 Most users should ask Codex to install OpenDomain. The same channels are
 available manually.
 
-### npm release candidate channel
+### npm stable channel
 
 Use npm when Node.js 20 or Node.js 22 and newer is already available:
 
 ```bash
-npm install --global @echopath-labs/opendomain@rc
+npm install --global @echopath-labs/opendomain
 opendomain --version
 opendomain init --tools codex
 opendomain doctor
 opendomain validate
 ```
 
-The explicit `@rc` tag is required for release-candidate evaluation and does
-not move npm `latest`.
+Pin `@echopath-labs/opendomain@0.1.0` when an exact version is required. Future
+prereleases remain opt-in and never replace the stable `latest` channel.
 
 ### Standalone binary
 
@@ -142,7 +142,7 @@ for verification and upgrade steps.
 
 ## Current Capabilities
 
-The current release candidate includes:
+The first stable release includes:
 
 - Markdown with YAML front matter as the source of truth;
 - schema validation and reference integrity checks;
@@ -156,14 +156,12 @@ The current release candidate includes:
 - managed Codex instructions, Skills, updates, and diagnostics;
 - npm and standalone CLI distribution without host package metadata.
 
-OpenDomain rc.1 is the compatibility rehearsal for `0.1.0`. It freezes the
-published Markdown/YAML source schemas, Grounding Protocol v1, Core API 1.0,
-context-export v1, existing CLI commands and exit semantics, workspace
-resolution, and package-neutral npm/standalone behavior used by current
-maintainer-owned adopters. A discovered incompatibility defers stable release
-or requires reviewed migration guidance. This evidence does not replace each
-organization's production governance, security review, or human Candidate
-decisions, and independent external-customer validation remains deferred.
+OpenDomain `0.1.0` establishes the stable compatibility surface rehearsed by
+rc.1: published Markdown/YAML source schemas, Grounding Protocol v1,
+Core API 1.0, context-export v1, documented CLI behavior and exit semantics,
+workspace resolution, and package-neutral npm/standalone installation. Candidate approval
+and Promotion are separate human-reviewed steps; neither can silently create
+accepted knowledge. Independent external-customer validation remains deferred.
 
 For a multi-product canonical workspace, add a versioned
 `opendomain/governance.yaml` and place each domain group's normal semantic
@@ -181,6 +179,12 @@ validated public dependency closure. The API is read-only and does not manage
 EchoPath memory, accept Candidates, write projections, or publish releases. See
 [Embed Core and export context](USAGE.md#embed-core-and-export-context).
 
+The package root and `./core` are the supported JavaScript API. Exported
+`schemas/*` paths are public data contracts and follow package compatibility;
+`src/*` modules are internal and are not exported. Packaged examples are
+illustrative, non-normative fixtures rather than JavaScript API or product
+requirements.
+
 ## Public Resources
 
 - [Usage Guide](USAGE.md)
@@ -189,7 +193,7 @@ EchoPath memory, accept Candidates, write projections, or publish releases. See
 - [Changelog](CHANGELOG.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
-- `schemas/` for machine-readable contracts
+- `schemas/` for public machine-readable data contracts
 
 Maintainer planning records are private process material and are not shipped in
 the public repository or npm package. The OpenSpec fixture under `examples/erp/`

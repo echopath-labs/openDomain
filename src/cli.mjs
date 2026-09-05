@@ -17,7 +17,13 @@ import {
 import { initializeProject } from "./init.mjs";
 import { doctorWorkspaceIntegration } from "./doctor.mjs";
 import { updateWorkspaceIntegration } from "./update.mjs";
-import { listCandidates, reviewCandidate, showCandidate } from "./candidates.mjs";
+import {
+  completeCandidatePromotion,
+  listCandidates,
+  planCandidatePromotion,
+  reviewCandidate,
+  showCandidate
+} from "./candidates.mjs";
 import { inspectIntegrations } from "./profile-registry.mjs";
 import {
   DEFAULT_INDEX_PATH,
@@ -111,6 +117,10 @@ export async function runCli(argv, options = {}) {
     return runCandidateReview(rest, io);
   }
 
+  if (command === "candidate" && subcommand === "promote") {
+    return runCandidatePromote(rest, io);
+  }
+
   if (command === "demo" && subcommand === "order-cancellation") {
     return runOrderCancellationDemo(io);
   }
@@ -143,6 +153,8 @@ Usage:
   opendomain candidate list [path] [--json]
   opendomain candidate show <candidate-id> [path] [--json]
   opendomain candidate review <candidate-id> --decision <decision> --reviewed-by <name> --reason <text> [path] [--json]
+  opendomain candidate promote plan <candidate-id> --accepted-source <file> [--compatibility-note <text>] [path] [--json]
+  opendomain candidate promote complete <candidate-id> --accepted-source <file> --confirmed-by <name> --reason <text> [--confirmed-at <date>] [--compatibility-note <text>] [path] [--json]
   opendomain demo order-cancellation
 
 Workspace:
@@ -479,6 +491,43 @@ async function runCandidateReview(args, io) {
   return result.errors.length > 0 ? 1 : 0;
 }
 
+async function runCandidatePromote(args, io) {
+  const parsed = parseCandidatePromotionArgs(args);
+  let result;
+  if (parsed.errors.length > 0) {
+    result = {
+      schema_version: "opendomain.candidate-promotion-plan.v1",
+      applies: false,
+      status: "blocked",
+      candidate: parsed.id ? { id: parsed.id } : null,
+      target: null,
+      warnings: [],
+      errors: parsed.errors
+    };
+  } else if (parsed.mode === "plan") {
+    result = await planCandidatePromotion(parsed.id, parsed.path, {
+      acceptedSource: parsed.acceptedSource,
+      compatibilityNote: parsed.compatibilityNote
+    }, { cwd: io.cwd, now: io.now });
+  } else {
+    result = await completeCandidatePromotion(parsed.id, parsed.path, {
+      acceptedSource: parsed.acceptedSource,
+      compatibilityNote: parsed.compatibilityNote,
+      confirmedBy: parsed.confirmedBy,
+      confirmedAt: parsed.confirmedAt,
+      reason: parsed.reason
+    }, { cwd: io.cwd, now: io.now });
+  }
+
+  if (parsed.json) {
+    io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  } else {
+    printCandidatePromotionResult(result, parsed.mode, io.stdout);
+  }
+
+  return result.errors.length > 0 ? 1 : 0;
+}
+
 function parseInitArgs(args) {
   const parsed = {
     json: false,
@@ -658,6 +707,78 @@ function parseCandidateReviewArgs(args) {
       problem: "Missing Candidate id.",
       fix: "Run opendomain candidate review <candidate-id> --decision <decision> --reviewed-by <name> --reason <text>."
     });
+  }
+
+  return parsed;
+}
+
+function parseCandidatePromotionArgs(args) {
+  const parsed = {
+    json: false,
+    mode: undefined,
+    id: undefined,
+    acceptedSource: undefined,
+    compatibilityNote: undefined,
+    confirmedBy: undefined,
+    confirmedAt: undefined,
+    reason: undefined,
+    path: undefined,
+    errors: []
+  };
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--json") {
+      parsed.json = true;
+      continue;
+    }
+    const flagFields = new Map([
+      ["--accepted-source", "acceptedSource"],
+      ["--compatibility-note", "compatibilityNote"],
+      ["--confirmed-by", "confirmedBy"],
+      ["--confirmed-at", "confirmedAt"],
+      ["--reason", "reason"]
+    ]);
+    if (flagFields.has(arg)) {
+      const value = requiredFlagValue(args, index, arg, parsed.errors);
+      if (value !== undefined) {
+        parsed[flagFields.get(arg)] = value;
+      }
+      index += 1;
+      continue;
+    }
+    if (!parsed.mode) {
+      parsed.mode = arg;
+      continue;
+    }
+    if (!parsed.id) {
+      parsed.id = arg;
+      continue;
+    }
+    if (!parsed.path) {
+      parsed.path = arg;
+      continue;
+    }
+    parsed.errors.push(inputIssue(
+      "path",
+      `Unexpected Candidate Promotion argument '${arg}'.`,
+      "Provide at most one workspace path."
+    ));
+  }
+
+  if (!new Set(["plan", "complete"]).has(parsed.mode)) {
+    parsed.errors.push(inputIssue(
+      "mode",
+      `Unsupported Candidate Promotion mode '${parsed.mode ?? ""}'.`,
+      "Use candidate promote plan or candidate promote complete."
+    ));
+  }
+  if (!parsed.id) {
+    parsed.errors.push(inputIssue(
+      "candidate_id",
+      "Missing Candidate id.",
+      "Run opendomain candidate promote plan <candidate-id> --accepted-source <file>."
+    ));
   }
 
   return parsed;
@@ -1143,6 +1264,9 @@ function printCandidateListResult(result, stream) {
       if (candidate.reviewed_by) {
         stream.write(`  reviewed_by: ${candidate.reviewed_by}\n`);
       }
+      if (candidate.approval) {
+        stream.write(`  approval: ${candidate.approval.state}\n`);
+      }
     }
   }
 
@@ -1170,6 +1294,8 @@ function printCandidateShowResult(result, stream) {
   stream.write(`Change: ${candidate.proposed_change_type}\n`);
   stream.write(`Confidence: ${candidate.confidence}\n`);
   stream.write(`Suggested reviewer: ${candidate.suggested_reviewer ?? "<none>"}\n`);
+  stream.write(`Promotion approval: ${candidate.approval?.state ?? "not recorded"}\n`);
+  stream.write(`Promotion result: ${candidate.promotion?.state ?? "not completed"}\n`);
   stream.write(`Boundary: ${result.boundary}\n\n`);
 
   stream.write("Evidence:\n");
@@ -1216,7 +1342,44 @@ function printCandidateReviewResult(result, stream) {
   stream.write(`File: ${result.file}\n`);
   stream.write(`Boundary: ${result.boundary}\n`);
   if (result.promotion_required) {
-    stream.write("Next step: manually update accepted OpenDomain source files with evidence and human review metadata.\n");
+    stream.write("Next step: update the accepted target through human review, then run candidate promote plan.\n");
+  }
+
+  if (result.warnings.length > 0) {
+    stream.write("\nWarnings:\n");
+    for (const warning of result.warnings) {
+      stream.write(`- ${warning.file} ${warning.field}: ${warning.problem}\n`);
+    }
+  }
+}
+
+function printCandidatePromotionResult(result, mode, stream) {
+  if (result.errors.length > 0) {
+    stream.write(`Candidate Promotion ${mode ?? "operation"} blocked: ${result.errors.length} errors.\n`);
+    printIssues(result.errors, stream);
+    return;
+  }
+
+  if (mode === "plan") {
+    stream.write("Candidate Promotion plan ready.\n\n");
+    stream.write(`Schema: ${result.schema_version}\n`);
+    stream.write(`Applies changes: ${result.applies ? "yes" : "no"}\n`);
+    stream.write(`Candidate: ${result.candidate?.id ?? "<unknown>"}\n`);
+    stream.write(`Accepted target: ${result.target?.id ?? "<unknown>"}\n`);
+    stream.write(`Accepted source: ${result.target?.file ?? "<unknown>"}\n`);
+    stream.write(`Source hash: ${result.target?.source_hash ?? "<unknown>"}\n`);
+    stream.write(`Required confirmation: ${result.required_confirmation}\n`);
+  } else if (result.already_completed) {
+    stream.write("Candidate Promotion was already completed.\n\n");
+    stream.write(`Candidate: ${result.candidate?.id ?? "<unknown>"}\n`);
+    stream.write(`Recorded state: ${result.candidate?.status ?? "<unknown>"}\n`);
+    stream.write(`Boundary: ${result.boundary}\n`);
+  } else {
+    stream.write("Candidate Promotion completed.\n\n");
+    stream.write(`Candidate: ${result.candidate?.id ?? "<unknown>"}\n`);
+    stream.write(`Recorded state: ${result.candidate?.status ?? "<unknown>"}\n`);
+    stream.write(`Accepted target: ${result.plan?.target?.id ?? "<unknown>"}\n`);
+    stream.write(`Boundary: ${result.boundary}\n`);
   }
 
   if (result.warnings.length > 0) {

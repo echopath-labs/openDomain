@@ -1,9 +1,9 @@
 # OpenDomain
 
 [![CI](https://github.com/echopath-labs/openDomain/actions/workflows/ci.yml/badge.svg)](https://github.com/echopath-labs/openDomain/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/%40echopath-labs%2Fopendomain/rc?label=npm%20rc)](https://www.npmjs.com/package/@echopath-labs/opendomain)
+[![npm](https://img.shields.io/npm/v/%40echopath-labs%2Fopendomain?label=npm)](https://www.npmjs.com/package/@echopath-labs/opendomain)
 ![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-green.svg)
-![Status](https://img.shields.io/badge/status-release%20candidate-f59e0b.svg)
+![Status](https://img.shields.io/badge/status-stable-16a34a.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D20-0f766e.svg)
 ![Source](https://img.shields.io/badge/source-Markdown%20%2B%20YAML-2563eb.svg)
 
@@ -99,19 +99,20 @@ AGENTS.md                              受管 OpenDomain 区块
 
 大多数用户只需要让 Codex 安装。也可以手动使用相同渠道。
 
-### npm RC 渠道
+### npm stable 渠道
 
 已有 Node.js 20，或 Node.js 22 及以上环境时使用 npm：
 
 ```bash
-npm install --global @echopath-labs/opendomain@rc
+npm install --global @echopath-labs/opendomain
 opendomain --version
 opendomain init --tools codex
 opendomain doctor
 opendomain validate
 ```
 
-评估 release candidate 时必须显式使用 `@rc`；该渠道不会移动 npm `latest`。
+需要固定版本时使用 `@echopath-labs/opendomain@0.1.0`。后续 prerelease 必须显式
+选择，并且不能替代稳定的 npm `latest` 渠道。
 
 ### 独立二进制
 
@@ -130,7 +131,7 @@ opendomain validate
 
 ## 当前能力
 
-当前 release candidate 已包含：
+首个 stable release 包含：
 
 - Markdown + YAML front matter source of truth；
 - Schema 校验与引用完整性检查；
@@ -144,11 +145,11 @@ opendomain validate
 - 受管 Codex 指令、Skills、更新和诊断；
 - 不引入宿主 package metadata 的 npm 与独立 CLI 分发。
 
-OpenDomain rc.1 是 `0.1.0` 的兼容性演练，冻结已发布的 Markdown/YAML source schemas、
-Grounding Protocol v1、Core API 1.0、context-export v1、现有 CLI 命令与退出语义、
-workspace resolution，以及现有维护者项目使用的 package-neutral npm/standalone 行为。
-发现不兼容行为时必须延期 stable 或提供经过审查的迁移说明。本证据不能替代组织自身
-的生产治理、安全审查与人工 Candidate 决策；独立外部客户验证仍是明确延期项。
+OpenDomain `0.1.0` 建立 rc.1 已演练的稳定兼容面：公开 Markdown/YAML source schemas、
+Grounding Protocol v1、Core API 1.0、context-export v1、文档化 CLI 行为与退出语义、
+workspace resolution，以及 package-neutral npm/standalone 安装。Candidate approval
+与 Promotion 是两次独立人工审查，任何一步都不能静默创建 accepted knowledge。
+独立外部客户验证仍是明确延期项。
 
 多产品 canonical workspace 可以增加版本化的 `opendomain/governance.yaml`，并把每个
 domain group 的普通语义目录放入声明的 `source_root`。`opendomain validate --json`
@@ -163,6 +164,10 @@ accepted content 放进 documents，并单独标记 Candidate；
 成功。该 API 只读，不管理 EchoPath memory、不接受 Candidate、不写公开投影，也不执行
 release。详见[嵌入 Core 与导出 Context](USAGE.zh-CN.md#嵌入-core-与导出-context)。
 
+package root 与 `./core` 是受支持的 JavaScript API。导出的 `schemas/*` 路径属于公开
+数据契约，按 package 兼容策略演进；`src/*` 是内部模块，不再导出。随包提供的示例只
+是说明性、非规范 fixture，不属于 JavaScript API，也不构成产品需求。
+
 ## 公开资料
 
 - [简体中文使用指南](USAGE.zh-CN.md)
@@ -171,7 +176,7 @@ release。详见[嵌入 Core 与导出 Context](USAGE.zh-CN.md#嵌入-core-与�
 - [变更日志](CHANGELOG.md)
 - [贡献指南](CONTRIBUTING.md)
 - [安全策略](SECURITY.md)
-- `schemas/`：机器可读契约
+- `schemas/`：公开的机器可读数据契约
 
 维护者规划记录属于私有过程资料，不会进入公开仓库或 npm 包。
 `examples/erp/` 下的 OpenSpec 只是合成互操作 fixture。
