@@ -1,6 +1,6 @@
 # Security Policy
 
-OpenDomain `0.1.0` is the current stable line. Security fixes follow normal
+OpenDomain `0.1.x` is the current stable line. Security fixes follow normal
 SemVer compatibility unless a vulnerability requires an explicitly documented
 breaking correction.
 

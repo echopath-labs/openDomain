@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.1 - 2026-09-16
 
 - Add planning-tool-independent `prepare --request` and `assure --request`
   inputs for existing Grounding Request v1 JSON/YAML declarations. Reuse current
@@ -10,6 +10,10 @@
   diagnostics. Ordinary planning Markdown no longer produces per-file metadata errors.
 - Make managed Agent instructions and usage examples start from native requests;
   retain existing OpenSpec and Profile inputs as optional compatibility paths.
+- Document the 0.1.1 upgrade path, including `opendomain update` for existing
+  workspaces to receive the native-request Agent instructions.
+- Preserve Grounding Protocol v1, Core API 1.0, source schemas and existing
+  OpenSpec/Profile compatibility; no domain model migration is required.
 
 ## 0.1.0 - 2026-09-04
 

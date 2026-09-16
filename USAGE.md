@@ -96,7 +96,10 @@ Verify with `shasum -a 256` on macOS, `sha256sum` on Linux, or
 directory on `PATH`. macOS binaries are currently ad-hoc signed but not
 notarized; Windows binaries are not Authenticode signed.
 
-Pin `@echopath-labs/opendomain@0.1.0` when exact reproducibility is required.
+Pin `@echopath-labs/opendomain@0.1.1` when exact reproducibility is required.
+The native `--request` entry requires `0.1.1` or newer. Upgrade an npm-installed
+CLI with `npm install --global @echopath-labs/opendomain@0.1.1`; `opendomain update`
+only refreshes workspace instructions. No business model migration is required.
 Future prereleases remain explicit and cannot move npm `latest`. Upgrade
 standalone installations by downloading, verifying, and replacing the
 executable. Then run:

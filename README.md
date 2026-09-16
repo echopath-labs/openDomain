@@ -30,8 +30,9 @@ After installation, keep working in natural language:
 > Explore the accepted business model for order cancellation. Do not modify
 > anything, and keep Candidate knowledge separate.
 
-> Reverse-model this existing project from its code and product documentation.
-> Put every uncertain business claim into a Candidate for review.
+> Organize business rules and the concepts, relationships and states needed to
+> understand them from the project materials I select. Put inferred business
+> knowledge into Candidates for review.
 
 > Review candidate-0001. Show its evidence, conflicts, and compatibility impact,
 > then wait for my decision.
@@ -74,8 +75,10 @@ EchoPath
   How Agent work is recovered, handed off, and resumed
 ```
 
-OpenSpec and other planning sources may declare affected OpenDomain IDs. They
-should reference accepted domain knowledge, not duplicate its definitions.
+Agents using OpenSpec, Spec Kit or other tools can provide an OpenDomain
+request that references accepted domain IDs. OpenDomain defines its own contract;
+it does not prescribe another tool's document format or workflow. ADRs and
+engineering plans remain external material, not managed business knowledge.
 
 ## What Gets Added To A Project
 
@@ -122,8 +125,26 @@ opendomain doctor
 opendomain validate
 ```
 
-Pin `@echopath-labs/opendomain@0.1.0` when an exact version is required. Future
+Pin `@echopath-labs/opendomain@0.1.1` when an exact version is required. Future
 prereleases remain opt-in and never replace the stable `latest` channel.
+
+### Upgrade from 0.1.0
+
+Version `0.1.1` fixes missing grounding declarations (#22) and adds the native
+`--request` entry. Upgrade the CLI, then refresh each existing workspace:
+
+```bash
+npm install --global @echopath-labs/opendomain@0.1.1
+opendomain --version
+opendomain update --json
+opendomain doctor --json
+opendomain validate --json
+```
+
+No domain model migration is required. Existing OpenSpec/Profile inputs remain
+supported; new requests can follow the [native contract](USAGE.md#ground-an-implementation-task).
+The update refreshes OpenDomain-managed instructions while preserving user content.
+See [0.1.1 changes](CHANGELOG.md).
 
 ### Standalone binary
 
@@ -144,7 +165,7 @@ for verification and upgrade steps.
 
 ## Current Capabilities
 
-The first stable release includes:
+The current stable release, `0.1.1`, includes:
 
 - Markdown with YAML front matter as the source of truth;
 - schema validation and reference integrity checks;
@@ -154,12 +175,13 @@ The first stable release includes:
 - optional multi-product workspace governance with deterministic exposure and publication-closure validation;
 - a side-effect-free Embeddable Core v1 with source-first query and versioned context export;
 - Grounding Request, Grounding Pack, and advisory/enforced Assurance;
-- built-in OpenSpec grounding and declarative Integration Profiles;
+- native JSON/YAML grounding requests, independent of planning tools;
+- optional legacy OpenSpec grounding and declarative Integration Profiles;
 - managed Codex instructions, Skills, updates, and diagnostics;
 - npm and standalone CLI distribution without host package metadata.
 
-OpenDomain `0.1.0` establishes the stable compatibility surface rehearsed by
-rc.1: published Markdown/YAML source schemas, Grounding Protocol v1,
+OpenDomain `0.1.1` preserves the stable compatibility surface established by
+`0.1.0`: published Markdown/YAML source schemas, Grounding Protocol v1,
 Core API 1.0, context-export v1, documented CLI behavior and exit semantics,
 workspace resolution, and package-neutral npm/standalone installation. Candidate approval
 and Promotion are separate human-reviewed steps; neither can silently create

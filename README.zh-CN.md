@@ -27,8 +27,8 @@ Codex 应按照 [Agent 安装契约](INSTALL.md)选择兼容的安装渠道，�
 > 只读了解订单取消相关的 accepted 业务模型，不要修改任何内容，并把 Candidate
 > 与 accepted knowledge 分开。
 
-> 根据这个既有项目的代码和产品文档逆向梳理业务模型，所有不确定的业务判断先写成
-> Candidate 等我审查。
+> 从我指定的项目资料中整理业务规则，以及理解规则所需的概念、关系和状态。
+> 推断出的业务知识先写成 Candidate 等我审查。
 
 > 审查 candidate-0001，列出证据、冲突和兼容性影响，然后等我决定。
 
@@ -69,8 +69,9 @@ EchoPath
   说明 Agent 工作如何恢复、交接和继续
 ```
 
-OpenSpec 等规划来源可以声明受影响的 OpenDomain ID，但应该引用 accepted domain
-knowledge，而不是复制其定义。
+使用 OpenSpec、Spec Kit 或其他工具的 Agent 可以提供引用 accepted domain ID 的
+OpenDomain 请求。OpenDomain 定义自己的契约，不规定其他工具的文档格式或工作流。
+ADR 和工程计划仍是外部资料，不属于 OpenDomain 管理的业务知识。
 
 ## 项目中会增加什么
 
@@ -113,8 +114,25 @@ opendomain doctor
 opendomain validate
 ```
 
-需要固定版本时使用 `@echopath-labs/opendomain@0.1.0`。后续 prerelease 必须显式
+需要固定版本时使用 `@echopath-labs/opendomain@0.1.1`。后续 prerelease 必须显式
 选择，并且不能替代稳定的 npm `latest` 渠道。
+
+### 从 0.1.0 升级
+
+`0.1.1` 修复缺少 grounding 声明时的诊断问题（#22），并提供原生 `--request` 入口。
+升级 CLI 后，在每个已有工作区刷新受管指令：
+
+```bash
+npm install --global @echopath-labs/opendomain@0.1.1
+opendomain --version
+opendomain update --json
+opendomain doctor --json
+opendomain validate --json
+```
+
+业务模型无需迁移。旧 OpenSpec/Profile 输入仍可使用；新请求可遵循
+[原生声明契约](USAGE.zh-CN.md)。更新会刷新 OpenDomain 受管指令并保留用户内容。
+完整变化见 [0.1.1 变更日志](CHANGELOG.md)。
 
 ### 独立二进制
 
@@ -133,7 +151,7 @@ opendomain validate
 
 ## 当前能力
 
-首个 stable release 包含：
+当前稳定版 `0.1.1` 包含：
 
 - Markdown + YAML front matter source of truth；
 - Schema 校验与引用完整性检查；
@@ -143,11 +161,12 @@ opendomain validate
 - 可选的多产品 workspace 治理、exposure 传播与 public dependency closure 校验；
 - 无进程副作用的 Embeddable Core v1、source-first query 与版本化 context export；
 - Grounding Request、Grounding Pack 和 advisory/enforced Assurance；
-- 内置 OpenSpec grounding 与声明式 Integration Profile；
+- 不依赖规划工具的原生 JSON/YAML grounding 请求；
+- 可选的旧 OpenSpec grounding 与声明式 Integration Profile 兼容入口；
 - 受管 Codex 指令、Skills、更新和诊断；
 - 不引入宿主 package metadata 的 npm 与独立 CLI 分发。
 
-OpenDomain `0.1.0` 建立 rc.1 已演练的稳定兼容面：公开 Markdown/YAML source schemas、
+OpenDomain `0.1.1` 保持 `0.1.0` 已建立的稳定兼容面：公开 Markdown/YAML source schemas、
 Grounding Protocol v1、Core API 1.0、context-export v1、文档化 CLI 行为与退出语义、
 workspace resolution，以及 package-neutral npm/standalone 安装。Candidate approval
 与 Promotion 是两次独立人工审查，任何一步都不能静默创建 accepted knowledge。

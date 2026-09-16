@@ -26,8 +26,11 @@ available, stop and report the exact blocker and any changes already made.
 ## Select An Installation Path
 
 First run `opendomain --version` if `opendomain` is already on `PATH`. A usable
-existing CLI does not need to be installed again; continue with workspace
-initialization or update below.
+existing CLI does not need to be installed again unless an upgrade is requested
+or the task requires a newer feature. Native `--request` grounding requires
+`0.1.1` or newer; workspace `update` refreshes managed instructions but does not
+upgrade the CLI itself. Continue with the appropriate installation or workspace
+update below.
 
 ### npm Stable Channel
 
@@ -42,7 +45,7 @@ npm install --global @echopath-labs/opendomain
 opendomain --version
 ```
 
-Use `@echopath-labs/opendomain@0.1.0` when an exact version must be pinned.
+Use `@echopath-labs/opendomain@0.1.1` when an exact version must be pinned.
 Prerelease channels are explicit opt-ins and must not move npm `latest`.
 
 This is a global tool installation. Do not run `npm install` without
@@ -120,5 +123,5 @@ domain exploration, candidate-first modeling, and Candidate review.
 For task-scoped grounding, Agents supply OpenDomain's own request contract through
 `opendomain assure --request <file>`; see [USAGE.md](USAGE.md). No planning tool,
 Profile, or changes to external planning documents are required. After installing
-a version with the native request entry, run `opendomain update` in existing
+`0.1.1` or newer, run `opendomain update` in existing
 workspaces to refresh managed instructions while preserving user-owned content.
