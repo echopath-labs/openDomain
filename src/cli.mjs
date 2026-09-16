@@ -141,6 +141,8 @@ Usage:
   opendomain validate [path] [--json]
   opendomain query [path] (--id <id> | --context <id> | --product <id> | --domain-group <id> | --owner <id> | --lifecycle <id> | --type <type>) [--json]
   opendomain export context [path] <selector flags> [--exposure public] [--json]
+  opendomain prepare --request <request.json|request.yaml> [--json]
+  opendomain assure --request <request.json|request.yaml> [--mode advisory|enforced] [--json]
   opendomain prepare [--integration openspec | --profile <id>] <source-unit> [--json]
   opendomain assure [--integration openspec | --profile <id>] [--mode advisory|enforced] <source-unit> [--json]
   opendomain integrations list [--json]
@@ -156,6 +158,15 @@ Usage:
   opendomain candidate promote plan <candidate-id> --accepted-source <file> [--compatibility-note <text>] [path] [--json]
   opendomain candidate promote complete <candidate-id> --accepted-source <file> --confirmed-by <name> --reason <text> [--confirmed-at <date>] [--compatibility-note <text>] [path] [--json]
   opendomain demo order-cancellation
+
+Grounding input:
+  --request accepts one OpenDomain Grounding Request v1 JSON/YAML file.
+  Declare protocol_version, source, intent, grounding and affects_domain.
+  Classify grounding as required, not_required (with rationale and no IDs),
+  or unclassified. Reference existing accepted concepts/rules/lifecycles/events.
+  Run from the model's project; source.path is metadata, not a workspace root.
+  No planning tool or Profile is required. See USAGE.md for a minimal example.
+  Legacy source-unit inputs remain supported; do not combine them with --request.
 
 Workspace:
   Commands without [path] read the current project's canonical opendomain/.
@@ -793,6 +804,7 @@ async function runPrepare(args, io) {
       })
     : await prepareGroundingPack(parsed.path, {
         cwd: io.cwd,
+        request: parsed.request,
         integration: parsed.integration,
         profile: parsed.profile
       });
@@ -818,6 +830,7 @@ async function runAssure(args, io) {
       })
     : await assureGrounding(parsed.path, {
         cwd: io.cwd,
+        request: parsed.request,
         integration: parsed.integration,
         profile: parsed.profile,
         mode: parsed.mode
@@ -836,6 +849,7 @@ function parsePrepareArgs(args, options = {}) {
   const command = options.command ?? "prepare";
   const parsed = {
     json: false,
+    request: false,
     integration: undefined,
     profile: undefined,
     mode: options.allowMode ? "advisory" : undefined,
@@ -848,6 +862,20 @@ function parsePrepareArgs(args, options = {}) {
     const arg = args[index];
     if (arg === "--json") {
       parsed.json = true;
+      continue;
+    }
+    if (arg === "--request") {
+      if (parsed.request || parsed.path) {
+        parsed.errors.push(inputIssue("request", "--request requires exactly one file and no positional source.", "Pass --request <file> once, without a legacy source path."));
+      }
+      parsed.request = true;
+      const value = args[index + 1];
+      if (!value || value.startsWith("--")) {
+        parsed.errors.push(inputIssue("request", "Missing file after --request.", "Pass --request <request.json|request.yaml>."));
+      } else {
+        parsed.path = value;
+        index += 1;
+      }
       continue;
     }
     if (arg === "--integration") {
@@ -927,8 +955,8 @@ function parsePrepareArgs(args, options = {}) {
         "$",
         `Unknown ${command} argument '${arg}'.`,
         options.allowMode
-          ? "Use --integration openspec, --profile <id>, --mode advisory|enforced, --json, and one source path."
-          : "Use --integration openspec, --profile <id>, --json, and one source path."
+          ? "Use --request <file>, --mode advisory|enforced and --json; legacy source paths support --integration openspec or --profile <id>."
+          : "Use --request <file> and --json; legacy source paths support --integration openspec or --profile <id>."
       ));
       continue;
     }
@@ -949,6 +977,10 @@ function parsePrepareArgs(args, options = {}) {
       "--integration and --profile cannot be used together.",
       "Select the built-in adapter or one repository-local Profile."
     ));
+  }
+
+  if (parsed.request && (parsed.integration !== undefined || parsed.profile !== undefined)) {
+    parsed.errors.push(inputIssue("request", "--request cannot be combined with --integration or --profile.", "Select a native request file or a legacy source input, not both."));
   }
 
   return parsed;

@@ -114,3 +114,11 @@ If any command fails, report that command and its actionable diagnostic. Do not
 claim that automatic Agent use is ready. Once the generated Codex integration
 is healthy, its repository instructions and Skills route grounding assurance,
 domain exploration, candidate-first modeling, and Candidate review.
+
+## Grounding After Installation
+
+For task-scoped grounding, Agents supply OpenDomain's own request contract through
+`opendomain assure --request <file>`; see [USAGE.md](USAGE.md). No planning tool,
+Profile, or changes to external planning documents are required. After installing
+a version with the native request entry, run `opendomain update` in existing
+workspaces to refresh managed instructions while preserving user-owned content.

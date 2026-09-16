@@ -210,13 +210,21 @@ process.stdout.write(JSON.stringify({
   assert.notEqual(assurance.policy.outcome, "fail");
   assert.ok(assurance.grounding_pack.read_first.some((item) => item.id === "sales.order"));
 
+  const nativeAssurance = await runJsonCli(cli, [
+    "assure", "--request", "requests/order-cancellation.yaml", "--mode", "enforced", "--json"
+  ], exampleRoot);
+  assert.equal(nativeAssurance.preparation.state, "prepared");
+  assert.notEqual(nativeAssurance.policy.outcome, "fail");
+  assert.equal(nativeAssurance.grounding_pack.grounding_request.source.type, "agent");
+  assert.deepEqual(nativeAssurance.grounding_pack.read_first, assurance.grounding_pack.read_first);
+
   process.stdout.write(
     `Installed-package smoke passed: ${packPayload[0].filename}, `
     + `${inspection.valid_profile_count} Profile, `
     + `${automatic.read_first.length} grounded sources, `
     + `Core ${coreSmoke.api} with ${coreSmoke.context} exported sources, `
     + `Agent integration ${doctor.status}, `
-    + `Assurance ${assurance.policy.outcome}.\n`
+    + `Assurance ${assurance.policy.outcome}, native request ${nativeAssurance.preparation.state}.\n`
   );
 } finally {
   await rm(temporaryRoot, { recursive: true, force: true });

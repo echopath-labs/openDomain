@@ -45,7 +45,10 @@ test("init --tools codex installs Agent integration without host package metadat
 
     const agents = await readFile(path.join(cwd, "AGENTS.md"), "utf8");
     assert.match(agents, /<!-- opendomain:managed:start -->/);
-    assert.match(agents, /opendomain assure <source-unit>/);
+    assert.match(agents, /opendomain assure --request <request-file>/);
+    assert.match(agents, /protocol_version: "1.0"/);
+    assert.match(agents, /not_required/);
+    assert.match(agents, /Do not add metadata to every planning document/);
     assert.match(agents, /<!-- opendomain:managed:end -->/);
     await assert.rejects(access(path.join(cwd, "package.json")), { code: "ENOENT" });
     await assert.rejects(access(path.join(cwd, "package-lock.json")), { code: "ENOENT" });

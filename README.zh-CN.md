@@ -95,6 +95,8 @@ AGENTS.md                              受管 OpenDomain 区块
 命令会保留用户拥有的内容，不会创建或修改宿主项目的 `package.json`、lockfile、依赖
 或 npm scripts。是否提交这些文件由项目自己决定；它们可以被正常 Git 版本管理。
 
+OpenSpec 等规划工具只是可选场景。需要任务级 grounding 时，Agent 可直接提供 OpenDomain 原生 JSON/YAML 请求，运行 `opendomain assure --request <file>`。参见[声明契约与示例](USAGE.zh-CN.md)。
+
 ## 手动安装
 
 大多数用户只需要让 Codex 安装。也可以手动使用相同渠道。

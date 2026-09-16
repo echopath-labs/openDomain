@@ -1,12 +1,13 @@
-import { access, readdir, stat } from "node:fs/promises";
+import { access, readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import {
   AFFECTS_DOMAIN_FIELDS,
   AFFECTS_DOMAIN_TYPES,
   validateAffectsDomainShape
 } from "./domain-reference-types.mjs";
-import { parseMarkdownFile } from "./frontmatter.mjs";
+import { parseJsonMapping, parseMarkdown, parseYamlMapping } from "./frontmatter.mjs";
 import { validateGroundingDecision } from "./grounding-decision.mjs";
+import { validateIntegrationValue } from "./integration-schema-validator.mjs";
 import { buildProfileGroundingRequest } from "./profile-mapping.mjs";
 import { loadIntegrationProfiles } from "./profile-registry.mjs";
 import { GROUNDING_PROTOCOL_VERSION } from "./protocol.mjs";
@@ -16,12 +17,35 @@ import {
 } from "./source-unit.mjs";
 
 const SUPPORTED_INTEGRATIONS = new Set(["auto", "openspec"]);
+const NATIVE_REQUEST_EXAMPLE = JSON.stringify({
+  protocol_version: GROUNDING_PROTOCOL_VERSION,
+  source: { type: "agent", path: "work.md" },
+  intent: { id: "work.review", name: "Review work", status: "proposed" },
+  grounding: { status: "unclassified" },
+  affects_domain: { concepts: [], rules: [], lifecycles: [], events: [] }
+});
+const NATIVE_REQUEST_FIX = [
+  "Provide one OpenDomain Grounding Request v1 JSON/YAML file and run opendomain assure --request <file> (or prepare --request <file>).",
+  `Minimal JSON: ${NATIVE_REQUEST_EXAMPLE}.`,
+  "Classify the work explicitly and reference existing accepted IDs; do not add metadata to every planning document."
+].join(" ");
 
 export async function buildGroundingRequest(inputPath, options = {}) {
   const cwd = options.cwd ?? process.cwd();
   const integrationProvided = options.integration !== undefined && options.integration !== null;
   const profileProvided = options.profile !== undefined && options.profile !== null;
   const integration = options.integration ?? "auto";
+
+  if (options.request) {
+    if (integrationProvided || profileProvided) {
+      return failedRequest(issue({
+        file: "<input>", field: "request", code: "conflicting_request_input",
+        problem: "--request cannot be combined with --integration or --profile.",
+        fix: "Select one native request file with --request, or one legacy source input."
+      }));
+    }
+    return buildNativeGroundingRequest(inputPath, cwd);
+  }
 
   if (integrationProvided && profileProvided) {
     return failedRequest(issue({
@@ -58,6 +82,59 @@ export async function buildGroundingRequest(inputPath, options = {}) {
   }
 
   return buildAutomaticGroundingRequest(inputPath, cwd);
+}
+
+async function buildNativeGroundingRequest(inputPath, cwd) {
+  let value;
+  try {
+    if (!inputPath) throw new Error("Missing native Grounding Request file.");
+    const file = path.resolve(cwd, inputPath);
+    const extension = path.extname(file).toLowerCase();
+    if (![".json", ".yaml", ".yml"].includes(extension)) {
+      throw new Error("Native Grounding Requests must use a .json, .yaml or .yml file.");
+    }
+    if (!(await stat(file)).isFile()) throw new Error("Native Grounding Request input must be one file.");
+    const content = await readFile(file, "utf8");
+    value = extension === ".json"
+      ? parseJsonMapping(content, inputPath)
+      : parseYamlMapping(content, inputPath, { label: "Grounding Request" });
+  } catch (error) {
+    return failedRequest(issue({
+      code: "invalid_grounding_request", file: inputPath ?? "<input>",
+      field: error.field ?? "$", problem: error.problem ?? error.message,
+      fix: NATIVE_REQUEST_FIX
+    }));
+  }
+
+  const errors = validateIntegrationValue("request", value).map((error) => issue({
+    ...error, code: "invalid_grounding_request", file: inputPath
+  }));
+  if (errors.length > 0) return { request: null, errors, warnings: [] };
+
+  const fieldErrors = validateRequestFields({
+    sourceFile: inputPath,
+    frontmatter: { ...value.intent, affects_domain: value.affects_domain }
+  });
+  if (fieldErrors.length > 0) {
+    return { request: null, errors: fieldErrors, warnings: [] };
+  }
+
+  const decision = validateGroundingDecision(value, inputPath);
+  if (decision.errors.length > 0) {
+    return { request: null, errors: decision.errors, warnings: decision.warnings };
+  }
+  // Only declarations enter preparation. Caller-supplied output/provenance is not evidence.
+  return {
+    request: {
+      protocol_version: value.protocol_version,
+      source: { type: value.source.type, path: value.source.path },
+      intent: { id: value.intent.id, name: value.intent.name, status: value.intent.status },
+      grounding: decision.grounding,
+      affects_domain: normalizeAffectsDomain(value.affects_domain)
+    },
+    errors: [],
+    warnings: decision.warnings
+  };
 }
 
 export function collectAffectedIds(affectsDomain) {
@@ -117,7 +194,10 @@ export async function buildOpenSpecGroundingRequest(inputPath, cwd, selectedInte
   const parseErrors = [];
   for (const file of files) {
     try {
-      const parsed = await parseMarkdownFile(file);
+      const content = await readFile(file, "utf8");
+      // Plain planning prose is not an OpenDomain declaration. Do not demand metadata on it.
+      if (!/^\uFEFF?---(?:\r?\n|$)/.test(content)) continue;
+      const parsed = parseMarkdown(content, file);
       if (parsed.frontmatter.type === "feature_spec") {
         featureSpecs.push({
           sourceFile: path.relative(cwd, file) || path.basename(file),
@@ -128,24 +208,30 @@ export async function buildOpenSpecGroundingRequest(inputPath, cwd, selectedInte
       }
     } catch (error) {
       parseErrors.push(issue({
+        code: "invalid_grounding_declaration",
         file: path.relative(cwd, file) || file,
         field: error.field ?? "$",
         problem: error.problem ?? error.message,
-        fix: "Use valid feature spec front matter."
+        fix: "Repair the malformed declaration header, or select one valid declaration file explicitly. " + NATIVE_REQUEST_FIX
       }));
     }
+  }
+
+  if (parseErrors.length > 0) {
+    return { matched: true, request: null, errors: parseErrors, warnings: [] };
   }
 
   if (featureSpecs.length === 0) {
     return {
       matched: false,
       request: null,
-      errors: parseErrors.length > 0 ? parseErrors : [
+      errors: [
         issue({
+          code: "missing_grounding_declaration",
           file: inputPath,
           field: "type",
-          problem: "No feature_spec found.",
-          fix: "Pass a Markdown feature spec with type: feature_spec."
+          problem: "No OpenDomain grounding declaration found. The input did not produce a Grounding Request; the domain model has not been checked.",
+          fix: NATIVE_REQUEST_FIX
         })
       ],
       warnings: []
@@ -158,6 +244,7 @@ export async function buildOpenSpecGroundingRequest(inputPath, cwd, selectedInte
       request: null,
       errors: [
         issue({
+          code: "ambiguous_grounding_declaration",
           file: inputPath,
           field: "type",
           problem: "Multiple feature_spec files found.",
@@ -393,8 +480,8 @@ function validateRequestFields(feature) {
       errors.push(issue({
         file: feature.sourceFile,
         field,
-        problem: `Feature spec '${field}' must be a non-empty string.`,
-        fix: `Add a non-empty ${field} value to feature spec front matter.`
+        problem: `Grounding declaration '${field}' must be a non-empty string.`,
+        fix: `Provide a non-empty ${field} value in the work intent declaration.`
       }));
     }
   }
@@ -408,9 +495,15 @@ function issue(issueFields) {
     severity: issueFields.severity ?? "error",
     file: issueFields.file,
     field: issueFields.field,
-    problem: issueFields.problem,
-    fix: issueFields.fix
+    problem: inlineDiagnostic(issueFields.problem),
+    fix: inlineDiagnostic(issueFields.fix)
   };
+}
+
+function inlineDiagnostic(value) {
+  return value.replace(/[\u0000-\u001F\u007F]/g, (character) => (
+    `\\u${character.codePointAt(0).toString(16).padStart(4, "0")}`
+  ));
 }
 
 function failedRequest(error) {

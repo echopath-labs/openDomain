@@ -14,7 +14,7 @@ export function validateGroundingDecision(frontmatter, sourceFile) {
         severity: "warning",
         file: sourceFile,
         field: "grounding.status",
-        problem: "Feature spec has no explicit grounding status; it was normalized to 'unclassified'.",
+        problem: "Grounding declaration has no explicit grounding status; it was normalized to 'unclassified'.",
         fix: "Declare grounding.status as required, not_required, or unclassified."
       })]
     };
@@ -24,7 +24,7 @@ export function validateGroundingDecision(frontmatter, sourceFile) {
     return invalidGroundingDecision(
       sourceFile,
       "grounding",
-      "Feature spec grounding must be an object.",
+      "Grounding declaration must contain a grounding object.",
       "Declare grounding.status and an optional grounding.rationale."
     );
   }
@@ -47,7 +47,7 @@ export function validateGroundingDecision(frontmatter, sourceFile) {
       code: "invalid_grounding_decision",
       file: sourceFile,
       field: "grounding.status",
-      problem: "Feature spec grounding.status must be required, not_required, or unclassified.",
+      problem: "grounding.status must be required, not_required, or unclassified.",
       fix: "Choose one supported grounding status explicitly."
     }));
   }
@@ -61,7 +61,7 @@ export function validateGroundingDecision(frontmatter, sourceFile) {
       code: "invalid_grounding_decision",
       file: sourceFile,
       field: "grounding.rationale",
-      problem: "Feature spec grounding.rationale must be a non-empty string when provided.",
+      problem: "grounding.rationale must be a non-empty string when provided.",
       fix: "Provide a concise rationale or remove the field."
     }));
   }
@@ -75,7 +75,7 @@ export function validateGroundingDecision(frontmatter, sourceFile) {
       code: "grounding_rationale_required",
       file: sourceFile,
       field: "grounding.rationale",
-      problem: "Feature specs marked not_required must explain why domain grounding is unnecessary.",
+      problem: "Declarations marked not_required must explain why domain grounding is unnecessary.",
       fix: "Add a non-empty grounding.rationale."
     }));
   }
