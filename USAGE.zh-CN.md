@@ -85,7 +85,10 @@ macOS 使用 `shasum -a 256`，Linux 使用 `sha256sum`，PowerShell 使用
 `Get-FileHash -Algorithm SHA256`。只安装到 `PATH` 上用户拥有的目录。当前 macOS
 二进制采用 ad-hoc 签名但未 notarize，Windows 二进制没有 Authenticode 签名。
 
-需要精确复现时固定 `@echopath-labs/opendomain@0.1.0`。后续 prerelease 必须显式
+需要精确复现时固定 `@echopath-labs/opendomain@0.1.1`。原生 `--request` 入口要求
+`0.1.1` 及以上；npm 安装的 CLI 使用 `npm install --global @echopath-labs/opendomain@0.1.1`
+升级。`opendomain update` 只刷新工作区指令，不升级 CLI；业务模型无需迁移。
+后续 prerelease 必须显式
 选择，并且不能移动 npm `latest`。独立二进制需要下载、校验并替换 executable。
 升级后运行：
 

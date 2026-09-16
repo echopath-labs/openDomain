@@ -72,10 +72,12 @@ test("public READMEs expose the same stable npm package entrypoint", async () =>
 });
 
 test("active installation guidance uses the stable default channel", async () => {
+  const { version } = JSON.parse(await readDocument("package.json"));
   for (const document of ["README.md", "README.zh-CN.md", "USAGE.md", "USAGE.zh-CN.md", "INSTALL.md"]) {
     const content = await readDocument(document);
     assert.match(content, /npm install --global @echopath-labs\/opendomain(?:\s|$)/m);
-    assert.match(content, /@echopath-labs\/opendomain@0\.1\.0/);
+    assert.ok(content.includes(`@echopath-labs/opendomain@${version}`),
+      `${document} must pin the current package version`);
     assert.doesNotMatch(content, /@echopath-labs\/opendomain@alpha/);
   }
 });

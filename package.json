@@ -1,6 +1,6 @@
 {
   "name": "@echopath-labs/opendomain",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Git-native, evidence-backed domain semantics for AI agents.",
   "license": "Apache-2.0",
   "author": {
