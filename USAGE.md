@@ -370,11 +370,51 @@ Ask:
 > source unit, read every accepted source it lists, and report Candidate
 > boundaries separately.
 
-For an OpenSpec source unit, Codex commonly runs:
+For task-scoped grounding, the Agent supplies one OpenDomain Grounding Request
+v1 file. No planning tool or Integration Profile is required. Save a JSON or YAML
+request, for example `grounding-request.yaml`:
+
+```yaml
+protocol_version: "1.0"
+source:
+  type: agent
+  path: work-notes.md
+intent:
+  id: work.current-task
+  name: Current task
+  status: proposed
+grounding:
+  status: unclassified
+affects_domain:
+  concepts: []
+  rules: []
+  lifecycles: []
+  events: []
+```
+
+Replace the work identity and source locator with the actual task. `source.type`
+is a descriptive label; OpenDomain does not interpret another tool's workflow.
+`source.path` is metadata and is not opened to infer IDs or select a model root.
+The four `affects_domain` lists reference existing accepted OpenDomain IDs, not
+copies of business definitions. Choose `required` and fill the relevant IDs when
+business constraints apply. Use `not_required` only with a non-empty `rationale`
+and empty ID lists. If uncertain, keep `unclassified`; the example intentionally
+reports incomplete grounding until classified. Missing `grounding` remains a
+warned v1 compatibility case and is never silently treated as `not_required`.
+
+Run from the project owning the OpenDomain model:
 
 ```bash
-opendomain assure --integration openspec <source-unit>
+opendomain prepare --request grounding-request.yaml --json
+opendomain assure --request grounding-request.yaml
 ```
+
+Pass exactly one `.json`, `.yaml` or `.yml` file. `--request` cannot be combined
+with a positional source, `--integration` or `--profile`. OpenDomain safely parses
+the declaration and rereads the current model; caller-provided `read_first`,
+`policy`, adapter metadata and other result fields are not preparation evidence.
+Exploring or organizing the business model does not require a planning task.
+
 
 Assurance separates the Grounding Request, preparation state, and policy
 outcome:
@@ -396,39 +436,33 @@ boundaries, Assurance mode and outcome, and any unresolved model gap. Assurance
 evaluates current declarations and evidence; it does not prove Agent
 comprehension.
 
-## Use OpenSpec, Spec Kit, Or Another Planning Source
+## Optional Compatibility Inputs
 
-OpenDomain is planning-tool-neutral:
+OpenSpec, Spec Kit and other planning tools are usage scenarios, not prerequisites.
+Agents using any tool can supply the native request above without changing that
+tool's documents. OpenDomain defines the request contract, not external directory
+layouts or planning processes.
 
-```text
-planning source
-  -> built-in adapter or declarative Integration Profile
-  -> Grounding Request
-  -> OpenDomain prepare / assure
-  -> Grounding Pack
-  -> Codex reads accepted evidence and Candidate boundaries
-```
+Existing OpenSpec `feature_spec` inputs and repository-local Profiles remain
+supported through positional source inputs and `--integration openspec` or
+`--profile <id>`. A legacy directory must contain exactly one valid compatible
+declaration; ordinary Markdown needs no metadata. Malformed YAML headers or
+multiple declarations are rejected; a plain delta file is not redirected to a
+parent declaration. New consumers should use the native request entry.
 
-OpenSpec can declare `grounding` and `affects_domain` directly. The planning
-source owns the change intent and acceptance criteria; OpenDomain owns the
-referenced long-lived semantics.
-
-For another structured format, define a repository-local Profile under
-`opendomain/integrations/profiles/`, then inspect it with:
-
-```bash
-opendomain integrations validate
-opendomain integrations list
-opendomain prepare --profile <profile-id> <source-unit>
-opendomain assure --profile <profile-id> <source-unit>
-```
-
-Profiles normalize declared structured fields. They do not scan prose, execute
-extensions, infer IDs, create Candidates, or promote knowledge. Profile v1
-normalizes grounding to `unclassified`; use advisory Assurance unless the
-source integration carries an explicit decision.
+Profile v1 still normalizes classification to `unclassified`; it does not map
+an explicit grounding decision. Use native requests for explicit classification
+instead of adding a Profile just to use OpenDomain. This release does not add
+or claim a verified Spec Kit integration.
 
 ## Diagnose And Recover
+
+Missing declarations mean request preparation has not completed, not that the
+business model is unavailable. Provide a native request using the example above;
+do not add front matter to every planning document. Repair malformed input,
+select one declaration for ambiguous legacy input, and correct broken references
+using existing accepted IDs. Do not create accepted knowledge merely to pass a check.
+
 
 | Symptom | Action |
 | --- | --- |
@@ -462,9 +496,9 @@ can continue expressing intent to Codex.
 | Check references | `opendomain refs check` |
 | List Candidates | `opendomain candidate list` |
 | Inspect one Candidate | `opendomain candidate show <candidate-id>` |
-| Prepare a Grounding Pack | `opendomain prepare <source-unit>` |
-| Run advisory Assurance | `opendomain assure <source-unit>` |
-| Run enforced Assurance | `opendomain assure --mode enforced <source-unit> --json` |
+| Prepare a Grounding Pack | `opendomain prepare --request <file>` |
+| Run advisory Assurance | `opendomain assure --request <file>` |
+| Run enforced Assurance | `opendomain assure --request <file> --mode enforced --json` |
 | Inspect Profiles | `opendomain integrations list` |
 | Validate Profiles | `opendomain integrations validate` |
 | Build a derived index | `opendomain index build` |

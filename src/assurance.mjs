@@ -360,7 +360,7 @@ export function formatAssuranceResult(result) {
     "Grounding Assurance",
     "",
     `Version: ${result.assurance_version}`,
-    `Grounding: ${result.grounding_pack.grounding_request?.grounding?.status ?? "unavailable"}`,
+    `Grounding: ${result.grounding_pack.grounding_request?.grounding?.status ?? "not established (request preparation failed)"}`,
     `Preparation: ${result.preparation.state}`,
     `Policy: ${result.policy.mode} -> ${result.policy.outcome}`,
     "",

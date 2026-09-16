@@ -18,7 +18,7 @@ export function validateAffectsDomainShape(value, file) {
     return [issue({
       file,
       field: "affects_domain",
-      problem: "Feature spec is missing a valid affects_domain object.",
+      problem: "Grounding declaration is missing a valid affects_domain object.",
       fix: "Declare affected OpenDomain concepts, rules, lifecycles, or events."
     })];
   }

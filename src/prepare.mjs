@@ -8,6 +8,7 @@ export async function prepareGroundingPack(inputPath, options = {}) {
   const cwd = options.cwd ?? process.cwd();
   const requestResult = await buildGroundingRequest(inputPath, {
     cwd,
+    request: options.request,
     integration: options.integration,
     profile: options.profile
   });
@@ -60,7 +61,7 @@ export async function prepareGroundingPack(inputPath, options = {}) {
         code: "non_accepted_domain_reference",
         file: groundingRequest.source.path,
         field: affected.field,
-        problem: `Feature spec references non-accepted OpenDomain knowledge '${affected.id}'.`,
+        problem: `Grounding Request references non-accepted OpenDomain knowledge '${affected.id}'.`,
         fix: "Reference accepted OpenDomain knowledge, or keep uncertain knowledge in Candidate form."
       }));
       continue;

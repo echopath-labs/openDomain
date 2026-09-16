@@ -255,7 +255,8 @@ test("init --example preserves nested directory results", async () => {
       "examples/erp/opendomain/rules",
       "examples/erp/openspec",
       "examples/erp/openspec/changes",
-      "examples/erp/openspec/changes/order-cancellation"
+      "examples/erp/openspec/changes/order-cancellation",
+      "examples/erp/requests"
     ]);
   });
 });
@@ -616,7 +617,7 @@ test("prepare command fails when no feature spec exists", async () => {
   });
 
   assert.equal(exitCode, 1);
-  assert.match(stdout.toString(), /No feature_spec found/);
+  assert.match(stdout.toString(), /No OpenDomain grounding declaration found/);
 });
 
 test("prepare command fails on broken affects_domain references", async () => {

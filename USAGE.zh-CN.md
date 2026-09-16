@@ -333,11 +333,48 @@ knowledge，直至正常的人工 source review 与独立 Candidate promotion �
 > OpenDomain Assurance，读取列出的全部 accepted sources，并单独报告 Candidate
 > boundaries。
 
-对于 OpenSpec Source Unit，Codex 通常执行：
+需要任务级业务约束检查时，由 Agent 提供一份 OpenDomain Grounding Request v1。
+不需要安装规划工具或配置 Profile。将 JSON 或 YAML 声明保存为一个文件，例如
+`grounding-request.yaml`：
+
+```yaml
+protocol_version: "1.0"
+source:
+  type: agent
+  path: work-notes.md
+intent:
+  id: work.current-task
+  name: Current task
+  status: proposed
+grounding:
+  status: unclassified
+affects_domain:
+  concepts: []
+  rules: []
+  lifecycles: []
+  events: []
+```
+
+将工作标识与来源定位替换为实际任务。`source.type` 是描述性标签，OpenDomain 不解释
+其他工具的工作流程；`source.path` 只作元数据，不会被打开来推断 ID 或选择模型根。
+四组 `affects_domain` 引用已有 accepted OpenDomain IDs，不复制业务定义。
+需要业务约束时选择 `required` 并填写相关 IDs；明确不需要时选择 `not_required`，
+提供非空 `rationale` 并保持 ID 列表为空；不确定则保持 `unclassified`。上面示例有意
+保持未分类，不能代表 grounding 已完成。历史 v1 请求缺少 `grounding` 时仍给出兼容
+警告并归为 unclassified，不会自动视为不需要约束。
+
+从拥有 OpenDomain 模型的项目根运行：
 
 ```bash
-opendomain assure --integration openspec <source-unit>
+opendomain prepare --request grounding-request.yaml --json
+opendomain assure --request grounding-request.yaml
 ```
+
+一次只提交一个 `.json`、`.yaml` 或 `.yml` 文件。`--request` 与位置参数形式的来源、
+`--integration`、`--profile` 互斥。OpenDomain 安全解析声明并重新读取当前模型；
+外部附加的 `read_first`、`policy`、适配器元数据等结果字段不作为准备成功的证据。
+浏览或整理业务模型本身无需创建规划任务。
+
 
 Assurance 会分开报告 Grounding Request、准备状态和策略结果：
 
@@ -357,38 +394,27 @@ Assurance 会分开报告 Grounding Request、准备状态和策略结果：
 和 outcome，以及未解决 model gap。Assurance 评估的是当前声明和证据，不能证明
 Agent 已经理解模型。
 
-## 与 OpenSpec、Spec Kit 或其他规划来源配合
+## 可选兼容入口
 
-OpenDomain 不绑定某个规划工具：
+OpenSpec、Spec Kit 和其他规划工具只是使用场景。使用这些工具的 Agent 都可以提供
+上述原生请求，无需修改工具文档。OpenDomain 定义自身请求契约，不定义外部目录
+布局或规划流程。
 
-```text
-planning source
-  -> built-in adapter 或声明式 Integration Profile
-  -> Grounding Request
-  -> OpenDomain prepare / assure
-  -> Grounding Pack
-  -> Codex 读取 accepted evidence 与 Candidate boundaries
-```
+已有 OpenSpec `feature_spec` 输入及本地 Profile 继续支持位置参数形式的来源路径、
+`--integration openspec` 或 `--profile <id>`。旧目录入口需恰好一份有效兼容声明，
+普通 Markdown 无需元数据；损坏的 YAML 头和多声明会被拒绝。单独传入普通 delta 文件
+不会自动查找父目录声明。新接入优先使用原生请求。
 
-OpenSpec 可以直接声明 `grounding` 和 `affects_domain`。规划来源继续拥有变更意图和
-验收标准；OpenDomain 拥有被引用的长期语义。
-
-其他结构化格式可以在 `opendomain/integrations/profiles/` 下定义 repository-local
-Profile，然后检查：
-
-```bash
-opendomain integrations validate
-opendomain integrations list
-opendomain prepare --profile <profile-id> <source-unit>
-opendomain assure --profile <profile-id> <source-unit>
-```
-
-Profile 只归一化已声明的结构化字段，不扫描正文、不执行扩展、不推断 ID、不创建
-Candidate，也不提升 knowledge。Profile v1 会把 grounding 归一化为
-`unclassified`；除非 source integration 能提供显式 decision，否则使用 advisory
-Assurance。
+Profile v1 仍将分类归为 `unclassified`，不映射显式 grounding decision。需要显式
+分类时使用原生请求，无需为了使用 OpenDomain 新建 Profile。本轮未新增或宣称已验证
+Spec Kit 集成。
 
 ## 诊断与恢复
+
+缺少声明表示请求尚未准备好，不代表业务模型不可用。按上述示例提供原生请求，
+不要给每份规划文档补 front matter。损坏输入应修复字段；旧入口多声明应显式选择
+一份；断裂引用应核对已有 accepted IDs，不能为了通过检查而编造已确认业务知识。
+
 
 | 现象 | 处理方式 |
 | --- | --- |
@@ -421,9 +447,9 @@ opendomain validate --json
 | 检查引用 | `opendomain refs check` |
 | 列出 Candidate | `opendomain candidate list` |
 | 查看 Candidate | `opendomain candidate show <candidate-id>` |
-| 准备 Grounding Pack | `opendomain prepare <source-unit>` |
-| 执行 advisory Assurance | `opendomain assure <source-unit>` |
-| 执行 enforced Assurance | `opendomain assure --mode enforced <source-unit> --json` |
+| 准备 Grounding Pack | `opendomain prepare --request <file>` |
+| 执行 advisory Assurance | `opendomain assure --request <file>` |
+| 执行 enforced Assurance | `opendomain assure --request <file> --mode enforced --json` |
 | 查看 Profile | `opendomain integrations list` |
 | 验证 Profile | `opendomain integrations validate` |
 | 构建派生 index | `opendomain index build` |

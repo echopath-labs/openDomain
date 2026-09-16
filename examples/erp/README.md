@@ -13,10 +13,18 @@ This example demonstrates the smallest useful OpenDomain shape:
 - one business rule
 - one domain event
 - one proposed candidate
-- one declarative Integration Profile
+- one native Grounding Request
+- one optional declarative Integration Profile
 - one structured non-OpenSpec feature source
 
-Run both grounding paths from this directory:
+Run the native request from this directory; no planning tool is required:
+
+```bash
+opendomain prepare --request requests/order-cancellation.yaml
+opendomain assure --request requests/order-cancellation.yaml
+```
+
+Existing adapter paths remain available for compatibility:
 
 ```bash
 opendomain prepare openspec/changes/order-cancellation/spec.md

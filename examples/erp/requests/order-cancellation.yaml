@@ -1,0 +1,17 @@
+protocol_version: "1.0"
+source:
+  type: agent
+  path: order-cancellation-notes.md
+intent:
+  id: work.order-cancellation
+  name: Order cancellation
+  status: proposed
+grounding:
+  status: required
+  rationale: Cancellation must preserve accepted order rules.
+affects_domain:
+  concepts:
+    - sales.order
+  rules: []
+  lifecycles: []
+  events: []

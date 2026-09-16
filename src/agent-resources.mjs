@@ -59,16 +59,49 @@ export function managedAgentsTemplate() {
 
 This repository uses OpenDomain for long-lived business semantics.
 
-Before implementing a non-trivial change with an applicable Source Unit, run:
+Before implementing a non-trivial change, prepare its business grounding using
+OpenDomain's own Grounding Request v1 contract. Supply one JSON or YAML file:
+
+\`\`\`yaml
+protocol_version: "1.0"
+source:
+  type: agent
+  path: work-notes.md
+intent:
+  id: work.current-task
+  name: Current task
+  status: proposed
+grounding:
+  status: unclassified
+affects_domain:
+  concepts: []
+  rules: []
+  lifecycles: []
+  events: []
+\`\`\`
+
+Use the actual work identity and source locator. Choose \`required\` when
+accepted business semantics apply and list their existing IDs; choose
+\`not_required\` only with a non-empty \`rationale\` and no IDs; otherwise keep
+\`unclassified\`. Do not invent IDs or classify empty references as not_required.
+The source locator is metadata, not a model root or an instruction to read a file.
+Run from the project owning the current OpenDomain model:
 
 \`\`\`bash
-opendomain assure <source-unit>
+opendomain assure --request <request-file>
 \`\`\`
 
 Read every accepted source listed in \`grounding_pack.read_first\`. Treat
 \`grounding_pack.candidate_boundaries\` as proposed knowledge, never accepted
 truth. Report the accepted IDs and Candidate boundaries used when completing
 the task.
+
+Missing declarations, invalid input and model gaps require different recovery:
+provide the request, repair it, or propose missing business knowledge as Candidates.
+Do not add metadata to every planning document or modify another tool's format.
+OpenSpec and other planning tools are optional scenarios. Existing adapters may
+still use \`opendomain assure <source-unit>\`; no adapter or Profile is required
+for native requests. Model exploration and organization do not require a planning task.
 
 AI-inferred domain knowledge starts as a Domain Candidate. Human reviewers own
 acceptance, rejection, risk decisions, and final validation.

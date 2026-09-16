@@ -103,6 +103,8 @@ project's `package.json`, lockfile, dependencies, or npm scripts. Whether these
 files are committed is the project's decision; they are compatible with normal
 Git versioning.
 
+OpenSpec and other planning tools are optional scenarios. For task grounding, an Agent can supply OpenDomain’s native JSON/YAML request with `opendomain assure --request <file>`. See the [request contract and example](USAGE.md#ground-an-implementation-task).
+
 ## Manual Installation
 
 Most users should ask Codex to install OpenDomain. The same channels are

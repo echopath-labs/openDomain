@@ -2,7 +2,14 @@
 
 ## Unreleased
 
-_No unreleased changes._
+- Add planning-tool-independent `prepare --request` and `assure --request`
+  inputs for existing Grounding Request v1 JSON/YAML declarations. Reuse current
+  workspace validation and preserve explicit classification and Candidate boundaries.
+- Fix #22: explain missing declarations through the native OpenDomain contract,
+  distinguish malformed/ambiguous legacy declarations, and preserve readable parser
+  diagnostics. Ordinary planning Markdown no longer produces per-file metadata errors.
+- Make managed Agent instructions and usage examples start from native requests;
+  retain existing OpenSpec and Profile inputs as optional compatibility paths.
 
 ## 0.1.0 - 2026-09-04
 
