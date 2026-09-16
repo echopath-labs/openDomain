@@ -1,5 +1,7 @@
 # Changelog
 
+## Unreleased
+
 ## 0.1.1 - 2026-09-16
 
 - Add planning-tool-independent `prepare --request` and `assure --request`
